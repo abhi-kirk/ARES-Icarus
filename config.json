@@ -1,0 +1,23 @@
+{
+    "pid_velocity": {
+        "gains": {
+            "kp": 2.5,
+            "ki": 0.3,
+            "kd": 0.0
+        }
+    },
+    "pid_position": {
+        "gains": {
+            "kp": 0.03,
+            "ki": 0.1,
+            "kd": 0.0
+        }
+    },
+    "simulation": {
+        "timestep_inner": 0.1,
+        "timestep_outer": 5.0,
+        "initial_altitude": 1000.0,
+        "initial_velocity": 0.0,
+        "initial_fuel": 600.0
+    }
+}

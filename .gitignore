@@ -1,0 +1,49 @@
+# Build directory (contains compiled binaries and CMake artifacts)
+build/
+cmake-build-*/
+.venv/
+.cache/
+
+# CMake files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.cmake
+
+# Compiled Object files
+*.o
+*.obj
+*.slo
+*.lo
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# macOS
+.DS_Store
+
+# Tempporary files
+*.tmp
+*.temp
+*.bak
+
+# IDE files
+.vscode/
+*.code-workspace
+
+.cache/*
+
+stc/icarus_plotting.egg-info/
+
+# Plots
+src/results/*
