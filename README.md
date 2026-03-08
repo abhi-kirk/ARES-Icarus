@@ -1,44 +1,108 @@
-# Autonomous Rocket Engineering Simulation : Icarus
-
-**Objective:** Progressive development of rocket landing simulation and controls, from 1-DOF to 6-DOF.
+# Autonomous Rocket Engineering Simulation: Icarus
 
 <p align="center">
   <img src="images/icarus.jpg" alt="Icarus Flight" width="500"/>
 </p>
 
+**Icarus** (named after the figure from Greek mythology who flew too close to the sun) is a simulation-only rocket vertical landing project. It is the algorithmic counterpart to [Talos](https://github.com/abhi/ARES-Talos), a physical self-balancing robot. Because there is no hardware constraint, Icarus prioritizes algorithmic depth — progressing from classical PID control through optimal control and reinforcement learning.
+
+The project serves as a rigorous study of controls theory and C++ engineering, benchmarked against the academic papers that underpin real rocket guidance systems (Acikmese, Szmuk, Blackmore).
+
+---
+
+## Architecture
+
+The simulation is written in C++17, using [Eigen](https://eigen.tuxfamily.org/) for linear algebra and [RK4](https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods) numerical integration. Dynamics and control are separated into clean modules. Configuration is loaded at runtime from JSON, allowing gain tuning without recompilation. Results are written to CSV for Python-based analysis and plotting.
+
+```
+config.json
+    |
+    v
+main.cpp  ──  rocket_dynamics()  ──  Integrator::rk4_step()
+                      ^
+                      |
+              Controller (cascade PID)
+              ├── Outer: altitude → ref_velocity
+              └── Inner: velocity → throttle
+                      |
+                      v
+              src/results/trajectory.csv
+```
+
+## Quick Start
+
+```bash
+make run        # configure + build + execute
+./build/Icarus  # run directly after build
+```
+
+---
+
+## Phase 1: 1-DOF Vertical Landing (Complete)
+
+The first phase implements cascade PID control for 1-DOF powered descent — a rocket falling from 1000m and landing with near-zero velocity.
+
+### State and Control
+
+```
+State:   [altitude, velocity, fuel_mass]
+Control: throttle ∈ [0, 1]
+```
+
+### Cascade Architecture
+
+```
+Outer loop (5s period):   altitude error  →  ref_velocity
+Inner loop (0.1s period): velocity error  →  throttle
+```
+
+The outer loop frequency is critical: running it at 5s intervals (vs. 1s) dramatically improves tracking quality by separating the position and velocity timescales correctly.
+
+### Results
+
+| Metric | Gain Scheduling | Cascade PID |
+|---|---|---|
+| Landing Velocity | -1.54 m/s | **-0.02 m/s** |
+| Control Quality | Good | Excellent |
+| Tuning Method | Manual | Grid Search (48 combos) |
+
+### Key Learnings
+- Cascade control separates timescales (position vs. velocity loop)
+- Outer loop frequency critically affects performance
+- Feedforward (hover throttle compensation) improves tracking
+- Systematic grid search is essential for multi-loop systems
+
 ---
 
 ## Roadmap
 
-**Phase 1**: 1-DOF Vertical Landing (Complete)
-- Cascade PID control (position -> velocity)
-- RK4 numerical integration
-- Runtime JSON configuration
-- Systematic parameter tuning
+| Phase | Goal | Status |
+|---|---|---|
+| **1** | 1-DOF cascade PID vertical landing | Complete |
+| **1.5** | 3-DOF translation: wind disturbances, moving landing pad | Next |
+| **2** | Add Euler angle rotation dynamics (6 DOF, TVC) | Upcoming |
+| **2.5** | Upgrade to quaternions — singularity-free attitude control | Upcoming |
+| **3a** | LTV-MPC: linearize along reference trajectory, OSQP solver | Upcoming |
+| **3b** | Successive Convexification (SCvx) — matches SpaceX approach | Upcoming |
+| **4** | Reinforcement Learning: PPO/SAC agent, compare vs. MPC | Future |
 
-**Phase 2**: 3-DOF Dynamics
-- Lateral (x, y) position control
-- Trajectory planning
-- Wind disturbance modeling
+### Phase 1.5: 3-DOF Translation
 
-**Phase 3**: Advanced Control
-- Model Predictive Control (MPC)
-- Kalman filtering / state estimation
-- Performance comparison: PID vs MPC
+Extends cascade control to 3D space without rotation. Thrust direction is commanded directly (no attitude dynamics yet). Adds:
+- Wind disturbance model (constant + sinusoidal gusts)
+- Moving landing pad tracking (drone ship analogy)
+- Thrust magnitude saturation: `||F|| ≤ F_max`
 
-**Phase 4**: 6-DOF Full Dynamics
-- Quaternion-based rotation
-- Thrust Vector Control (TVC)
-- Coupled translation + rotation
+### Phase 2–2.5: Rotation Dynamics
 
-**Phase 5**: Reinforcement Learning
-- PPO agent for adaptive landing
-- COmparison: Classical vs RL control
+Phase 2 introduces full rotational dynamics via Euler angles (roll, pitch, yaw) with gimbal-based thrust vector control. Phase 2.5 replaces Euler angles with quaternions to eliminate gimbal lock — the aerospace industry standard.
 
----
+### Phase 3: Optimal Control (MPC + SCvx)
 
-## Quick Start
-```bash
-make
-./build/Icarus
-```
+Replaces the PID cascade with optimal control. Phase 3a uses Linear Time-Varying MPC (linearize dynamics along a reference trajectory, solve a QP at each step). Phase 3b implements Successive Convexification — the approach used in SpaceX's Falcon 9 guidance — based on the foundational work of Acikmese et al.
+
+Key insight: **lossless convexification** relaxes the nonconvex thrust cone constraint to a convex form whose optimal solution satisfies the original constraint exactly.
+
+### Phase 4: Reinforcement Learning
+
+Trains a PPO or SAC agent on the 6-DOF environment. Compares learned policy against MPC on landing success rate, fuel efficiency, and robustness to domain randomization (mass uncertainty, wind, thrust noise).
