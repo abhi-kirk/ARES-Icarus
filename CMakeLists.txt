@@ -1,22 +1,19 @@
 cmake_minimum_required(VERSION 3.10)
 
-# Project Name
 project(Icarus VERSION 1.0)
 
-# Specify C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-
-# Generate compile_commands.json for better IDE support
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Include modules
-add_subdirectory(src/control)
+# Dependency order: math <- config <- dynamics <- control <- guidance <- sim
 add_subdirectory(modules/math)
+add_subdirectory(src/config)
+add_subdirectory(src/dynamics)
+add_subdirectory(src/gnc/control)
+add_subdirectory(src/gnc/guidance)
+add_subdirectory(src/sim)
 
-# Add the executable
 add_executable(Icarus src/main.cpp)
-
-# Link the relevant libraries to the executable
-target_link_libraries(Icarus PUBLIC icarus_control)
-target_include_directories(Icarus PUBLIC src)
+target_link_libraries(Icarus PRIVATE icarus_sim)
+target_include_directories(Icarus PRIVATE src)

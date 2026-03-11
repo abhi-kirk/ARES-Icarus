@@ -18,22 +18,13 @@ _This plot shows the Phase 1 controller: a cascaded PID where the outer loop tur
 
 ## Architecture
 
-The simulation is written in C++17, using [Eigen](https://eigen.tuxfamily.org/) for linear algebra and [RK4](https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods) numerical integration. Dynamics and control are separated into clean modules. Configuration is loaded at runtime from JSON, allowing gain tuning without recompilation. Results are written to CSV for Python-based analysis and plotting.
+<p align="center">
+  <img src="images/icarus-architecture.png" alt="Icarus GNC Architecture" width="900"/>
+</p>
 
-```
-config.json
-    |
-    v
-main.cpp  ──  rocket_dynamics()  ──  Integrator::rk4_step()
-                      ^
-                      |
-              Controller (cascade PID)
-              ├── Outer: altitude → ref_velocity
-              └── Inner: velocity → throttle
-                      |
-                      v
-              src/results/trajectory.csv
-```
+- The simulation is written in C++17, using [Eigen](https://eigen.tuxfamily.org/) for linear algebra and [RK4](https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods) numerical integration. 
+- The codebase follows a GNC (Guidance, Navigation, Control) separation designed to scale through MPC and RL phases without structural rewrites. 
+- Configuration is loaded at runtime from JSON. Results are written to CSV for Python-based analysis.
 
 ## Quick Start
 
@@ -66,17 +57,18 @@ The outer loop frequency is critical: it should be slower than the inner loop, b
 
 ### Results
 
-| Metric | Gain Scheduling | Cascade PID |
-|---|---|---|
-| Landing Velocity | -1.54 m/s | **-0.02 m/s** |
-| Control Quality | Good | Excellent |
-| Tuning Method | Manual | Grid Search (48 combos) |
+| Metric | Value |
+|---|---|
+| Landing Velocity | **~0 m/s** (< 1e-6 m/s) |
+| Initial Condition | 300 m, −20 m/s (terminal-descent handoff) |
+| Fuel Remaining | ~125 kg of 600 kg |
+| Flight Time | ~175 s |
 
 ### Key Learnings
-- Cascade control separates timescales (position vs. velocity loop)
-- Outer loop frequency critically affects performance
-- Feedforward (hover throttle compensation) improves tracking
-- Systematic grid search is essential for multi-loop systems
+- Cascade control separates timescales: position loop sets the target descent rate, velocity loop tracks it
+- **Anti-windup is non-negotiable**: without conditional integration, the position loop's integral accumulates over the full flight and permanently saturates the reference velocity
+- **Rate-limiting the outer loop command** (not just slowing the loop) eliminates throttle pulsing from setpoint steps — a cleaner solution than reducing outer loop gain
+- Gravity feedforward (hover throttle compensation) eliminates steady-state velocity error without relying on the integral term
 
 ---
 

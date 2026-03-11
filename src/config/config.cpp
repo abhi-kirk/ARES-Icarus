@@ -1,4 +1,4 @@
-#include "config.h"
+#include "config/config.h"
 
 #include <fstream>
 #include <iostream>
@@ -12,7 +12,6 @@ namespace icarus {
 
 bool load_config(const std::string& filepath, Config& config) {
     try {
-        // Open and parse JSON file
         std::ifstream file(filepath);
         if (!file.is_open()) {
             std::cerr << "Error: Could not open config file: " << filepath << std::endl;
@@ -21,7 +20,6 @@ bool load_config(const std::string& filepath, Config& config) {
 
         json j = json::parse(file);
 
-        // Load PID configuration
         config.pid.kp_vel = j["pid_velocity"]["gains"]["kp"];
         config.pid.kd_vel = j["pid_velocity"]["gains"]["kd"];
         config.pid.ki_vel = j["pid_velocity"]["gains"]["ki"];
@@ -30,15 +28,14 @@ bool load_config(const std::string& filepath, Config& config) {
         config.pid.kd_pos = j["pid_position"]["gains"]["kd"];
         config.pid.ki_pos = j["pid_position"]["gains"]["ki"];
 
-        // Load simulation configuration
-        config.simulation.timestep_inner = j["simulation"]["timestep_inner"];
-        config.simulation.timestep_outer = j["simulation"]["timestep_outer"];
-        config.simulation.initial_altitude = j["simulation"]["initial_altitude"];
-        config.simulation.initial_velocity = j["simulation"]["initial_velocity"];
-        config.simulation.initial_fuel = j["simulation"]["initial_fuel"];
-        config.simulation.max_ref_accel = j["simulation"].value("max_ref_accel", 2.0);
+        config.simulation.timestep_inner    = j["simulation"]["timestep_inner"];
+        config.simulation.timestep_outer    = j["simulation"]["timestep_outer"];
+        config.simulation.initial_altitude  = j["simulation"]["initial_altitude"];
+        config.simulation.initial_velocity  = j["simulation"]["initial_velocity"];
+        config.simulation.initial_fuel      = j["simulation"]["initial_fuel"];
+        config.simulation.max_ref_accel     = j["simulation"].value("max_ref_accel", 2.0);
 
-        std::cout << "Config loaded successfully from: " << filepath << std::endl;
+        std::cout << "Config loaded from: " << filepath << std::endl;
         return true;
     } catch (const json::exception& e) {
         std::cerr << "JSON parsing error: " << e.what() << std::endl;
@@ -48,4 +45,5 @@ bool load_config(const std::string& filepath, Config& config) {
         return false;
     }
 }
+
 }  // namespace icarus
