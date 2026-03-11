@@ -1,6 +1,9 @@
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <algorithm>
+#include <cmath>
 
 #include "control/config.h"
 #include "control/controller.h"
@@ -25,6 +28,15 @@ enum {
 // Output File
 std::filesystem::path exe_path = std::filesystem::current_path();
 std::string output_file = (exe_path / "src" / "results" / "trajectory.csv").string();
+
+static double rate_limit(double current, double target, double max_rate, double dt) {
+    if (max_rate <= 0.0 || dt <= 0.0) {
+        return target;
+    }
+    const double max_delta = max_rate * dt;
+    const double delta = target - current;
+    return current + std::clamp(delta, -max_delta, max_delta);
+}
 
 // The System Dynamics function (The Derivative)
 State rocket_dynamics(double t, const State& state, double throttle) {
@@ -76,6 +88,7 @@ int main() {
     double dt_outer = config.simulation.timestep_outer;
 
     ofstream csv_file(output_file);  // save results for python plots
+    csv_file << std::fixed << std::setprecision(6);
     csv_file << "Time,Altitude,Velocity,Fuel,Throttle" << endl;
 
     cout << "Time, Altitude, Velocity, Fuel" << endl;
@@ -83,18 +96,32 @@ int main() {
     Controller vel_controller(dt_inner, config.pid);
     Controller pos_controller(dt_outer, config.pid);
 
-    int outer_loop_divider = static_cast<int>(dt_outer / dt_inner);  // Outer loop runs slower
+    // Outer loop runs slower (ensure a valid divider even if dt_outer isn't an exact multiple)
+    int outer_loop_divider = static_cast<int>(std::lround(dt_outer / dt_inner));
+    outer_loop_divider = std::max(1, outer_loop_divider);
     int iteration = 0;
-    double ref_velocity = 0.0;
+    double ref_velocity_target = 0.0;
+    double ref_velocity_cmd = 0.0;
+
+    // Initialize the command to the current outer-loop target to avoid an initial setpoint ramp
+    // artifact in plots when starting in a terminal-descent condition.
+    ref_velocity_target = pos_controller.compute(state, "position", 0.0);
+    ref_velocity_cmd = ref_velocity_target;
 
     while (state[POS] > 0.0) {
+        const State prev_state = state;
+        const double prev_t = t;
         if (iteration % outer_loop_divider == 0) {
             // Control Logic (Position feedback -> reference velocity)
-            ref_velocity = pos_controller.compute(state, "position", 0.0);
+            ref_velocity_target = pos_controller.compute(state, "position", 0.0);
         }
 
+        // Rate-limit the commanded reference velocity (acceleration-limited command shaping)
+        ref_velocity_cmd = rate_limit(ref_velocity_cmd, ref_velocity_target,
+                                      config.simulation.max_ref_accel, dt_inner);
+
         // Control Logic (Velocity feedback -> throttle)
-        double throttle = vel_controller.compute(state, "velocity", ref_velocity);
+        double throttle = vel_controller.compute(state, "velocity", ref_velocity_cmd);
 
         // Physics
         // Bind the throttle to the dynamics function using a lambda
@@ -108,6 +135,32 @@ int main() {
 
         t += dt_inner;
 
+        // If we crossed the ground plane this step, interpolate to touchdown so
+        // the final logged velocity matches the contact event (not an overshoot).
+        if (state[POS] <= 0.0) {
+            const double y0 = prev_state[POS];
+            const double y1 = state[POS];
+            const double denom = y0 - y1;
+            double alpha = 1.0;
+            if (denom > 0.0 && y0 > 0.0) {
+                alpha = std::clamp(y0 / denom, 0.0, 1.0);
+            }
+
+            const double touchdown_t = prev_t + alpha * dt_inner;
+            const double touchdown_v = prev_state[VEL] + alpha * (state[VEL] - prev_state[VEL]);
+            const double touchdown_fuel = prev_state[FUEL] + alpha * (state[FUEL] - prev_state[FUEL]);
+
+            t = touchdown_t;
+            state[POS] = 0.0;
+            state[VEL] = touchdown_v;
+            state[FUEL] = std::max(0.0, touchdown_fuel);
+        }
+
+        // Clamp fuel after touchdown interpolation (and for normal steps) so we never log negative fuel.
+        if (state[FUEL] < 0.0) {
+            state[FUEL] = 0.0;
+        }
+
         // Logging
         cout << t << ", " << state[POS] << ", " << state[VEL] << ", " << state[FUEL] << endl;
         csv_file << t << "," << state[POS] << "," << state[VEL] << "," << state[FUEL] << ","
@@ -115,7 +168,8 @@ int main() {
 
         if (iteration % 10 == 0) {
             cout << "t=" << t << " alt=" << state[POS] << " vel=" << state[VEL]
-                 << " ref_vel=" << ref_velocity << " throttle=" << throttle << endl;
+                 << " ref_vel_cmd=" << ref_velocity_cmd << " ref_vel_target=" << ref_velocity_target
+                 << " throttle=" << throttle << endl;
         }
 
         iteration++;

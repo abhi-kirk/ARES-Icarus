@@ -36,6 +36,7 @@ bool load_config(const std::string& filepath, Config& config) {
         config.simulation.initial_altitude = j["simulation"]["initial_altitude"];
         config.simulation.initial_velocity = j["simulation"]["initial_velocity"];
         config.simulation.initial_fuel = j["simulation"]["initial_fuel"];
+        config.simulation.max_ref_accel = j["simulation"].value("max_ref_accel", 2.0);
 
         std::cout << "Config loaded successfully from: " << filepath << std::endl;
         return true;

@@ -24,6 +24,9 @@ struct SimConfig {
     double initial_altitude;
     double initial_velocity;
     double initial_fuel;
+    // Limits for shaping the outer-loop command (m/s^2). Used to rate-limit
+    // the change in commanded reference velocity over time.
+    double max_ref_accel;
 };
 
 // Complete configuration

@@ -8,6 +8,12 @@
 
 The project serves as a rigorous study of controls theory and C++ engineering, benchmarked against the academic papers that underpin real rocket guidance systems (Acikmese, Szmuk, Blackmore).
 
+<p align="center">
+  <img src="images/trajectory_pid_readme.png" alt="Icarus 1-DOF landing trajectory (PID)" width="900"/>
+</p>
+
+_This plot shows the Phase 1 controller: a cascaded PID where the outer loop turns altitude error into a desired descent rate (reference velocity), and the inner loop tracks that reference velocity by commanding throttle (with gravity feedforward). The reference velocity is rate-limited to avoid large setpoint steps that cause throttle pulsing._
+
 ---
 
 ## Architecture
@@ -40,7 +46,7 @@ make run        # configure + build + execute
 
 ## Phase 1: 1-DOF Vertical Landing (Complete)
 
-The first phase implements cascade PID control for 1-DOF powered descent — a rocket falling from 1000m and landing with near-zero velocity.
+The first phase implements cascade PID control for 1-DOF powered descent — starting from a terminal-descent handoff condition (300 m altitude, -20 m/s) and landing with near-zero velocity.
 
 ### State and Control
 
@@ -52,11 +58,11 @@ Control: throttle ∈ [0, 1]
 ### Cascade Architecture
 
 ```
-Outer loop (5s period):   altitude error  →  ref_velocity
-Inner loop (0.1s period): velocity error  →  throttle
+Outer loop (0.1s period): altitude error  →  ref_velocity
+Inner loop (0.02s period): velocity error  →  throttle
 ```
 
-The outer loop frequency is critical: running it at 5s intervals (vs. 1s) dramatically improves tracking quality by separating the position and velocity timescales correctly.
+The outer loop frequency is critical: it should be slower than the inner loop, but fast enough to avoid large setpoint steps; this repo also rate-limits the commanded reference velocity to reduce throttle pulsing.
 
 ### Results
 
