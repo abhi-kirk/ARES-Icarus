@@ -83,7 +83,7 @@ int main() {
     Controller vel_controller(dt_inner, config.pid);
     Controller pos_controller(dt_outer, config.pid);
 
-    int outer_loop_divider = 50;  // Outer loop runs 50x slower
+    int outer_loop_divider = static_cast<int>(dt_outer / dt_inner);  // Outer loop runs slower
     int iteration = 0;
     double ref_velocity = 0.0;
 

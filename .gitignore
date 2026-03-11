@@ -49,3 +49,5 @@ stc/icarus_plotting.egg-info/
 src/results/*
 
 CLAUDE.md
+.claude/*
+src/icarus_plotting.egg-info/

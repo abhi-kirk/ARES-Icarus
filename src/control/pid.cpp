@@ -55,7 +55,7 @@ double pid_controller(const State& state, const string& measurement_type, const 
     const double integral_term = ki * integral_feedback_error;
     const double derivative_term = kd * derivative_feedback_error;
 
-    const double pid_output = proportional_term + integral_term + derivative_term + feedforward_term;
+    const double pid_output = proportional_term + integral_term + derivative_term;
 
     // Total control output (clamped to min/max)
     const double control_output = std::clamp(pid_output + feedforward_term, control_min, control_max);
