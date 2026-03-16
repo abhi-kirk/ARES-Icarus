@@ -19,6 +19,9 @@
         "max_ref_accel": 1.5,
         "initial_altitude": 300.0,
         "initial_velocity": -20.0,
-        "initial_fuel": 600.0
+        "initial_fuel": 600.0,
+        "use_rerun": true,
+        "rerun_spawn_viewer": true,
+        "rerun_save_rrd": true
     }
 }

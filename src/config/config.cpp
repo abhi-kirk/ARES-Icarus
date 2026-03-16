@@ -34,6 +34,9 @@ bool load_config(const std::string& filepath, Config& config) {
         config.simulation.initial_velocity  = j["simulation"]["initial_velocity"];
         config.simulation.initial_fuel      = j["simulation"]["initial_fuel"];
         config.simulation.max_ref_accel     = j["simulation"].value("max_ref_accel", 2.0);
+        config.simulation.use_rerun         = j["simulation"].value("use_rerun", false);
+        config.simulation.rerun_spawn_viewer = j["simulation"].value("rerun_spawn_viewer", true);
+        config.simulation.rerun_save_rrd    = j["simulation"].value("rerun_save_rrd", true);
 
         std::cout << "Config loaded from: " << filepath << std::endl;
         return true;

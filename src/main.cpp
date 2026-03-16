@@ -35,7 +35,12 @@ int main() {
     Controller vel_ctrl(config.simulation.timestep_inner, vel_spec);
 
     const auto output_path = (exe_path / "src" / "results" / "trajectory.csv").string();
-    Logger logger(output_path);
+    const auto rrd_path    = (exe_path / "src" / "results" / "trajectory.rrd").string();
+    Logger logger(output_path,
+                  config.simulation.use_rerun,
+                  config.simulation.rerun_spawn_viewer,
+                  config.simulation.rerun_save_rrd,
+                  rrd_path);
 
     Simulator sim;
     sim.run(state, 0.0, config.simulation, guidance, vel_ctrl, rocket_dynamics, logger);

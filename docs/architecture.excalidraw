@@ -1,15 +1,15 @@
 {
   "type": "excalidraw",
   "version": 2,
-  "source": "https://marketplace.visualstudio.com/items?itemName=pomdtr.excalidraw-editor",
+  "source": "https://excalidraw.com",
   "elements": [
     {
       "id": "title_text",
       "type": "text",
-      "x": 80,
-      "y": 8,
-      "width": 1000,
-      "height": 30,
+      "x": 174.17340087890625,
+      "y": -32.01953125,
+      "width": 803.8797607421875,
+      "height": 35,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -22,15 +22,15 @@
       "frameId": null,
       "roundness": null,
       "seed": 1523409871,
-      "version": 4,
-      "versionNonce": 748302154,
+      "version": 25,
+      "versionNonce": 1637920424,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773263717286,
       "link": null,
       "locked": false,
       "text": "Icarus  —  GNC Architecture  ·  1-DOF Powered Descent",
-      "fontSize": 20,
+      "fontSize": 28,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "top",
@@ -44,8 +44,8 @@
     {
       "id": "config_rect",
       "type": "rectangle",
-      "x": 450,
-      "y": 44,
+      "x": 453.35546875,
+      "y": 16.22265625,
       "width": 260,
       "height": 76,
       "angle": 0,
@@ -58,16 +58,24 @@
       "opacity": 100,
       "groupIds": [],
       "frameId": null,
-      "roundness": { "type": 3 },
+      "roundness": {
+        "type": 3
+      },
       "seed": 987654321,
-      "version": 4,
-      "versionNonce": 123456789,
+      "version": 58,
+      "versionNonce": 1895978200,
       "isDeleted": false,
       "boundElements": [
-        { "type": "text", "id": "config_text" },
-        { "id": "arr_cfg_sim", "type": "arrow" }
+        {
+          "type": "text",
+          "id": "config_text"
+        },
+        {
+          "id": "arr_cfg_sim",
+          "type": "arrow"
+        }
       ],
-      "updated": 1741700000000,
+      "updated": 1773263726071,
       "link": null,
       "locked": false,
       "index": "a1"
@@ -75,10 +83,10 @@
     {
       "id": "config_text",
       "type": "text",
-      "x": 460,
-      "y": 54,
-      "width": 240,
-      "height": 56,
+      "x": 481.7155303955078,
+      "y": 24.22265625,
+      "width": 203.27987670898438,
+      "height": 60,
       "angle": 0,
       "strokeColor": "#495057",
       "backgroundColor": "transparent",
@@ -91,15 +99,15 @@
       "frameId": null,
       "roundness": null,
       "seed": 836025228,
-      "version": 4,
-      "versionNonce": 1252808732,
+      "version": 62,
+      "versionNonce": 1955723736,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773263726071,
       "link": null,
       "locked": false,
-      "text": "Configuration\n· PID gains  ·  simulation parameters",
-      "fontSize": 14,
+      "text": "Configuration\n· PID gains  ·  simulation\nparameters",
+      "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "middle",
@@ -113,10 +121,10 @@
     {
       "id": "arr_cfg_sim",
       "type": "arrow",
-      "x": 580,
-      "y": 120,
-      "width": 0,
-      "height": 25,
+      "x": 583.3814687500001,
+      "y": 92.22265625,
+      "width": 1.5488125000000537,
+      "height": 46.01171875,
       "angle": 0,
       "strokeColor": "#495057",
       "backgroundColor": "transparent",
@@ -127,28 +135,43 @@
       "opacity": 100,
       "groupIds": [],
       "frameId": null,
-      "roundness": { "type": 2 },
+      "roundness": {
+        "type": 2
+      },
       "seed": 1221906474,
-      "version": 4,
-      "versionNonce": 390274694,
+      "version": 132,
+      "versionNonce": 283442904,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773263726071,
       "link": null,
       "locked": false,
-      "points": [[0, 0], [0, 25]],
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -1.5488125000000537,
+          46.01171875
+        ]
+      ],
       "lastCommittedPoint": null,
       "startBinding": {
         "elementId": "config_rect",
         "mode": "inside",
-        "fixedPoint": [0.5, 1.0],
-        "focus": 0
+        "fixedPoint": [
+          0.5001,
+          1
+        ]
       },
       "endBinding": {
         "elementId": "sim_rect",
         "mode": "inside",
-        "fixedPoint": [0.5, 0.0],
-        "focus": 0
+        "fixedPoint": [
+          0.5001,
+          0
+        ]
       },
       "startArrowhead": null,
       "endArrowhead": "arrow",
@@ -158,8 +181,8 @@
     {
       "id": "sim_rect",
       "type": "rectangle",
-      "x": 30,
-      "y": 145,
+      "x": 31.72265625,
+      "y": 138.234375,
       "width": 1100,
       "height": 390,
       "angle": 0,
@@ -172,16 +195,24 @@
       "opacity": 100,
       "groupIds": [],
       "frameId": null,
-      "roundness": { "type": 3 },
+      "roundness": {
+        "type": 3
+      },
       "seed": 1115233714,
-      "version": 4,
-      "versionNonce": 882734956,
+      "version": 78,
+      "versionNonce": 397928920,
       "isDeleted": false,
       "boundElements": [
-        { "id": "arr_cfg_sim", "type": "arrow" },
-        { "id": "arr_sim_out", "type": "arrow" }
+        {
+          "id": "arr_cfg_sim",
+          "type": "arrow"
+        },
+        {
+          "id": "arr_sim_out",
+          "type": "arrow"
+        }
       ],
-      "updated": 1741700000000,
+      "updated": 1773263613987,
       "link": null,
       "locked": false,
       "index": "a4"
@@ -189,10 +220,10 @@
     {
       "id": "sim_label",
       "type": "text",
-      "x": 480,
-      "y": 154,
-      "width": 200,
-      "height": 20,
+      "x": 505.3700714111328,
+      "y": 150.875,
+      "width": 149.25985717773438,
+      "height": 25,
       "angle": 0,
       "strokeColor": "#868e96",
       "backgroundColor": "transparent",
@@ -205,15 +236,15 @@
       "frameId": null,
       "roundness": null,
       "seed": 442081928,
-      "version": 4,
-      "versionNonce": 119028326,
+      "version": 11,
+      "versionNonce": 262729640,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773263705007,
       "link": null,
       "locked": false,
       "text": "Simulation Loop",
-      "fontSize": 15,
+      "fontSize": 20,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "top",
@@ -241,14 +272,22 @@
       "opacity": 100,
       "groupIds": [],
       "frameId": null,
-      "roundness": { "type": 3 },
+      "roundness": {
+        "type": 3
+      },
       "seed": 788399969,
       "version": 4,
       "versionNonce": 1580381724,
       "isDeleted": false,
       "boundElements": [
-        { "type": "text", "id": "guidance_text" },
-        { "id": "arr_gc", "type": "arrow" }
+        {
+          "type": "text",
+          "id": "guidance_text"
+        },
+        {
+          "id": "arr_gc",
+          "type": "arrow"
+        }
       ],
       "updated": 1741700000000,
       "link": null,
@@ -258,10 +297,10 @@
     {
       "id": "guidance_text",
       "type": "text",
-      "x": 70,
-      "y": 198,
-      "width": 270,
-      "height": 218,
+      "x": 102.01605224609375,
+      "y": 237,
+      "width": 205.9678955078125,
+      "height": 140,
       "angle": 0,
       "strokeColor": "#364fc7",
       "backgroundColor": "transparent",
@@ -274,15 +313,15 @@
       "frameId": null,
       "roundness": null,
       "seed": 1330121436,
-      "version": 4,
-      "versionNonce": 1663931036,
+      "version": 8,
+      "versionNonce": 408611544,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773263662605,
       "link": null,
       "locked": false,
       "text": "GUIDANCE\nOuter Loop  ·  Δt = 5 s\n\n· altitude error\n  → desired descent rate\n· rate-limited setpoint\n  (avoids throttle pulsing)",
-      "fontSize": 14,
+      "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "middle",
@@ -310,15 +349,26 @@
       "opacity": 100,
       "groupIds": [],
       "frameId": null,
-      "roundness": { "type": 3 },
+      "roundness": {
+        "type": 3
+      },
       "seed": 1117940832,
       "version": 4,
       "versionNonce": 1923116828,
       "isDeleted": false,
       "boundElements": [
-        { "type": "text", "id": "ctrl_text" },
-        { "id": "arr_gc", "type": "arrow" },
-        { "id": "arr_cd", "type": "arrow" }
+        {
+          "type": "text",
+          "id": "ctrl_text"
+        },
+        {
+          "id": "arr_gc",
+          "type": "arrow"
+        },
+        {
+          "id": "arr_cd",
+          "type": "arrow"
+        }
       ],
       "updated": 1741700000000,
       "link": null,
@@ -328,10 +378,10 @@
     {
       "id": "ctrl_text",
       "type": "text",
-      "x": 450,
-      "y": 198,
-      "width": 270,
-      "height": 218,
+      "x": 478.37606048583984,
+      "y": 237,
+      "width": 213.2478790283203,
+      "height": 140,
       "angle": 0,
       "strokeColor": "#2b8a3e",
       "backgroundColor": "transparent",
@@ -344,15 +394,15 @@
       "frameId": null,
       "roundness": null,
       "seed": 1498405461,
-      "version": 4,
-      "versionNonce": 1346624182,
+      "version": 8,
+      "versionNonce": 1191362264,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773263664874,
       "link": null,
       "locked": false,
       "text": "CONTROL\nInner Loop  ·  Δt = 0.1 s\n\n· velocity error → throttle\n· gravity feedforward\n  (hover compensation)\n· anti-windup on integral",
-      "fontSize": 14,
+      "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "middle",
@@ -380,14 +430,22 @@
       "opacity": 100,
       "groupIds": [],
       "frameId": null,
-      "roundness": { "type": 3 },
+      "roundness": {
+        "type": 3
+      },
       "seed": 1498405462,
       "version": 4,
       "versionNonce": 1346624183,
       "isDeleted": false,
       "boundElements": [
-        { "type": "text", "id": "dyn_text" },
-        { "id": "arr_cd", "type": "arrow" }
+        {
+          "type": "text",
+          "id": "dyn_text"
+        },
+        {
+          "id": "arr_cd",
+          "type": "arrow"
+        }
       ],
       "updated": 1741700000000,
       "link": null,
@@ -397,10 +455,10 @@
     {
       "id": "dyn_text",
       "type": "text",
-      "x": 830,
-      "y": 198,
-      "width": 260,
-      "height": 218,
+      "x": 842.7920837402344,
+      "y": 227,
+      "width": 234.41583251953125,
+      "height": 160,
       "angle": 0,
       "strokeColor": "#5f3dc4",
       "backgroundColor": "transparent",
@@ -413,15 +471,15 @@
       "frameId": null,
       "roundness": null,
       "seed": 209279552,
-      "version": 4,
-      "versionNonce": 945103926,
+      "version": 8,
+      "versionNonce": 153129688,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773263667508,
       "link": null,
       "locked": false,
       "text": "DYNAMICS\n\n· thrust  (throttle × T_max)\n· aerodynamic drag\n· gravity\n· fuel mass depletion\n· RK4 integration\n  (dt = 0.1 s)",
-      "fontSize": 14,
+      "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "middle",
@@ -449,7 +507,9 @@
       "opacity": 100,
       "groupIds": [],
       "frameId": null,
-      "roundness": { "type": 2 },
+      "roundness": {
+        "type": 2
+      },
       "seed": 836572016,
       "version": 4,
       "versionNonce": 1674930954,
@@ -458,19 +518,32 @@
       "updated": 1741700000000,
       "link": null,
       "locked": false,
-      "points": [[0, 0], [90, 0]],
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          90,
+          0
+        ]
+      ],
       "lastCommittedPoint": null,
       "startBinding": {
         "elementId": "guidance_rect",
         "mode": "inside",
-        "fixedPoint": [1.0, 0.5],
-        "focus": 0
+        "fixedPoint": [
+          1,
+          0.5001
+        ]
       },
       "endBinding": {
         "elementId": "ctrl_rect",
         "mode": "inside",
-        "fixedPoint": [0.0, 0.5],
-        "focus": 0
+        "fixedPoint": [
+          0,
+          0.5001
+        ]
       },
       "startArrowhead": null,
       "endArrowhead": "arrow",
@@ -480,10 +553,10 @@
     {
       "id": "arr_gc_lbl",
       "type": "text",
-      "x": 355,
-      "y": 282,
-      "width": 80,
-      "height": 20,
+      "x": 361.13470458984375,
+      "y": 232.0703125,
+      "width": 67.8399658203125,
+      "height": 60,
       "angle": 0,
       "strokeColor": "#495057",
       "backgroundColor": "transparent",
@@ -496,21 +569,21 @@
       "frameId": null,
       "roundness": null,
       "seed": 1784390122,
-      "version": 4,
-      "versionNonce": 2083621846,
+      "version": 66,
+      "versionNonce": 324838616,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773263696587,
       "link": null,
       "locked": false,
-      "text": "desired\ndescent rate",
-      "fontSize": 12,
+      "text": "desired\ndescent \nrate",
+      "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "top",
       "baseline": 11,
       "containerId": null,
-      "originalText": "desired\ndescent rate",
+      "originalText": "desired\ndescent \nrate",
       "lineHeight": 1.25,
       "index": "aD",
       "autoResize": true
@@ -532,7 +605,9 @@
       "opacity": 100,
       "groupIds": [],
       "frameId": null,
-      "roundness": { "type": 2 },
+      "roundness": {
+        "type": 2
+      },
       "seed": 1042832754,
       "version": 4,
       "versionNonce": 918273046,
@@ -541,19 +616,32 @@
       "updated": 1741700000000,
       "link": null,
       "locked": false,
-      "points": [[0, 0], [90, 0]],
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          90,
+          0
+        ]
+      ],
       "lastCommittedPoint": null,
       "startBinding": {
         "elementId": "ctrl_rect",
         "mode": "inside",
-        "fixedPoint": [1.0, 0.5],
-        "focus": 0
+        "fixedPoint": [
+          1,
+          0.5001
+        ]
       },
       "endBinding": {
         "elementId": "dyn_rect",
         "mode": "inside",
-        "fixedPoint": [0.0, 0.5],
-        "focus": 0
+        "fixedPoint": [
+          0,
+          0.5001
+        ]
       },
       "startArrowhead": null,
       "endArrowhead": "arrow",
@@ -563,10 +651,10 @@
     {
       "id": "arr_cd_lbl",
       "type": "text",
-      "x": 737,
-      "y": 282,
-      "width": 76,
-      "height": 20,
+      "x": 741.9305557250976,
+      "y": 242.900390625,
+      "width": 63.72795104980469,
+      "height": 40,
       "angle": 0,
       "strokeColor": "#495057",
       "backgroundColor": "transparent",
@@ -579,15 +667,15 @@
       "frameId": null,
       "roundness": null,
       "seed": 774813560,
-      "version": 4,
-      "versionNonce": 1530922166,
+      "version": 127,
+      "versionNonce": 2091094488,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773263699237,
       "link": null,
       "locked": false,
       "text": "throttle\n∈ [0, 1]",
-      "fontSize": 12,
+      "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "top",
@@ -615,7 +703,9 @@
       "opacity": 100,
       "groupIds": [],
       "frameId": null,
-      "roundness": { "type": 2 },
+      "roundness": {
+        "type": 2
+      },
       "seed": 1058390762,
       "version": 4,
       "versionNonce": 1745982790,
@@ -624,7 +714,24 @@
       "updated": 1741700000000,
       "link": null,
       "locked": false,
-      "points": [[0, 0], [0, 50], [-755, 50], [-755, 0]],
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          50
+        ],
+        [
+          -755,
+          50
+        ],
+        [
+          -755,
+          0
+        ]
+      ],
       "lastCommittedPoint": null,
       "startBinding": null,
       "endBinding": null,
@@ -636,10 +743,10 @@
     {
       "id": "arr_state_lbl",
       "type": "text",
-      "x": 330,
-      "y": 470,
-      "width": 310,
-      "height": 18,
+      "x": 425.2404327392578,
+      "y": 451.8046875,
+      "width": 295.8238220214844,
+      "height": 20,
       "angle": 0,
       "strokeColor": "#495057",
       "backgroundColor": "transparent",
@@ -652,15 +759,15 @@
       "frameId": null,
       "roundness": null,
       "seed": 1332749816,
-      "version": 4,
-      "versionNonce": 400029350,
+      "version": 55,
+      "versionNonce": 579042728,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773263670075,
       "link": null,
       "locked": false,
       "text": "state: [altitude, velocity, fuel mass]",
-      "fontSize": 13,
+      "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "top",
@@ -674,10 +781,10 @@
     {
       "id": "arr_sim_out",
       "type": "arrow",
-      "x": 580,
-      "y": 535,
-      "width": 0,
-      "height": 40,
+      "x": 581.83265625,
+      "y": 528.234375,
+      "width": 1.3435312499999554,
+      "height": 56.234375,
       "angle": 0,
       "strokeColor": "#495057",
       "backgroundColor": "transparent",
@@ -688,28 +795,43 @@
       "opacity": 100,
       "groupIds": [],
       "frameId": null,
-      "roundness": { "type": 2 },
+      "roundness": {
+        "type": 2
+      },
       "seed": 291988524,
-      "version": 4,
-      "versionNonce": 1981234806,
+      "version": 102,
+      "versionNonce": 2062915800,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773263733505,
       "link": null,
       "locked": false,
-      "points": [[0, 0], [0, 40]],
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -1.3435312499999554,
+          56.234375
+        ]
+      ],
       "lastCommittedPoint": null,
       "startBinding": {
         "elementId": "sim_rect",
         "mode": "inside",
-        "fixedPoint": [0.5, 1.0],
-        "focus": 0
+        "fixedPoint": [
+          0.5001,
+          1
+        ]
       },
       "endBinding": {
         "elementId": "output_rect",
         "mode": "inside",
-        "fixedPoint": [0.5, 0.0],
-        "focus": 0
+        "fixedPoint": [
+          0.5001,
+          0
+        ]
       },
       "startArrowhead": null,
       "endArrowhead": "arrow",
@@ -719,10 +841,10 @@
     {
       "id": "arr_sim_out_lbl",
       "type": "text",
-      "x": 588,
-      "y": 546,
-      "width": 120,
-      "height": 18,
+      "x": 593,
+      "y": 543.5,
+      "width": 132.6879119873047,
+      "height": 20,
       "angle": 0,
       "strokeColor": "#868e96",
       "backgroundColor": "transparent",
@@ -735,15 +857,15 @@
       "frameId": null,
       "roundness": null,
       "seed": 2063415748,
-      "version": 4,
-      "versionNonce": 291067558,
+      "version": 13,
+      "versionNonce": 663424216,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773263678728,
       "link": null,
       "locked": false,
       "text": "logged each step",
-      "fontSize": 12,
+      "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "left",
       "verticalAlign": "top",
@@ -757,8 +879,8 @@
     {
       "id": "output_rect",
       "type": "rectangle",
-      "x": 400,
-      "y": 575,
+      "x": 400.453125,
+      "y": 584.46875,
       "width": 360,
       "height": 100,
       "angle": 0,
@@ -771,17 +893,28 @@
       "opacity": 100,
       "groupIds": [],
       "frameId": null,
-      "roundness": { "type": 3 },
+      "roundness": {
+        "type": 3
+      },
       "seed": 1907534606,
-      "version": 4,
-      "versionNonce": 1937517468,
+      "version": 28,
+      "versionNonce": 1955688152,
       "isDeleted": false,
       "boundElements": [
-        { "type": "text", "id": "output_text" },
-        { "id": "arr_sim_out", "type": "arrow" },
-        { "id": "arr_out_post", "type": "arrow" }
+        {
+          "type": "text",
+          "id": "output_text"
+        },
+        {
+          "id": "arr_sim_out",
+          "type": "arrow"
+        },
+        {
+          "id": "arr_out_post",
+          "type": "arrow"
+        }
       ],
-      "updated": 1741700000000,
+      "updated": 1773263733505,
       "link": null,
       "locked": false,
       "index": "aK"
@@ -789,9 +922,9 @@
     {
       "id": "output_text",
       "type": "text",
-      "x": 410,
-      "y": 585,
-      "width": 340,
+      "x": 466.9091796875,
+      "y": 594.46875,
+      "width": 227.087890625,
       "height": 80,
       "angle": 0,
       "strokeColor": "#e67700",
@@ -805,15 +938,15 @@
       "frameId": null,
       "roundness": null,
       "seed": 1615197907,
-      "version": 4,
-      "versionNonce": 581520566,
+      "version": 32,
+      "versionNonce": 724423640,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773263733505,
       "link": null,
       "locked": false,
       "text": "Simulation Output\n\ntime  ·  altitude  ·  velocity\nfuel mass  ·  throttle",
-      "fontSize": 14,
+      "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "middle",
@@ -827,10 +960,10 @@
     {
       "id": "arr_out_post",
       "type": "arrow",
-      "x": 580,
-      "y": 675,
-      "width": 0,
-      "height": 35,
+      "x": 580.4891250000001,
+      "y": 684.46875,
+      "width": 0.2757187499998963,
+      "height": 56.05078125,
       "angle": 0,
       "strokeColor": "#495057",
       "backgroundColor": "transparent",
@@ -841,28 +974,43 @@
       "opacity": 100,
       "groupIds": [],
       "frameId": null,
-      "roundness": { "type": 2 },
+      "roundness": {
+        "type": 2
+      },
       "seed": 1765432190,
-      "version": 4,
-      "versionNonce": 1234567890,
+      "version": 55,
+      "versionNonce": 1736228312,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773263733506,
       "link": null,
       "locked": false,
-      "points": [[0, 0], [0, 35]],
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0.2757187499998963,
+          56.05078125
+        ]
+      ],
       "lastCommittedPoint": null,
       "startBinding": {
         "elementId": "output_rect",
         "mode": "inside",
-        "fixedPoint": [0.5, 1.0],
-        "focus": 0
+        "fixedPoint": [
+          0.5001,
+          1
+        ]
       },
       "endBinding": {
         "elementId": "postproc_rect",
         "mode": "inside",
-        "fixedPoint": [0.5, 0.0],
-        "focus": 0
+        "fixedPoint": [
+          0.5001,
+          0
+        ]
       },
       "startArrowhead": null,
       "endArrowhead": "arrow",
@@ -872,8 +1020,8 @@
     {
       "id": "postproc_rect",
       "type": "rectangle",
-      "x": 330,
-      "y": 710,
+      "x": 330.71484375,
+      "y": 740.51953125,
       "width": 500,
       "height": 120,
       "angle": 0,
@@ -886,16 +1034,24 @@
       "opacity": 100,
       "groupIds": [],
       "frameId": null,
-      "roundness": { "type": 3 },
+      "roundness": {
+        "type": 3
+      },
       "seed": 40417855,
-      "version": 4,
-      "versionNonce": 820478378,
+      "version": 31,
+      "versionNonce": 1749913304,
       "isDeleted": false,
       "boundElements": [
-        { "type": "text", "id": "postproc_text" },
-        { "id": "arr_out_post", "type": "arrow" }
+        {
+          "type": "text",
+          "id": "postproc_text"
+        },
+        {
+          "id": "arr_out_post",
+          "type": "arrow"
+        }
       ],
-      "updated": 1741700000000,
+      "updated": 1773263731602,
       "link": null,
       "locked": false,
       "index": "aN"
@@ -903,10 +1059,10 @@
     {
       "id": "postproc_text",
       "type": "text",
-      "x": 340,
-      "y": 720,
-      "width": 480,
-      "height": 100,
+      "x": 356.490966796875,
+      "y": 770.51953125,
+      "width": 448.44775390625,
+      "height": 60,
       "angle": 0,
       "strokeColor": "#087f5b",
       "backgroundColor": "transparent",
@@ -919,15 +1075,15 @@
       "frameId": null,
       "roundness": null,
       "seed": 1523409872,
-      "version": 4,
-      "versionNonce": 748302155,
+      "version": 35,
+      "versionNonce": 308671448,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773263731602,
       "link": null,
       "locked": false,
       "text": "Post-Processing\n\n· Trajectory plots  ·  Stability analysis  ·  Monte Carlo",
-      "fontSize": 14,
+      "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "middle",
@@ -940,8 +1096,11 @@
     }
   ],
   "appState": {
-    "gridSize": null,
-    "viewBackgroundColor": "#ffffff"
+    "gridSize": 20,
+    "gridStep": 5,
+    "gridModeEnabled": false,
+    "viewBackgroundColor": "#ffffff",
+    "lockedMultiSelections": {}
   },
   "files": {}
 }

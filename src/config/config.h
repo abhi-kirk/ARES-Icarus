@@ -21,6 +21,10 @@ struct SimConfig {
     double initial_altitude;
     double initial_velocity;
     double initial_fuel;
+
+    bool use_rerun          = false;
+    bool rerun_spawn_viewer = true;
+    bool rerun_save_rrd     = true;
 };
 
 struct Config {
