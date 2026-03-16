@@ -6,8 +6,8 @@
     {
       "id": "title_text",
       "type": "text",
-      "x": 174.17340087890625,
-      "y": -32.01953125,
+      "x": 159.19683837890625,
+      "y": -63.64453125,
       "width": 803.8797607421875,
       "height": 35,
       "angle": 0,
@@ -22,11 +22,11 @@
       "frameId": null,
       "roundness": null,
       "seed": 1523409871,
-      "version": 25,
-      "versionNonce": 1637920424,
+      "version": 125,
+      "versionNonce": 501727926,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773263717286,
+      "updated": 1773701347260,
       "link": null,
       "locked": false,
       "text": "Icarus  —  GNC Architecture  ·  1-DOF Powered Descent",
@@ -276,8 +276,8 @@
         "type": 3
       },
       "seed": 788399969,
-      "version": 4,
-      "versionNonce": 1580381724,
+      "version": 5,
+      "versionNonce": 1471081514,
       "isDeleted": false,
       "boundElements": [
         {
@@ -287,9 +287,13 @@
         {
           "id": "arr_gc",
           "type": "arrow"
+        },
+        {
+          "id": "Zr39QaiFj0R-UosXmOh-a",
+          "type": "arrow"
         }
       ],
-      "updated": 1741700000000,
+      "updated": 1773701312498,
       "link": null,
       "locked": false,
       "index": "a6"
@@ -297,9 +301,9 @@
     {
       "id": "guidance_text",
       "type": "text",
-      "x": 102.01605224609375,
+      "x": 100.77470397949219,
       "y": 237,
-      "width": 205.9678955078125,
+      "width": 208.45059204101562,
       "height": 140,
       "angle": 0,
       "strokeColor": "#364fc7",
@@ -313,21 +317,21 @@
       "frameId": null,
       "roundness": null,
       "seed": 1330121436,
-      "version": 8,
-      "versionNonce": 408611544,
+      "version": 12,
+      "versionNonce": 1143420266,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773263662605,
+      "updated": 1773701270125,
       "link": null,
       "locked": false,
-      "text": "GUIDANCE\nOuter Loop  ·  Δt = 5 s\n\n· altitude error\n  → desired descent rate\n· rate-limited setpoint\n  (avoids throttle pulsing)",
+      "text": "GUIDANCE\nOuter Loop  ·  Δt = 0.1 s\n\n· altitude error\n  → desired descent rate\n· rate-limited setpoint\n  (avoids throttle pulsing)",
       "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "middle",
       "baseline": 14,
       "containerId": "guidance_rect",
-      "originalText": "GUIDANCE\nOuter Loop  ·  Δt = 5 s\n\n· altitude error\n  → desired descent rate\n· rate-limited setpoint\n  (avoids throttle pulsing)",
+      "originalText": "GUIDANCE\nOuter Loop  ·  Δt = 0.1 s\n\n· altitude error\n  → desired descent rate\n· rate-limited setpoint\n  (avoids throttle pulsing)",
       "lineHeight": 1.25,
       "index": "a7",
       "autoResize": true
@@ -336,7 +340,7 @@
       "id": "ctrl_rect",
       "type": "rectangle",
       "x": 440,
-      "y": 188,
+      "y": 187.8984375,
       "width": 290,
       "height": 238,
       "angle": 0,
@@ -353,8 +357,8 @@
         "type": 3
       },
       "seed": 1117940832,
-      "version": 4,
-      "versionNonce": 1923116828,
+      "version": 5,
+      "versionNonce": 480712886,
       "isDeleted": false,
       "boundElements": [
         {
@@ -370,7 +374,7 @@
           "type": "arrow"
         }
       ],
-      "updated": 1741700000000,
+      "updated": 1773701282310,
       "link": null,
       "locked": false,
       "index": "a8"
@@ -378,9 +382,9 @@
     {
       "id": "ctrl_text",
       "type": "text",
-      "x": 478.37606048583984,
-      "y": 237,
-      "width": 213.2478790283203,
+      "x": 474.78270721435547,
+      "y": 236.8984375,
+      "width": 220.43458557128906,
       "height": 140,
       "angle": 0,
       "strokeColor": "#2b8a3e",
@@ -394,21 +398,21 @@
       "frameId": null,
       "roundness": null,
       "seed": 1498405461,
-      "version": 8,
-      "versionNonce": 1191362264,
+      "version": 12,
+      "versionNonce": 1142118634,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773263664874,
+      "updated": 1773701285111,
       "link": null,
       "locked": false,
-      "text": "CONTROL\nInner Loop  ·  Δt = 0.1 s\n\n· velocity error → throttle\n· gravity feedforward\n  (hover compensation)\n· anti-windup on integral",
+      "text": "CONTROL\nInner Loop  ·  Δt = 0.02 s\n\n· velocity error → throttle\n· gravity feedforward\n  (hover compensation)\n· anti-windup on integral",
       "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "middle",
       "baseline": 14,
       "containerId": "ctrl_rect",
-      "originalText": "CONTROL\nInner Loop  ·  Δt = 0.1 s\n\n· velocity error → throttle\n· gravity feedforward\n  (hover compensation)\n· anti-windup on integral",
+      "originalText": "CONTROL\nInner Loop  ·  Δt = 0.02 s\n\n· velocity error → throttle\n· gravity feedforward\n  (hover compensation)\n· anti-windup on integral",
       "lineHeight": 1.25,
       "index": "a9",
       "autoResize": true
@@ -434,8 +438,8 @@
         "type": 3
       },
       "seed": 1498405462,
-      "version": 4,
-      "versionNonce": 1346624183,
+      "version": 5,
+      "versionNonce": 1428579370,
       "isDeleted": false,
       "boundElements": [
         {
@@ -445,9 +449,13 @@
         {
           "id": "arr_cd",
           "type": "arrow"
+        },
+        {
+          "id": "Zr39QaiFj0R-UosXmOh-a",
+          "type": "arrow"
         }
       ],
-      "updated": 1741700000000,
+      "updated": 1773701309545,
       "link": null,
       "locked": false,
       "index": "aA"
@@ -494,9 +502,9 @@
       "id": "arr_gc",
       "type": "arrow",
       "x": 350,
-      "y": 307,
+      "y": 307.0238,
       "width": 90,
-      "height": 0,
+      "height": 0.1015625,
       "angle": 0,
       "strokeColor": "#343a40",
       "backgroundColor": "transparent",
@@ -511,11 +519,11 @@
         "type": 2
       },
       "seed": 836572016,
-      "version": 4,
-      "versionNonce": 1674930954,
+      "version": 5,
+      "versionNonce": 1081402166,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773701282311,
       "link": null,
       "locked": false,
       "points": [
@@ -525,7 +533,7 @@
         ],
         [
           90,
-          0
+          -0.1015625
         ]
       ],
       "lastCommittedPoint": null,
@@ -592,9 +600,9 @@
       "id": "arr_cd",
       "type": "arrow",
       "x": 730,
-      "y": 307,
+      "y": 306.9222375,
       "width": 90,
-      "height": 0,
+      "height": 0.1015625,
       "angle": 0,
       "strokeColor": "#343a40",
       "backgroundColor": "transparent",
@@ -609,11 +617,11 @@
         "type": 2
       },
       "seed": 1042832754,
-      "version": 4,
-      "versionNonce": 918273046,
+      "version": 5,
+      "versionNonce": 295636086,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773701282311,
       "link": null,
       "locked": false,
       "points": [
@@ -623,7 +631,7 @@
         ],
         [
           90,
-          0
+          0.1015625
         ]
       ],
       "lastCommittedPoint": null,
@@ -707,11 +715,11 @@
         "type": 2
       },
       "seed": 1058390762,
-      "version": 4,
-      "versionNonce": 1745982790,
-      "isDeleted": false,
+      "version": 5,
+      "versionNonce": 899009846,
+      "isDeleted": true,
       "boundElements": [],
-      "updated": 1741700000000,
+      "updated": 1773701300485,
       "link": null,
       "locked": false,
       "points": [
@@ -1093,6 +1101,86 @@
       "lineHeight": 1.25,
       "index": "aO",
       "autoResize": true
+    },
+    {
+      "id": "Zr39QaiFj0R-UosXmOh-a",
+      "type": "arrow",
+      "x": 959.9,
+      "y": 432,
+      "width": 755,
+      "height": 59.98118044477428,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "aP",
+      "roundness": null,
+      "seed": 1903334378,
+      "version": 148,
+      "versionNonce": 630926134,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 1773701323671,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          59.98118044477428
+        ],
+        [
+          -755,
+          59.98118044477428
+        ],
+        [
+          -755,
+          0
+        ]
+      ],
+      "startBinding": {
+        "elementId": "dyn_rect",
+        "mode": "orbit",
+        "fixedPoint": [
+          0.49964285714285706,
+          1.0252100840336134
+        ]
+      },
+      "endBinding": {
+        "elementId": "guidance_rect",
+        "mode": "orbit",
+        "fixedPoint": [
+          0.49965517241379304,
+          1.0252100840336134
+        ]
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": true,
+      "fixedSegments": [
+        {
+          "index": 2,
+          "start": [
+            0,
+            59.98118044477428
+          ],
+          "end": [
+            -755,
+            59.98118044477428
+          ]
+        }
+      ],
+      "startIsSpecial": false,
+      "endIsSpecial": false
     }
   ],
   "appState": {

@@ -67,7 +67,7 @@ The outer loop frequency is critical: it should be slower than the inner loop, b
 ### Key Learnings
 - Cascade control separates timescales: position loop sets the target descent rate, velocity loop tracks it
 - **Anti-windup is non-negotiable**: without conditional integration, the position loop's integral accumulates over the full flight and permanently saturates the reference velocity
-- **Rate-limiting the outer loop command** (not just slowing the loop) eliminates throttle pulsing from setpoint steps — a cleaner solution than reducing outer loop gain
+- **Rate-limiting the outer loop command** (not just slowing the loop) eliminates throttle pulsing from setpoint steps
 - Gravity feedforward (hover throttle compensation) eliminates steady-state velocity error without relying on the integral term
 
 ---
