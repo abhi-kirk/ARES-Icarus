@@ -6,7 +6,7 @@ CMAKE := cmake
 all: build
 
 configure:
-	$(CMAKE) -S . -B $(BUILD_DIR) -G "Unix Makefiles" -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+	$(CMAKE) -S . -B $(BUILD_DIR) -G "Unix Makefiles" -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -Wno-dev
 
 build: configure
 	$(CMAKE) --build $(BUILD_DIR) --parallel

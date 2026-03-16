@@ -19,7 +19,7 @@ State rocket_dynamics(double t, const State& state, double throttle) {
     double m_dot  = 0.0;
     if (fuel > 0.0) {
         thrust = throttle * MAX_THRUST;
-        m_dot  = -throttle * FLOW_RATE;
+        m_dot  = -throttle * MAX_FLOW_RATE;
     }
 
     // Quadratic drag: opposes velocity (positive when falling, negative when rising)

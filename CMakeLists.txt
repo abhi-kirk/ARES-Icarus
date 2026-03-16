@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
+cmake_policy(SET CMP0169 OLD)
 FetchContent_Declare(rerun_sdk
     URL https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE

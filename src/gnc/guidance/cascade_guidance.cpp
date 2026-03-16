@@ -15,12 +15,21 @@ static double rate_limit(double current, double target, double max_rate, double 
 
 CascadeGuidance::CascadeGuidance(const Config& config)
     : pos_ctrl_(config.simulation.timestep_outer,
-                PIDSpec{config.pid.kp_pos, config.pid.ki_pos, config.pid.kd_pos, -20.0, 0.0}),
-      max_ref_accel_(config.simulation.max_ref_accel),
-      dt_inner_(config.simulation.timestep_inner),
-      outer_loop_divider_(
-          std::max(1, static_cast<int>(std::lround(
-              config.simulation.timestep_outer / config.simulation.timestep_inner)))) {}
+                PIDSpec{config.pid.kp_pos, config.pid.ki_pos, config.pid.kd_pos, -20.0, 0.0})
+{
+    // pos_ctrl_ must be initialized above (in the initializer list) because
+    // Controller has no default constructor — it needs dt and gains at creation.
+    // Everything else can be set normally here.
+
+    max_ref_accel_ = config.simulation.max_ref_accel;
+    dt_inner_      = config.simulation.timestep_inner;
+
+    // How many inner-loop ticks fit in one outer-loop tick?
+    // e.g. timestep_outer=0.1, timestep_inner=0.02 -> divider=5
+    // outer loop fires on ticks: 0, 5, 10, 15, ...
+    double ratio        = config.simulation.timestep_outer / config.simulation.timestep_inner;
+    outer_loop_divider_ = std::max(1, static_cast<int>(std::lround(ratio)));
+}
 
 void CascadeGuidance::initialize(const State& state) {
     ref_vel_target_ = pos_ctrl_.compute(state[POS], 0.0);
