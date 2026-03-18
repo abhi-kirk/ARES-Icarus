@@ -9,10 +9,10 @@
 The project serves as a rigorous study of controls theory and C++ engineering, benchmarked against the academic papers that underpin real rocket guidance systems (Acikmese, Szmuk, Blackmore).
 
 <p align="center">
-  <img src="images/trajectory_pid_readme.png" alt="Icarus 1-DOF landing trajectory (PID)" width="900"/>
+  <img src="images/trajectory_pid_3dof.png" alt="Icarus 3-DOF landing trajectory (Cascade PID)" width="900"/>
 </p>
 
-_This plot shows the Phase 1 controller: a cascaded PID where the outer loop turns altitude error into a desired descent rate (reference velocity), and the inner loop tracks that reference velocity by commanding throttle (with gravity feedforward). The reference velocity is rate-limited to avoid large setpoint steps that cause throttle pulsing._
+_Phase 1.5 cascade PID controller: 3-DOF powered descent from 300 m with wind disturbances and a moving landing pad. Outer loops (position → reference velocity) run at 0.1–0.3 s; inner loops (velocity → thrust) at 0.02–0.1 s. The rocket intercepts and lands on the drifting pad with sub-metre precision._
 
 ---
 
@@ -35,61 +35,76 @@ make run        # configure + build + execute
 
 ---
 
+## Roadmap
+
+| Phase | Goal | Status |
+|---|---|---|
+| **1** | 1-DOF cascade PID vertical landing | Complete |
+| **1.5** | 3-DOF translation: wind disturbances, moving landing pad | Complete |
+| **2** | Add Euler angle rotation dynamics (6 DOF, TVC) | Next |
+| **2.5** | Upgrade to quaternions — singularity-free attitude control | Upcoming |
+| **3a** | LTV-MPC: linearize along reference trajectory, OSQP solver | Upcoming |
+| **3b** | Successive Convexification (SCvx) — matches SpaceX approach | Upcoming |
+| **4** | Reinforcement Learning: PPO/SAC agent, compare vs. MPC | Future |
+
+---
+
+## Phase 1.5: 3-DOF Translation (Complete)
+
+Extends cascade control to 3D space without rotation. Thrust direction is commanded directly as a force vector — no attitude dynamics yet.
+
+### State and Control
+
+```
+State:   [x, y, z, vx, vy, vz, fuel_mass]   (7D)
+Control: [Fx, Fy, Fz]                        (direct force vector, N)
+```
+
+### Cascade Architecture
+
+```
+Vertical:   Outer (0.1s):  z error  →  ref_vz   →  Inner (0.02s): vz error → Fz
+Horizontal: Outer (0.3s):  xy error →  ref_vxy  →  Inner (0.1s):  vxy error → Fx, Fy
+```
+
+Dual cascade loops run at different timescales. Rate-limiters on each outer loop prevent large setpoint steps from causing thrust pulsing.
+
+### Environment
+
+- **Wind**: constant bias + sinusoidal gust model (`wind_x=3 m/s`, `gust_magnitude=2 m/s`)
+- **Moving pad**: drifting at constant velocity (`0.5 m/s`, `-0.3 m/s`), intercepted at landing
+
+### Results
+
+| Metric | Value |
+|---|---|
+| Landing Velocity (Z) | **−0.30 m/s** |
+| Landing Velocity (X/Y) | **(0.50, −0.30) m/s** |
+| Pad miss distance | **< 0.1 m** |
+| Flight Time | 56.9 s |
+| Fuel Used | 178 kg of 600 kg |
+| Initial Condition | (120, −80, 300) m, (8, −5, −20) m/s |
+
+### Key Learnings
+- Cascade control separates timescales: vertical and horizontal loops can be tuned independently
+- **Anti-windup is non-negotiable**: without conditional integration, accumulated integral permanently saturates reference velocity
+- **Rate-limiting the outer loop command** eliminates thrust pulsing from setpoint steps
+- Gravity feedforward (hover force) eliminates steady-state vertical velocity error without relying on the integral term
+
+---
+
 ## Phase 1: 1-DOF Vertical Landing (Complete)
 
 The first phase implements cascade PID control for 1-DOF powered descent — starting from a terminal-descent handoff condition (300 m altitude, -20 m/s) and landing with near-zero velocity.
-
-### State and Control
 
 ```
 State:   [altitude, velocity, fuel_mass]
 Control: throttle ∈ [0, 1]
 ```
 
-### Cascade Architecture
-
-```
-Outer loop (0.1s period): altitude error  →  ref_velocity
-Inner loop (0.02s period): velocity error  →  throttle
-```
-
-The outer loop frequency is critical: it should be slower than the inner loop, but fast enough to avoid large setpoint steps; this repo also rate-limits the commanded reference velocity to reduce throttle pulsing.
-
-### Results
-
-| Metric | Value |
-|---|---|
-| Landing Velocity | **~0 m/s** (< 1e-6 m/s) |
-| Initial Condition | 300 m, −20 m/s (terminal-descent handoff) |
-| Fuel Remaining | ~125 kg of 600 kg |
-| Flight Time | ~175 s |
-
-### Key Learnings
-- Cascade control separates timescales: position loop sets the target descent rate, velocity loop tracks it
-- **Anti-windup is non-negotiable**: without conditional integration, the position loop's integral accumulates over the full flight and permanently saturates the reference velocity
-- **Rate-limiting the outer loop command** (not just slowing the loop) eliminates throttle pulsing from setpoint steps
-- Gravity feedforward (hover throttle compensation) eliminates steady-state velocity error without relying on the integral term
-
 ---
 
-## Roadmap
-
-| Phase | Goal | Status |
-|---|---|---|
-| **1** | 1-DOF cascade PID vertical landing | Complete |
-| **1.5** | 3-DOF translation: wind disturbances, moving landing pad | Next |
-| **2** | Add Euler angle rotation dynamics (6 DOF, TVC) | Upcoming |
-| **2.5** | Upgrade to quaternions — singularity-free attitude control | Upcoming |
-| **3a** | LTV-MPC: linearize along reference trajectory, OSQP solver | Upcoming |
-| **3b** | Successive Convexification (SCvx) — matches SpaceX approach | Upcoming |
-| **4** | Reinforcement Learning: PPO/SAC agent, compare vs. MPC | Future |
-
-### Phase 1.5: 3-DOF Translation
-
-Extends cascade control to 3D space without rotation. Thrust direction is commanded directly (no attitude dynamics yet). Adds:
-- Wind disturbance model (constant + sinusoidal gusts)
-- Moving landing pad tracking (drone ship analogy)
-- Thrust magnitude saturation: `||F|| ≤ F_max`
+## Upcoming Phases
 
 ### Phase 2–2.5: Rotation Dynamics
 

@@ -1,3 +1,3 @@
-add_library(icarus_guidance cascade_guidance.cpp)
+add_library(icarus_guidance cascade_guidance.cpp horizontal_guidance.cpp)
 target_include_directories(icarus_guidance PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(icarus_guidance PUBLIC icarus_control icarus_config)

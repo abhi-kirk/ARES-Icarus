@@ -11,7 +11,7 @@ namespace icarus {
 State rocket_dynamics(double t, const State& state, double throttle) {
     (void)t;
 
-    const double v    = state[VEL];
+    const double v    = state[VEL_Z];
     const double fuel = state[FUEL];
     const double m    = MASS_DRY + fuel;
 
@@ -24,7 +24,7 @@ State rocket_dynamics(double t, const State& state, double throttle) {
 
     // Quadratic drag: opposes velocity (positive when falling, negative when rising)
     const double drag      = -0.5 * v * abs(v);
-    const double net_force = thrust - (m * GRAVITY) - drag;
+    const double net_force = thrust - (m * GRAVITY) + drag;
     const double accel     = net_force / m;
 
     State state_dot(3);

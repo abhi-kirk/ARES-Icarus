@@ -28,12 +28,13 @@ file(WRITE "${_arrow_cmake}" "${_arrow_cmake_content}")
 
 add_subdirectory(${rerun_sdk_SOURCE_DIR} ${rerun_sdk_BINARY_DIR})
 
-# Dependency order: math <- config <- dynamics <- control <- guidance <- sim
+# Dependency order: math <- config <- dynamics/environment <- control <- guidance <- sim
 add_subdirectory(modules/math)
 add_subdirectory(src/config)
 add_subdirectory(src/dynamics)
 add_subdirectory(src/gnc/control)
 add_subdirectory(src/gnc/guidance)
+add_subdirectory(src/environment)
 add_subdirectory(src/sim)
 
 add_executable(Icarus src/main.cpp)

@@ -8,8 +8,14 @@ namespace icarus {
     // Define a "State" as a vector of doubles
     using State = Eigen::VectorXd;
 
+    // Define the control input as a vector of doubles
+    using ControlInput = Eigen::VectorXd;
+
     // Define the "System Function" signatures: f(t, y) -> y_dot
     using SystemDynamics = function<State(double t, const State& y)>;
+
+    // Define external Disturbances
+    using Disturbance = Eigen::VectorXd;
 
     class Integrator {
     public:

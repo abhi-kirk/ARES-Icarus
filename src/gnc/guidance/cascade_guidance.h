@@ -6,9 +6,9 @@
 
 namespace icarus {
 
-// Outer loop of the cascade PID architecture.
-// Position error -> rate-limited reference velocity command.
-// The caller (Simulator) feeds ref_vel_cmd into the velocity controller.
+// Outer vertical loop of the cascade PID architecture.
+// Vertical position error -> rate-limited vertical reference velocity command.
+// The caller (Simulator) feeds ref_vel_cmd into the vertical velocity controller.
 class CascadeGuidance {
 public:
     explicit CascadeGuidance(const Config& config);

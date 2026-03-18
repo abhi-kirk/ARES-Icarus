@@ -15,7 +15,7 @@ Logger::Logger(const std::string& csv_path,
     : log_every_n_(log_every_n), use_rerun_(use_rerun) {
     csv_file_.open(csv_path);
     csv_file_ << std::fixed << std::setprecision(6);
-    csv_file_ << "Time,Altitude,Velocity,Fuel,Throttle\n";
+    csv_file_ << "Time,PosX,PosY,PosZ,VelX,VelY,VelZ,Fuel,Fx,Fy,Fz\n";
 
     if (use_rerun_) {
         rec_.emplace("icarus");
@@ -40,43 +40,85 @@ Logger::Logger(const std::string& csv_path,
         }
 
         rec_->log_static("world", rerun::archetypes::ViewCoordinates::RIGHT_HAND_Z_UP);
+
+        // Set line width and explicit colors for all time-series channels.
+        // Colors are set here so they are consistent across viewer restarts
+        // and in the published .rrd — Rerun auto-assigns colors otherwise,
+        // which can produce nearly identical hues for adjacent series.
+        float lw = 2.0f;
+        rec_->log_static("telemetry/altitude",
+            rerun::SeriesLines().with_widths(lw).with_colors(rerun::Color(255, 120,  50)));  // orange
+        rec_->log_static("telemetry/vel_z",
+            rerun::SeriesLines().with_widths(lw).with_colors(rerun::Color( 80, 220,  80)));  // green
+        rec_->log_static("telemetry/ref_vel_cmd",
+            rerun::SeriesLines().with_widths(lw).with_colors(rerun::Color( 80, 160, 255)));  // blue
+        rec_->log_static("telemetry/vel_x",
+            rerun::SeriesLines().with_widths(lw).with_colors(rerun::Color(255, 200,  50)));  // yellow
+        rec_->log_static("telemetry/vel_y",
+            rerun::SeriesLines().with_widths(lw).with_colors(rerun::Color(220,  80, 220)));  // magenta
+        rec_->log_static("telemetry/Fz",
+            rerun::SeriesLines().with_widths(lw).with_colors(rerun::Color( 80, 220, 220)));  // cyan
+        rec_->log_static("telemetry/Fx",
+            rerun::SeriesLines().with_widths(lw).with_colors(rerun::Color(255, 200,  50)));  // yellow
+        rec_->log_static("telemetry/Fy",
+            rerun::SeriesLines().with_widths(lw).with_colors(rerun::Color(220,  80, 220)));  // magenta
+        rec_->log_static("telemetry/fuel",
+            rerun::SeriesLines().with_widths(lw).with_colors(rerun::Color(255,  80,  80)));  // red
     }
 }
 
 Logger::~Logger() { close(); }
 
-void Logger::log(double t, const State& state, double throttle,
+void Logger::log(double t, const State& state, double Fx, double Fy, double Fz,
+                 double pad_x, double pad_y,
                  double ref_vel_cmd, double ref_vel_target) {
-    csv_file_ << t << "," << state[POS] << "," << state[VEL] << ","
-              << state[FUEL] << "," << throttle << "\n";
+    csv_file_ << t
+              << "," << state[POS_X] << "," << state[POS_Y] << "," << state[POS_Z]
+              << "," << state[VEL_X] << "," << state[VEL_Y] << "," << state[VEL_Z]
+              << "," << state[FUEL]
+              << "," << Fx << "," << Fy << "," << Fz
+              << "\n";
 
     if (iteration_ % log_every_n_ == 0) {
         std::cout << "t=" << t
-                  << " alt="     << state[POS]
-                  << " vel="     << state[VEL]
+                  << " pos=[" << state[POS_X] << "," << state[POS_Y] << "," << state[POS_Z] << "]"
+                  << " vel=[" << state[VEL_X] << "," << state[VEL_Y] << "," << state[VEL_Z] << "]"
                   << " ref_cmd=" << ref_vel_cmd
                   << " ref_tgt=" << ref_vel_target
-                  << " thr="     << throttle << "\n";
+                  << " F=[" << Fx << "," << Fy << "," << Fz << "]"
+                  << "\n";
 
         if (use_rerun_) {
             rec_->set_time_duration_secs("sim_time", t);
 
-            float alt = static_cast<float>(state[POS]);
-            float vel = static_cast<float>(state[VEL]);
+            float px  = static_cast<float>(state[POS_X]);
+            float py  = static_cast<float>(state[POS_Y]);
+            float alt = static_cast<float>(state[POS_Z]);
 
-            // 3D rocket position (moves along Z axis only for 1-DOF)
-            trail_points_.push_back({0.0f, 0.0f, alt});
+            // 3D rocket position
+            trail_points_.push_back({px, py, alt});
             rec_->log("rocket/position",
-                rerun::Points3D({{0.0f, 0.0f, alt}})
+                rerun::Points3D({{px, py, alt}})
                     .with_radii({2.0f})
                     .with_colors({rerun::Color(255, 100, 0)}));
 
-            // Thrust vector arrow (scaled by throttle)
-            float thrust_viz = static_cast<float>(throttle) * 30.0f;
+            // Thrust vector arrow (scaled for visibility)
+            float thrust_scale = 30.0f / 25000.0f;  // normalize by MAX_THRUST
+            float fx_viz = static_cast<float>(Fx) * thrust_scale;
+            float fy_viz = static_cast<float>(Fy) * thrust_scale;
+            float fz_viz = static_cast<float>(Fz) * thrust_scale;
             rec_->log("rocket/thrust",
-                rerun::Arrows3D::from_vectors({{0.0f, 0.0f, thrust_viz}})
-                    .with_origins({{0.0f, 0.0f, alt}})
+                rerun::Arrows3D::from_vectors({{fx_viz, fy_viz, fz_viz}})
+                    .with_origins({{px, py, alt}})
                     .with_colors({rerun::Color(255, 200, 0)}));
+
+            // Landing pad position (moves over time)
+            float lpx = static_cast<float>(pad_x);
+            float lpy = static_cast<float>(pad_y);
+            rec_->log("world/pad",
+                rerun::Points3D({{lpx, lpy, 0.0f}})
+                    .with_radii({5.0f})
+                    .with_colors({rerun::Color(0, 220, 220)}));
 
             // Trail of past positions
             rec_->log("rocket/trail",
@@ -84,8 +126,13 @@ void Logger::log(double t, const State& state, double throttle,
 
             // Scalar time-series panels
             rec_->log("telemetry/altitude",    rerun::Scalars(alt));
-            rec_->log("telemetry/velocity",    rerun::Scalars(vel));
-            rec_->log("telemetry/throttle",    rerun::Scalars(static_cast<float>(throttle)));
+            rec_->log("telemetry/vel_z",       rerun::Scalars(static_cast<float>(state[VEL_Z])));
+            rec_->log("telemetry/vel_x",       rerun::Scalars(static_cast<float>(state[VEL_X])));
+            rec_->log("telemetry/vel_y",       rerun::Scalars(static_cast<float>(state[VEL_Y])));
+            rec_->log("telemetry/Fz",          rerun::Scalars(static_cast<float>(Fz)));
+            rec_->log("telemetry/Fx",          rerun::Scalars(static_cast<float>(Fx)));
+            rec_->log("telemetry/Fy",          rerun::Scalars(static_cast<float>(Fy)));
+            rec_->log("telemetry/fuel",        rerun::Scalars(static_cast<float>(state[FUEL])));
             rec_->log("telemetry/ref_vel_cmd", rerun::Scalars(static_cast<float>(ref_vel_cmd)));
         }
     }

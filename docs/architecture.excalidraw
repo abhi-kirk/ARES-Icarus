@@ -29,14 +29,14 @@
       "updated": 1773701347260,
       "link": null,
       "locked": false,
-      "text": "Icarus  —  GNC Architecture  ·  1-DOF Powered Descent",
+      "text": "Icarus  —  GNC Architecture  ·  3-DOF Powered Descent",
       "fontSize": 28,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "top",
       "baseline": 18,
       "containerId": null,
-      "originalText": "Icarus  —  GNC Architecture  ·  1-DOF Powered Descent",
+      "originalText": "Icarus  —  GNC Architecture  ·  3-DOF Powered Descent",
       "lineHeight": 1.25,
       "index": "a0",
       "autoResize": true
@@ -62,8 +62,8 @@
         "type": 3
       },
       "seed": 987654321,
-      "version": 58,
-      "versionNonce": 1895978200,
+      "version": 59,
+      "versionNonce": 648958370,
       "isDeleted": false,
       "boundElements": [
         {
@@ -75,7 +75,7 @@
           "type": "arrow"
         }
       ],
-      "updated": 1773263726071,
+      "updated": 1773806845887,
       "link": null,
       "locked": false,
       "index": "a1"
@@ -123,8 +123,8 @@
       "type": "arrow",
       "x": 583.3814687500001,
       "y": 92.22265625,
-      "width": 1.5488125000000537,
-      "height": 46.01171875,
+      "width": 1.9088429687499229,
+      "height": 44.60546875,
       "angle": 0,
       "strokeColor": "#495057",
       "backgroundColor": "transparent",
@@ -139,11 +139,11 @@
         "type": 2
       },
       "seed": 1221906474,
-      "version": 132,
-      "versionNonce": 283442904,
+      "version": 350,
+      "versionNonce": 1369877694,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773263726071,
+      "updated": 1773806862090,
       "link": null,
       "locked": false,
       "points": [
@@ -152,8 +152,8 @@
           0
         ],
         [
-          -1.5488125000000537,
-          46.01171875
+          1.9088429687499229,
+          44.60546875
         ]
       ],
       "lastCommittedPoint": null,
@@ -181,9 +181,9 @@
     {
       "id": "sim_rect",
       "type": "rectangle",
-      "x": 31.72265625,
-      "y": 138.234375,
-      "width": 1100,
+      "x": -85.15234375,
+      "y": 136.828125,
+      "width": 1340.6171875,
       "height": 390,
       "angle": 0,
       "strokeColor": "#868e96",
@@ -199,8 +199,8 @@
         "type": 3
       },
       "seed": 1115233714,
-      "version": 78,
-      "versionNonce": 397928920,
+      "version": 296,
+      "versionNonce": 1153231998,
       "isDeleted": false,
       "boundElements": [
         {
@@ -212,7 +212,7 @@
           "type": "arrow"
         }
       ],
-      "updated": 1773263613987,
+      "updated": 1773806862090,
       "link": null,
       "locked": false,
       "index": "a4"
@@ -258,7 +258,7 @@
     {
       "id": "guidance_rect",
       "type": "rectangle",
-      "x": 60,
+      "x": -20.94921875,
       "y": 188,
       "width": 290,
       "height": 238,
@@ -276,8 +276,8 @@
         "type": 3
       },
       "seed": 788399969,
-      "version": 5,
-      "versionNonce": 1471081514,
+      "version": 152,
+      "versionNonce": 11288574,
       "isDeleted": false,
       "boundElements": [
         {
@@ -293,7 +293,7 @@
           "type": "arrow"
         }
       ],
-      "updated": 1773701312498,
+      "updated": 1773806838616,
       "link": null,
       "locked": false,
       "index": "a6"
@@ -301,10 +301,10 @@
     {
       "id": "guidance_text",
       "type": "text",
-      "x": 100.77470397949219,
-      "y": 237,
-      "width": 208.45059204101562,
-      "height": 140,
+      "x": -4.5904998779296875,
+      "y": 227,
+      "width": 257.2825622558594,
+      "height": 160,
       "angle": 0,
       "strokeColor": "#364fc7",
       "backgroundColor": "transparent",
@@ -317,21 +317,21 @@
       "frameId": null,
       "roundness": null,
       "seed": 1330121436,
-      "version": 12,
-      "versionNonce": 1143420266,
+      "version": 161,
+      "versionNonce": 190812222,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773701270125,
+      "updated": 1773806838616,
       "link": null,
       "locked": false,
-      "text": "GUIDANCE\nOuter Loop  ·  Δt = 0.1 s\n\n· altitude error\n  → desired descent rate\n· rate-limited setpoint\n  (avoids throttle pulsing)",
+      "text": "GUIDANCE\nVertical Outer  ·  Δt = 0.1 s\nHorizontal Outer  ·  Δt = 0.3 s\n\n· z error → ref_vel_z\n· xy error → ref_vel_xy\n· rate-limited setpoints\n  (avoid thrust pulsing)",
       "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "middle",
       "baseline": 14,
       "containerId": "guidance_rect",
-      "originalText": "GUIDANCE\nOuter Loop  ·  Δt = 0.1 s\n\n· altitude error\n  → desired descent rate\n· rate-limited setpoint\n  (avoids throttle pulsing)",
+      "originalText": "GUIDANCE\nVertical Outer  ·  Δt = 0.1 s\nHorizontal Outer  ·  Δt = 0.3 s\n\n· z error → ref_vel_z\n· xy error → ref_vel_xy\n· rate-limited setpoints\n  (avoid thrust pulsing)",
       "lineHeight": 1.25,
       "index": "a7",
       "autoResize": true
@@ -382,10 +382,10 @@
     {
       "id": "ctrl_text",
       "type": "text",
-      "x": 474.78270721435547,
-      "y": 236.8984375,
-      "width": 220.43458557128906,
-      "height": 140,
+      "x": 462.67871856689453,
+      "y": 226.8984375,
+      "width": 244.64256286621094,
+      "height": 160,
       "angle": 0,
       "strokeColor": "#2b8a3e",
       "backgroundColor": "transparent",
@@ -398,21 +398,21 @@
       "frameId": null,
       "roundness": null,
       "seed": 1498405461,
-      "version": 12,
-      "versionNonce": 1142118634,
+      "version": 14,
+      "versionNonce": 851130082,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773701285111,
+      "updated": 1773806814432,
       "link": null,
       "locked": false,
-      "text": "CONTROL\nInner Loop  ·  Δt = 0.02 s\n\n· velocity error → throttle\n· gravity feedforward\n  (hover compensation)\n· anti-windup on integral",
+      "text": "CONTROL\nVertical Inner  ·  Δt = 0.02 s\nHorizontal Inner  ·  Δt = 0.1 s\n\n· vel_z error → Fz\n· vel_xy error → Fx, Fy\n· gravity feedforward (Fz)\n· anti-windup on integral",
       "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "middle",
       "baseline": 14,
       "containerId": "ctrl_rect",
-      "originalText": "CONTROL\nInner Loop  ·  Δt = 0.02 s\n\n· velocity error → throttle\n· gravity feedforward\n  (hover compensation)\n· anti-windup on integral",
+      "originalText": "CONTROL\nVertical Inner  ·  Δt = 0.02 s\nHorizontal Inner  ·  Δt = 0.1 s\n\n· vel_z error → Fz\n· vel_xy error → Fx, Fy\n· gravity feedforward (Fz)\n· anti-windup on integral",
       "lineHeight": 1.25,
       "index": "a9",
       "autoResize": true
@@ -420,8 +420,8 @@
     {
       "id": "dyn_rect",
       "type": "rectangle",
-      "x": 820,
-      "y": 188,
+      "x": 929.02734375,
+      "y": 186.859375,
       "width": 280,
       "height": 238,
       "angle": 0,
@@ -438,8 +438,8 @@
         "type": 3
       },
       "seed": 1498405462,
-      "version": 5,
-      "versionNonce": 1428579370,
+      "version": 76,
+      "versionNonce": 1919348578,
       "isDeleted": false,
       "boundElements": [
         {
@@ -455,7 +455,7 @@
           "type": "arrow"
         }
       ],
-      "updated": 1773701309545,
+      "updated": 1773806841956,
       "link": null,
       "locked": false,
       "index": "aA"
@@ -463,9 +463,9 @@
     {
       "id": "dyn_text",
       "type": "text",
-      "x": 842.7920837402344,
-      "y": 227,
-      "width": 234.41583251953125,
+      "x": 953.451416015625,
+      "y": 225.859375,
+      "width": 231.15185546875,
       "height": 160,
       "angle": 0,
       "strokeColor": "#5f3dc4",
@@ -479,21 +479,21 @@
       "frameId": null,
       "roundness": null,
       "seed": 209279552,
-      "version": 8,
-      "versionNonce": 153129688,
+      "version": 80,
+      "versionNonce": 810988322,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773263667508,
+      "updated": 1773806841956,
       "link": null,
       "locked": false,
-      "text": "DYNAMICS\n\n· thrust  (throttle × T_max)\n· aerodynamic drag\n· gravity\n· fuel mass depletion\n· RK4 integration\n  (dt = 0.1 s)",
+      "text": "DYNAMICS\n\n· force vector [Fx, Fy, Fz]\n· aerodynamic drag\n· gravity  ·  wind disturbance\n· fuel mass depletion\n· RK4 integration\n  (dt = 0.02 s)",
       "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "middle",
       "baseline": 14,
       "containerId": "dyn_rect",
-      "originalText": "DYNAMICS\n\n· thrust  (throttle × T_max)\n· aerodynamic drag\n· gravity\n· fuel mass depletion\n· RK4 integration\n  (dt = 0.1 s)",
+      "originalText": "DYNAMICS\n\n· force vector [Fx, Fy, Fz]\n· aerodynamic drag\n· gravity  ·  wind disturbance\n· fuel mass depletion\n· RK4 integration\n  (dt = 0.02 s)",
       "lineHeight": 1.25,
       "index": "aB",
       "autoResize": true
@@ -501,9 +501,9 @@
     {
       "id": "arr_gc",
       "type": "arrow",
-      "x": 350,
+      "x": 269.05078125,
       "y": 307.0238,
-      "width": 90,
+      "width": 170.94921875,
       "height": 0.1015625,
       "angle": 0,
       "strokeColor": "#343a40",
@@ -519,11 +519,11 @@
         "type": 2
       },
       "seed": 836572016,
-      "version": 5,
-      "versionNonce": 1081402166,
+      "version": 152,
+      "versionNonce": 1002363006,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773701282311,
+      "updated": 1773806838616,
       "link": null,
       "locked": false,
       "points": [
@@ -532,7 +532,7 @@
           0
         ],
         [
-          90,
+          170.94921875,
           -0.1015625
         ]
       ],
@@ -561,10 +561,10 @@
     {
       "id": "arr_gc_lbl",
       "type": "text",
-      "x": 361.13470458984375,
-      "y": 232.0703125,
-      "width": 67.8399658203125,
-      "height": 60,
+      "x": 274.3033142089844,
+      "y": 253.73046875,
+      "width": 165.04762785037363,
+      "height": 39.35677083333334,
       "angle": 0,
       "strokeColor": "#495057",
       "backgroundColor": "transparent",
@@ -577,32 +577,32 @@
       "frameId": null,
       "roundness": null,
       "seed": 1784390122,
-      "version": 66,
-      "versionNonce": 324838616,
+      "version": 356,
+      "versionNonce": 895257698,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773263696587,
+      "updated": 1773806866991,
       "link": null,
       "locked": false,
-      "text": "desired\ndescent \nrate",
-      "fontSize": 16,
+      "text": "ref velocities\n[ref_vz, ref_vxy]",
+      "fontSize": 15.742708333333338,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "top",
       "baseline": 11,
       "containerId": null,
-      "originalText": "desired\ndescent \nrate",
+      "originalText": "ref velocities\n[ref_vz, ref_vxy]",
       "lineHeight": 1.25,
       "index": "aD",
-      "autoResize": true
+      "autoResize": false
     },
     {
       "id": "arr_cd",
       "type": "arrow",
       "x": 730,
       "y": 306.9222375,
-      "width": 90,
-      "height": 0.1015625,
+      "width": 199.02734375,
+      "height": 1.0390625,
       "angle": 0,
       "strokeColor": "#343a40",
       "backgroundColor": "transparent",
@@ -617,11 +617,11 @@
         "type": 2
       },
       "seed": 1042832754,
-      "version": 5,
-      "versionNonce": 295636086,
+      "version": 76,
+      "versionNonce": 1796734690,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773701282311,
+      "updated": 1773806841956,
       "link": null,
       "locked": false,
       "points": [
@@ -630,8 +630,8 @@
           0
         ],
         [
-          90,
-          0.1015625
+          199.02734375,
+          -1.0390625
         ]
       ],
       "lastCommittedPoint": null,
@@ -659,9 +659,9 @@
     {
       "id": "arr_cd_lbl",
       "type": "text",
-      "x": 741.9305557250976,
-      "y": 242.900390625,
-      "width": 63.72795104980469,
+      "x": 770.3620361328125,
+      "y": 252.048828125,
+      "width": 108.575927734375,
       "height": 40,
       "angle": 0,
       "strokeColor": "#495057",
@@ -675,21 +675,21 @@
       "frameId": null,
       "roundness": null,
       "seed": 774813560,
-      "version": 127,
-      "versionNonce": 2091094488,
+      "version": 261,
+      "versionNonce": 662526498,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773263699237,
+      "updated": 1773806870971,
       "link": null,
       "locked": false,
-      "text": "throttle\n∈ [0, 1]",
+      "text": "thrust vector\n[Fx, Fy, Fz]",
       "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "top",
       "baseline": 11,
       "containerId": null,
-      "originalText": "throttle\n∈ [0, 1]",
+      "originalText": "thrust vector\n[Fx, Fy, Fz]",
       "lineHeight": 1.25,
       "index": "aF",
       "autoResize": true
@@ -774,14 +774,14 @@
       "updated": 1773263670075,
       "link": null,
       "locked": false,
-      "text": "state: [altitude, velocity, fuel mass]",
+      "text": "state: [x, y, z, vx, vy, vz, fuel]",
       "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "top",
       "baseline": 12,
       "containerId": null,
-      "originalText": "state: [altitude, velocity, fuel mass]",
+      "originalText": "state: [x, y, z, vx, vy, vz, fuel]",
       "lineHeight": 1.25,
       "index": "aH",
       "autoResize": true
@@ -789,10 +789,10 @@
     {
       "id": "arr_sim_out",
       "type": "arrow",
-      "x": 581.83265625,
-      "y": 528.234375,
-      "width": 1.3435312499999554,
-      "height": 56.234375,
+      "x": 585.29031171875,
+      "y": 526.828125,
+      "width": 4.801186718749932,
+      "height": 57.640625,
       "angle": 0,
       "strokeColor": "#495057",
       "backgroundColor": "transparent",
@@ -807,11 +807,11 @@
         "type": 2
       },
       "seed": 291988524,
-      "version": 102,
-      "versionNonce": 2062915800,
+      "version": 320,
+      "versionNonce": 1408132350,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773263733505,
+      "updated": 1773806862090,
       "link": null,
       "locked": false,
       "points": [
@@ -820,8 +820,8 @@
           0
         ],
         [
-          -1.3435312499999554,
-          56.234375
+          -4.801186718749932,
+          57.640625
         ]
       ],
       "lastCommittedPoint": null,
@@ -905,8 +905,8 @@
         "type": 3
       },
       "seed": 1907534606,
-      "version": 28,
-      "versionNonce": 1955688152,
+      "version": 29,
+      "versionNonce": 656329214,
       "isDeleted": false,
       "boundElements": [
         {
@@ -914,15 +914,15 @@
           "id": "output_text"
         },
         {
-          "id": "arr_sim_out",
+          "id": "arr_out_post",
           "type": "arrow"
         },
         {
-          "id": "arr_out_post",
+          "id": "arr_sim_out",
           "type": "arrow"
         }
       ],
-      "updated": 1773263733505,
+      "updated": 1773806845887,
       "link": null,
       "locked": false,
       "index": "aK"
@@ -930,9 +930,9 @@
     {
       "id": "output_text",
       "type": "text",
-      "x": 466.9091796875,
+      "x": 450.4451904296875,
       "y": 594.46875,
-      "width": 227.087890625,
+      "width": 260.015869140625,
       "height": 80,
       "angle": 0,
       "strokeColor": "#e67700",
@@ -946,21 +946,21 @@
       "frameId": null,
       "roundness": null,
       "seed": 1615197907,
-      "version": 32,
-      "versionNonce": 724423640,
+      "version": 33,
+      "versionNonce": 384883262,
       "isDeleted": false,
       "boundElements": [],
-      "updated": 1773263733505,
+      "updated": 1773806845890,
       "link": null,
       "locked": false,
-      "text": "Simulation Output\n\ntime  ·  altitude  ·  velocity\nfuel mass  ·  throttle",
+      "text": "Simulation Output\n\ntime  ·  pos (x,y,z)  ·  vel (x,y,z)\nfuel mass  ·  forces (Fx, Fy, Fz)",
       "fontSize": 16,
       "fontFamily": 1,
       "textAlign": "center",
       "verticalAlign": "middle",
       "baseline": 14,
       "containerId": "output_rect",
-      "originalText": "Simulation Output\n\ntime  ·  altitude  ·  velocity\nfuel mass  ·  throttle",
+      "originalText": "Simulation Output\n\ntime  ·  pos (x,y,z)  ·  vel (x,y,z)\nfuel mass  ·  forces (Fx, Fy, Fz)",
       "lineHeight": 1.25,
       "index": "aL",
       "autoResize": true
@@ -1105,10 +1105,10 @@
     {
       "id": "Zr39QaiFj0R-UosXmOh-a",
       "type": "arrow",
-      "x": 959.9,
-      "y": 432,
-      "width": 755,
-      "height": 59.98118044477428,
+      "x": 1068.92734375,
+      "y": 430.859375,
+      "width": 944.9765625000001,
+      "height": 61.12180544477428,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -1122,11 +1122,11 @@
       "index": "aP",
       "roundness": null,
       "seed": 1903334378,
-      "version": 148,
-      "versionNonce": 630926134,
+      "version": 368,
+      "versionNonce": 1600859746,
       "isDeleted": false,
-      "boundElements": null,
-      "updated": 1773701323671,
+      "boundElements": [],
+      "updated": 1773806842163,
       "link": null,
       "locked": false,
       "points": [
@@ -1136,15 +1136,15 @@
         ],
         [
           0,
-          59.98118044477428
+          61.12180544477428
         ],
         [
-          -755,
-          59.98118044477428
+          -944.9765625000001,
+          61.12180544477428
         ],
         [
-          -755,
-          0
+          -944.9765625000001,
+          1.140625
         ]
       ],
       "startBinding": {
@@ -1171,11 +1171,11 @@
           "index": 2,
           "start": [
             0,
-            59.98118044477428
+            61.12180544477428
           ],
           "end": [
-            -755,
-            59.98118044477428
+            -944.9765625000001,
+            61.12180544477428
           ]
         }
       ],

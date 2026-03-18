@@ -11,4 +11,5 @@ dependencies = [
     "matplotlib>=3.9.0",
     "numpy>=1.20.0",
     "pandas>=2.0.0",
+    "rerun-sdk>=0.23.0",
 ]

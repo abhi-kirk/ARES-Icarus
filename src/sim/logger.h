@@ -12,19 +12,30 @@
 namespace icarus {
 
 // Logs simulation state to CSV, periodic stdout, and optionally Rerun.
-// CSV columns: Time, Altitude, Velocity, Fuel, Throttle
+// CSV columns: Time, PosX, PosY, PosZ, VelX, VelY, VelZ, Fuel, Fx, Fy, Fz
 class Logger {
 public:
-    explicit Logger(const std::string& csv_path,
-                    bool use_rerun          = false,
-                    bool rerun_spawn_viewer = true,
-                    bool rerun_save_rrd     = true,
-                    const std::string& rrd_path = "src/results/trajectory.rrd",
-                    int log_every_n         = 10);
+    explicit Logger(
+        const std::string& csv_path,
+        bool use_rerun = false,
+        bool rerun_spawn_viewer = true,
+        bool rerun_save_rrd = true,
+        const std::string& rrd_path = "src/results/trajectory.rrd",
+        int log_every_n = 10
+    );
     ~Logger();
 
-    void log(double t, const State& state, double throttle,
-             double ref_vel_cmd, double ref_vel_target);
+    void log(
+        double t,
+        const State& state,
+        double Fx,
+        double Fy,
+        double Fz,
+        double pad_x,
+        double pad_y,
+        double ref_vel_cmd,
+        double ref_vel_target
+    );
 
     void close();
 
