@@ -140,7 +140,7 @@ Controller contributions in Phase 1.5:
 
 $$
 \begin{aligned}
-v_z^{ref} &= K_p^o \space \delta p_z \space\space\rightarrowtail \text{outer loop}\\
+v_z^{ref} &= K_p^o \cdot (p_z^* - p_z) = -K_p^o \space \delta p_z \space\space\rightarrowtail \text{outer loop}\\
 \delta F_z &= K_p^i(v_z^{ref} - \delta v_z) + K_i^i\int (v_z^{ref} - \delta v_z)\,dt \space\space \rightarrowtail \text{inner loop}
 \end{aligned}
 $$
@@ -153,19 +153,19 @@ $$
 Substituting, we get:
 
 $$
-\delta F_z = K_p^i(K_p^o\delta p_z - \delta v_z) + K_i^i\int (K_p^o\delta p_z - \delta v_z)\,dt
+\delta F_z = K_p^i(-K_p^o\delta p_z - \delta v_z) + K_i^i\int (-K_p^o\delta p_z - \delta v_z)\,dt
 $$
 
 Because of integrator memory, we need to define a new state $x = [\delta p_z, \delta v_z, \xi]$, where the integrator state $\xi$ is:
 
 $$
-\xi = \int (v_z^{ref} - \delta v_z)\,dt = \int (K_p^o\delta p_z - \delta v_z)\,dt
+\xi = \int (v_z^{ref} - \delta v_z)\,dt = \int (-K_p^o\delta p_z - \delta v_z)\,dt
 $$
 
 with dynamics:
 
 $$
-\dot{\xi} = K_p^o\delta p_z - \delta v_z
+\dot{\xi} = -K_p^o\delta p_z - \delta v_z
 $$
 
 Closed-loop dynamics (vertical) become $\dot{x} = A_{cl}x$:
@@ -178,8 +178,8 @@ $$
 \end{bmatrix} =
 \begin{bmatrix}
 0 & 1 & 0\\\\
-K_p^iK_p^o/m & -K_p^i/m & K_i^i/m\\\\
-K_p^o & -1 & 0
+-K_p^iK_p^o/m & -K_p^i/m & K_i^i/m\\\\
+-K_p^o & -1 & 0
 \end{bmatrix}
 \begin{bmatrix}
 \delta p_z\\\\
@@ -199,8 +199,8 @@ Controller contributions in Phase 1.5:
 
 $$
 \begin{aligned}
-v_x^{ref} &= K_p^o \delta p_x\\
-\delta F_x &= K_p^i(v_x^{ref} - \delta v_x) = K_p^i(K_p^o\delta p_x - \delta v_x)
+v_x^{ref} &= -K_p^o \delta p_x\\
+\delta F_x &= K_p^i(v_x^{ref} - \delta v_x) = K_p^i(-K_p^o\delta p_x - \delta v_x)
 \end{aligned}
 $$
 
@@ -213,7 +213,7 @@ $$
 \end{bmatrix} =
 \begin{bmatrix}
 0 & 1\\\\
-K_p^iK_p^o/m & -K_p^i/m
+-K_p^iK_p^o/m & -K_p^i/m
 \end{bmatrix}
 \begin{bmatrix}
 \delta p_x\\\\
@@ -223,3 +223,32 @@ $$
 
 >[!NOTE]
 > Because of no integrator term, the horizontal loop cannot reject steady-state disturbances like constant wind. This is expected and acceptable in Phase 1.5 since wind is treated as a disturbance.
+
+## Eigenvalue Analysis
+
+Numerical eigenvalues computed in `analysis/stability/linearize.py` at mid-flight mass ($m = m_{dry} + m_{fuel}/2 = 1300$ kg):
+
+**Horizontal** (2nd order, P-only):
+$$\lambda_{1,2} \approx -3.85 \times 10^{-5} \pm 0.0062j$$
+
+Both eigenvalues have negative real part $\Rightarrow$ **stable**, but barely — very slow damping.
+
+**Vertical** (3rd order, PI inner + P outer):
+$$\lambda_{1,2} \approx +0.0088 \pm 0.0188j, \quad \lambda_3 \approx -0.0179$$
+
+Two eigenvalues have positive real part $\Rightarrow$ **unstable** around hover trim.
+
+### Interpretation
+
+The Routh-Hurwitz condition for the 3rd-order vertical system requires:
+
+$$\frac{K_p^i}{m}\left(\frac{K_p^i K_p^o}{m} + \frac{K_i^i}{m}\right) > \frac{K_i^i}{m} \cdot K_p^o$$
+
+With the Phase 1.5 gains this evaluates to $4.44 \times 10^{-8} > 7.69 \times 10^{-6}$, which is **false**. The integrator gain $K_i^i$ combined with the outer gain $K_p^o$ is too large relative to the damping term.
+
+>[!IMPORTANT]
+> **The sim works despite linear instability.** Two reasons:
+> 1. The rocket never operates near hover trim — it is always descending on a reference trajectory, far from the equilibrium we linearized around. Linear stability analysis is only valid locally around trim.
+> 2. Anti-windup and rate limiting are nonlinear effects that prevent the linear instability from growing in practice.
+>
+> This means the Phase 1.5 gains were tuned empirically for the nonlinear trajectory, not designed for linear stability. This motivates systematic gain design in Phase 3 (MPC), where stability is guaranteed by construction.
