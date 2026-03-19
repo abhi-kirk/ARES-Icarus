@@ -15,8 +15,8 @@ $$
 $$
 
 $$
-\dot{p}_x = v_x, \space\dot{p}_y = v_y, \space\dot{p}_z = v_z\\
-\dot{v}_x = F_x/m, \space\dot{v}_y = F_y/m, \space\dot{v}_z = (F_z - mg)/m\\
+\dot{p}_x = v_x, \space\dot{p}_y = v_y, \space\dot{p}_z = v_z\\\\
+\dot{v}_x = F_x/m, \space\dot{v}_y = F_y/m, \space\dot{v}_z = (F_z - mg)/m\\\\
 \dot{m} = \frac{-||F||}{F_{max}}\cdot {\dot{m}_{max}}
 $$
 
@@ -36,8 +36,8 @@ At equilibrium we have: $\dot{x} = 0$.
 Hence, we get:
 
 $$
-v_x = v_y = v_z = 0\\
-F_x = F_y = 0\\
+v_x = v_y = v_z = 0\\\\
+F_x = F_y = 0\\\\
 F_z = mg
 $$
 
@@ -67,15 +67,15 @@ $$
 Perturbation around Trim (subtract equilibtrium condition from current condition to get perturbation):
 
 $$
-\delta p_z = p_z - p_z^*\\
-\delta v_z = v_z - 0\\
+\delta p_z = p_z - p_z^*\\\\
+\delta v_z = v_z - 0\\\\
 \delta F_z = F_z - mg
 $$
 
 Substituting in system dynamics, we get the perturbation dynamics:
 
 $$
-\delta\dot{p}_z = v_z = \delta v_z\\
+\delta\dot{p}_z = v_z = \delta v_z\\\\
 \delta\dot{v}_z = F_z/m - g = \delta F_z/m
 $$
 
@@ -161,19 +161,19 @@ Closed-loop dynamics (vertical) become $\dot{x} = A_{cl}x$:
 
 $$
 \begin{bmatrix}
-\delta\dot{p}_z\\
-\delta\dot{v}_z\\
+\delta\dot{p}_z\\\\
+\delta\dot{v}_z\\\\
 \dot{\xi}
 \end{bmatrix}
 =
 \begin{bmatrix}
-0 & 1 & 0\\
-K_p^iK_p^o/m & -K_p^i/m & K_i^i/m\\
+0 & 1 & 0\\\\
+K_p^iK_p^o/m & -K_p^i/m & K_i^i/m\\\\
 K_p^o & -1 & 0
 \end{bmatrix}
 \begin{bmatrix}
-\delta p_z\\
-\delta v_z\\
+\delta p_z\\\\
+\delta v_z\\\\
 \xi
 \end{bmatrix}
 $$
@@ -188,7 +188,7 @@ State $x = [\delta p_x, \delta v_x]$. No feedforrwad $\delta F_x=0$.
 Controller contributions in Phase 1.5:
 
 $$
-v_x^{ref} = K_p^o \delta p_x\\
+v_x^{ref} = K_p^o \delta p_x\\\\
 \delta F_x = K_p^i(v_x^{ref} - \delta v_x) = K_p^i(K_p^o\delta p_x - \delta v_x)
 $$
 
@@ -196,16 +196,16 @@ Closed loop dynamics (horizontal) become $\dot{x} = A_{cl}x$:
 
 $$
 \begin{bmatrix}
-\delta \dot{p}_x\\
+\delta \dot{p}_x\\\\
 \delta \dot{v}_x
 \end{bmatrix}
 =
 \begin{bmatrix}
-0 & 1\\
+0 & 1\\\\
 K_p^iK_p^o/m & -K_p^i/m
 \end{bmatrix}
 \begin{bmatrix}
-\delta p_x\\
+\delta p_x\\\\
 \delta v_x
 \end{bmatrix}
 $$
