@@ -4,8 +4,10 @@
 The 3DOF state and control vectors are: 
 
 $$
-x = [p_x, p_y, p_z, v_x, v_y, v_z, m]\\
-u = [F_x, F_y, F_z]
+\begin{aligned}
+x &= [p_x, p_y, p_z, v_x, v_y, v_z, m]\\
+u &= [F_x, F_y, F_z]
+\end{aligned}
 $$
 
 System dynamics: 
@@ -15,9 +17,11 @@ $$
 $$
 
 $$
-\dot{p}_x = v_x, \space\dot{p}_y = v_y, \space\dot{p}_z = v_z\\\\
-\dot{v}_x = F_x/m, \space\dot{v}_y = F_y/m, \space\dot{v}_z = (F_z - mg)/m\\\\
+\begin{gathered}
+\dot{p}_x = v_x, \space\dot{p}_y = v_y, \space\dot{p}_z = v_z\\
+\dot{v}_x = F_x/m, \space\dot{v}_y = F_y/m, \space\dot{v}_z = (F_z - mg)/m\\
 \dot{m} = \frac{-||F||}{F_{max}}\cdot {\dot{m}_{max}}
+\end{gathered}
 $$
 
 >[!NOTE]
@@ -36,9 +40,11 @@ At equilibrium we have: $\dot{x} = 0$.
 Hence, we get:
 
 $$
-v_x = v_y = v_z = 0\\\\
-F_x = F_y = 0\\\\
+\begin{gathered}
+v_x = v_y = v_z = 0\\
+F_x = F_y = 0\\
 F_z = mg
+\end{gathered}
 $$
 
 >[!IMPORTANT]
@@ -67,16 +73,20 @@ $$
 Perturbation around Trim (subtract equilibtrium condition from current condition to get perturbation):
 
 $$
-\delta p_z = p_z - p_z^*\\\\
-\delta v_z = v_z - 0\\\\
+\begin{gathered}
+\delta p_z = p_z - p_z^*\\
+\delta v_z = v_z - 0\\
 \delta F_z = F_z - mg
+\end{gathered}
 $$
 
 Substituting in system dynamics, we get the perturbation dynamics:
 
 $$
-\delta\dot{p}_z = v_z = \delta v_z\\\\
-\delta\dot{v}_z = F_z/m - g = \delta F_z/m
+\begin{aligned}
+\delta\dot{p}_z &= v_z = \delta v_z\\
+\delta\dot{v}_z &= F_z/m - g = \delta F_z/m
+\end{aligned}
 $$
 
 This gives us a _double integrator_.
@@ -106,8 +116,7 @@ $$
 \begin{bmatrix}
 \delta\dot{p}_z\\
 \delta\dot{v}_z
-\end{bmatrix}
-= 
+\end{bmatrix} =
 \begin{bmatrix}
 0 & 1\\
 0 & 0
@@ -130,8 +139,10 @@ $$
 Controller contributions in Phase 1.5:
 
 $$
-v_z^{ref} = K_p^o \space \delta p_z \space\space\rightarrowtail \text{outer loop}\\
-\delta F_z = K_p^i(v_z^{ref} - \delta v_z) + K_i^i\int (v_z^{ref} - \delta v_z)\,dt \space\space \rightarrowtail \text{inner loop}
+\begin{aligned}
+v_z^{ref} &= K_p^o \space \delta p_z \space\space\rightarrowtail \text{outer loop}\\
+\delta F_z &= K_p^i(v_z^{ref} - \delta v_z) + K_i^i\int (v_z^{ref} - \delta v_z)\,dt \space\space \rightarrowtail \text{inner loop}
+\end{aligned}
 $$
 
 >[!NOTE]
@@ -164,8 +175,7 @@ $$
 \delta\dot{p}_z\\\\
 \delta\dot{v}_z\\\\
 \dot{\xi}
-\end{bmatrix}
-=
+\end{bmatrix} =
 \begin{bmatrix}
 0 & 1 & 0\\\\
 K_p^iK_p^o/m & -K_p^i/m & K_i^i/m\\\\
@@ -188,8 +198,10 @@ State $x = [\delta p_x, \delta v_x]$. No feedforrwad $\delta F_x=0$.
 Controller contributions in Phase 1.5:
 
 $$
-v_x^{ref} = K_p^o \delta p_x\\\\
-\delta F_x = K_p^i(v_x^{ref} - \delta v_x) = K_p^i(K_p^o\delta p_x - \delta v_x)
+\begin{aligned}
+v_x^{ref} &= K_p^o \delta p_x\\
+\delta F_x &= K_p^i(v_x^{ref} - \delta v_x) = K_p^i(K_p^o\delta p_x - \delta v_x)
+\end{aligned}
 $$
 
 Closed loop dynamics (horizontal) become $\dot{x} = A_{cl}x$:
@@ -198,8 +210,7 @@ $$
 \begin{bmatrix}
 \delta \dot{p}_x\\\\
 \delta \dot{v}_x
-\end{bmatrix}
-=
+\end{bmatrix} =
 \begin{bmatrix}
 0 & 1\\\\
 K_p^iK_p^o/m & -K_p^i/m
