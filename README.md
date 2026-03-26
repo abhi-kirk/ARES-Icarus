@@ -41,6 +41,7 @@ make run        # configure + build + execute
 |---|---|---|
 | **1** | 1-DOF cascade PID vertical landing | Complete |
 | **1.5** | 3-DOF translation: wind disturbances, moving landing pad | Complete |
+| **1.75** | Classical stability analysis of Phase 1.5 closed-loop system | Complete |
 | **2** | Add Euler angle rotation dynamics (6 DOF, TVC) | Next |
 | **2.5** | Upgrade to quaternions — singularity-free attitude control | Upcoming |
 | **3a** | LTV-MPC: linearize along reference trajectory, OSQP solver | Upcoming |
@@ -90,6 +91,23 @@ Dual cascade loops run at different timescales. Rate-limiters on each outer loop
 - **Anti-windup is non-negotiable**: without conditional integration, accumulated integral permanently saturates reference velocity
 - **Rate-limiting the outer loop command** eliminates thrust pulsing from setpoint steps
 - Gravity feedforward (hover force) eliminates steady-state vertical velocity error without relying on the integral term
+
+---
+
+## Phase 1.75: Stability Analysis (Complete)
+
+Classical linear stability analysis of the Phase 1.5 closed-loop system — linearized around hover trim, analytical Jacobian, eigenvalue analysis, Bode plots, root locus, and robustness sweep across the full fuel range.
+
+<p align="center">
+  <img src="analysis/stability/robustness_eigenvalues.png" alt="Eigenvalue real parts vs mass" width="750"/>
+</p>
+
+- **Vertical loop is linearly unstable** around hover trim across the entire mass range — the empirically-tuned cascade PID gains violate the [Routh-Hurwitz stability condition](https://en.wikipedia.org/wiki/Routh%E2%80%93Hurwitz_stability_criterion). The sim succeeds because the rocket never dwells near hover trim and nonlinear effects (anti-windup, rate limiting) bound the instability in practice.
+- **Horizontal loop is stable but critically under-damped** — phase margin ≈ 0.7°, consistent with near-purely-imaginary eigenvalues and very slow decay of perturbations.
+- **Both results are robust to mass** — stability character does not change from full-fuel to dry, because all characteristic polynomial coefficients scale uniformly with `1/m`.
+- Motivates model-based control in Phase 3, where closed-loop stability is enforced by construction rather than empirical tuning.
+
+Full derivations and plots: [`docs/stability_analysis.md`](docs/stability_analysis.md)
 
 ---
 
