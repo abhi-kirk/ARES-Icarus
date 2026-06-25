@@ -50,6 +50,14 @@ make run        # configure + build + execute
 
 ---
 
+## Companion: Learn Rocket Dynamics (Notebook Series)
+
+A Karpathy-style notebook series building intuition for rotational rigid body dynamics — the concepts needed before implementing Phase 2 and beyond in C++. Each notebook derives the physics from scratch, implements it in Python, and visualizes the result.
+
+See [`learn-rocket-dynamics/`](learn-rocket-dynamics/README.md) for the full series.
+
+---
+
 ## Phase 1.5: 3-DOF Translation (Complete)
 
 Extends cascade control to 3D space without rotation. Thrust direction is commanded directly as a force vector — no attitude dynamics yet.

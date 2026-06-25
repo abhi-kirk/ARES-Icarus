@@ -51,3 +51,4 @@ src/results/*
 CLAUDE.md
 .claude/*
 src/icarus_plotting.egg-info/
+__pycache__/
