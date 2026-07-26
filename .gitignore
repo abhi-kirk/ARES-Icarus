@@ -50,7 +50,6 @@ src/results/*
 
 CLAUDE.md
 .claude/*
-
-docs/hpr_l1_plan.md
+context/
 src/icarus_plotting.egg-info/
 __pycache__/
