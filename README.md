@@ -4,7 +4,7 @@
   <img src="images/icarus.jpg" alt="Icarus Flight" width="500"/>
 </p>
 
-**Icarus** (named after the figure from Greek mythology who flew too close to the sun) is a simulation-only rocket vertical landing project. It is the algorithmic counterpart to [Talos](https://github.com/abhi-kirk/ARES-Talos), a physical self-balancing robot. Because there is no hardware constraint, Icarus prioritizes algorithmic depth — progressing from classical PID control through optimal control and reinforcement learning.
+**Icarus** (named after the figure from Greek mythology who flew too close to the sun) is a simulation-only rocket vertical landing project. It is the algorithmic counterpart to [Talos](https://github.com/abhi-kirk/ARES-Talos), a physical self-balancing robot. Because there is no hardware constraint, Icarus prioritizes algorithmic depth, progressing from classical PID control through optimal control and reinforcement learning.
 
 The project serves as a rigorous study of controls theory and C++ engineering, benchmarked against the academic papers that underpin real rocket guidance systems (Acikmese, Szmuk, Blackmore).
 
@@ -42,17 +42,17 @@ make run        # configure + build + execute
 | **1** | 1-DOF cascade PID vertical landing | Complete |
 | **2** | 3-DOF translation: wind disturbances, moving landing pad | Complete |
 | **3** | Classical stability analysis of the Phase 2 closed-loop system | Complete |
-| **4** | 6-DOF attitude dynamics and gimbal TVC — Euler angles, then quaternions | In progress |
+| **4** | 6-DOF attitude dynamics and gimbal TVC: Euler angles, then quaternions | In progress |
 | **5** | LTV-MPC: linearize along reference trajectory, OSQP solver | Upcoming |
 | **6** | Monte Carlo and off-nominal analysis: dispersion, failure injection | Upcoming |
-| **7** | Successive Convexification (SCvx) — matches the SpaceX approach | Upcoming |
+| **7** | Successive Convexification (SCvx), matching the SpaceX approach | Upcoming |
 | **8** | Learning-based extensions: warm-starting, RL compared against MPC | Future |
 
 ---
 
 ## Companion: Learn Rocket Dynamics (Notebook Series)
 
-A Karpathy-style notebook series building intuition for rotational rigid body dynamics — the concepts needed before implementing Phase 4 and beyond in C++. Each notebook derives the physics from scratch, implements it in Python, and visualizes the result.
+A Karpathy-style notebook series building intuition for rotational rigid body dynamics: the concepts needed before implementing Phase 4 and beyond in C++. Each notebook derives the physics from scratch, implements it in Python, and visualizes the result.
 
 See [`learn-rocket-dynamics/`](learn-rocket-dynamics/README.md) for the full series.
 
@@ -60,7 +60,7 @@ See [`learn-rocket-dynamics/`](learn-rocket-dynamics/README.md) for the full ser
 
 ## Phase 2: 3-DOF Translation (Complete)
 
-Extends cascade control to 3D space without rotation. Thrust direction is commanded directly as a force vector — no attitude dynamics yet.
+Extends cascade control to 3D space without rotation. Thrust direction is commanded directly as a force vector, with no attitude dynamics yet.
 
 ### State and Control
 
@@ -104,15 +104,15 @@ Dual cascade loops run at different timescales. Rate-limiters on each outer loop
 
 ## Phase 3: Stability Analysis (Complete)
 
-Classical linear stability analysis of the Phase 2 closed-loop system — linearized around hover trim, analytical Jacobian, eigenvalue analysis, Bode plots, root locus, and robustness sweep across the full fuel range.
+Classical linear stability analysis of the Phase 2 closed-loop system: linearized around hover trim, analytical Jacobian, eigenvalue analysis, Bode plots, root locus, and robustness sweep across the full fuel range.
 
 <p align="center">
   <img src="analysis/stability/robustness_eigenvalues.png" alt="Eigenvalue real parts vs mass" width="750"/>
 </p>
 
-- **Vertical loop is linearly unstable** around hover trim across the entire mass range — the empirically-tuned cascade PID gains violate the [Routh-Hurwitz stability condition](https://en.wikipedia.org/wiki/Routh%E2%80%93Hurwitz_stability_criterion). The sim succeeds because the rocket never dwells near hover trim and nonlinear effects (anti-windup, rate limiting) bound the instability in practice.
-- **Horizontal loop is stable but critically under-damped** — phase margin ≈ 0.7°, consistent with near-purely-imaginary eigenvalues and very slow decay of perturbations.
-- **Both results are robust to mass** — stability character does not change from full-fuel to dry, because all characteristic polynomial coefficients scale uniformly with `1/m`.
+- **Vertical loop is linearly unstable** around hover trim across the entire mass range; the empirically-tuned cascade PID gains violate the [Routh-Hurwitz stability condition](https://en.wikipedia.org/wiki/Routh%E2%80%93Hurwitz_stability_criterion). The sim succeeds because the rocket never dwells near hover trim and nonlinear effects (anti-windup, rate limiting) bound the instability in practice.
+- **Horizontal loop is stable but critically under-damped**: phase margin ≈ 0.7°, consistent with near-purely-imaginary eigenvalues and very slow decay of perturbations.
+- **Both results are robust to mass**: stability character does not change from full-fuel to dry, because all characteristic polynomial coefficients scale uniformly with `1/m`.
 - Motivates model-based control in Phase 5, where closed-loop stability is enforced by construction rather than empirical tuning.
 
 Full derivations and plots: [`docs/stability_analysis.md`](docs/stability_analysis.md)
@@ -121,7 +121,7 @@ Full derivations and plots: [`docs/stability_analysis.md`](docs/stability_analys
 
 ## Phase 1: 1-DOF Vertical Landing (Complete)
 
-The first phase implements cascade PID control for 1-DOF powered descent — starting from a terminal-descent handoff condition (300 m altitude, -20 m/s) and landing with near-zero velocity.
+The first phase implements cascade PID control for 1-DOF powered descent, starting from a terminal-descent handoff condition (300 m altitude, -20 m/s) and landing with near-zero velocity.
 
 ```
 State:   [altitude, velocity, fuel_mass]
@@ -134,7 +134,7 @@ Control: throttle ∈ [0, 1]
 
 ### Phase 4: Rotation Dynamics (in progress)
 
-Introduces full rotational dynamics with gimbal-based thrust vector control, in two steps: Euler angles (roll, pitch, yaw) first, then quaternions to eliminate gimbal lock — the aerospace industry standard.
+Introduces full rotational dynamics with gimbal-based thrust vector control, in two steps: Euler angles (roll, pitch, yaw) first, then quaternions to eliminate gimbal lock, the aerospace industry standard.
 
 ### Phase 5: Model Predictive Control
 
@@ -142,11 +142,11 @@ Replaces the PID cascade with optimal control: Linear Time-Varying MPC, lineariz
 
 ### Phase 6: Monte Carlo and Off-Nominal Analysis
 
-Statistical validation across dispersed initial conditions and vehicle parameters, plus deliberate failure injection — engine-out, actuator degradation, sensor faults — to map the region of the flight envelope where each controller stops landing successfully. Nominal landings are easy; the interesting question is where control authority runs out.
+Statistical validation across dispersed initial conditions and vehicle parameters, plus deliberate failure injection (engine-out, actuator degradation, sensor faults) to map the region of the flight envelope where each controller stops landing successfully. Nominal landings are easy; the interesting question is where control authority runs out.
 
 ### Phase 7: Successive Convexification
 
-Implements SCvx — the approach behind SpaceX's Falcon 9 guidance — following the foundational work of Acikmese et al.
+Implements SCvx, the approach behind SpaceX's Falcon 9 guidance, following the foundational work of Acikmese et al.
 
 Key insight: **lossless convexification** relaxes the nonconvex thrust cone constraint to a convex form whose optimal solution satisfies the original constraint exactly.
 

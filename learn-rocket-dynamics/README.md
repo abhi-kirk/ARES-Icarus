@@ -1,6 +1,6 @@
 # Rocket Dynamics Notebook Series
 
-Karpathy-style learn-by-doing notebook series for building deep intuition of rotational rigid body dynamics. The goal is NOT to learn Python — it's to understand the physics and math deeply enough to implement rotational dynamics and attitude control in [ARES-Icarus](../README.md), a rocket landing GNC engine written in C++17.
+Karpathy-style learn-by-doing notebook series for building deep intuition of rotational rigid body dynamics. The goal is NOT to learn Python; it's to understand the physics and math deeply enough to implement rotational dynamics and attitude control in [ARES-Icarus](../README.md), a rocket landing GNC engine written in C++17.
 
 Each notebook derives the physics from scratch, implements it in Python, and visualizes the result. Concepts are introduced in the order they are needed for the C++ implementation.
 
