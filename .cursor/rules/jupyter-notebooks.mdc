@@ -1,0 +1,22 @@
+---
+description: Cheap, cell-level edits for learn-rocket-dynamics Jupyter notebooks
+globs: learn-rocket-dynamics/**/*.ipynb
+alwaysApply: false
+---
+
+# Jupyter notebooks
+
+These are Karpathy-style physics notebooks for Icarus Phase 4, not a Python course.
+
+- Load the `learn-rocket-dynamics` skill. Status: `context/notebooks.md`.
+- Never `Read` a full `.ipynb` (outputs explode tokens). Outline or dump cells:
+
+```bash
+python3 .cursor/skills/learn-rocket-dynamics/scripts/nb_sources.py learn-rocket-dynamics/02_rotations.ipynb
+python3 .cursor/skills/learn-rocket-dynamics/scripts/nb_sources.py learn-rocket-dynamics/02_rotations.ipynb --cells 3,8-10
+```
+
+- Edit with `EditNotebook` only. Do not rewrite notebook JSON.
+- Abhi writes; fix bugs/typos directly; propose new sections before inserting.
+- Shared math goes in `utils.py`; plots use `plotting.py`; GIFs in `animations/`.
+- Integrators: `f(t, state)`. Quaternions: `[w, x, y, z]`. Euler: ZYX.

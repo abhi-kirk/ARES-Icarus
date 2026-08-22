@@ -1,13 +1,10 @@
 import numpy as np
-from numpy.typing import ArrayLike
 from typing import Optional
 
 # Quaternion operations
 
-def quat_multiply(q1: ArrayLike, q2: ArrayLike) -> ArrayLike:
+def quat_multiply(q1: np.ndarray, q2: np.ndarray) -> np.ndarray:
     """Hamilton product of two quaternions [w, x, y, z]."""
-    q1 = np.asarray(q1, dtype=float)
-    q2 = np.asarray(q2, dtype=float)
     w1, x1, y1, z1 = q1
     w2, x2, y2, z2 = q2
     return np.array([
@@ -17,18 +14,90 @@ def quat_multiply(q1: ArrayLike, q2: ArrayLike) -> ArrayLike:
         w1*z2 + x1*y2 - y1*x2 + z1*w2
     ])
 
-def quat_conjugate(q: ArrayLike) -> ArrayLike:
+def quat_conjugate(q: np.ndarray) -> np.ndarray:
     """Conjugate of a quaternion [w, x, y, z] -> [w, -x, -y, -z]."""
-    q = np.asarray(q, dtype=float)
     w, x, y, z = q
     return np.array([w, -x, -y, -z])
 
-def quat_normalize(q: ArrayLike) -> ArrayLike:
+def quat_normalize(q: np.ndarray) -> np.ndarray:
     """Normalize a quaternion to unit length."""
-    q = np.asarray(q, dtype=float)
     norm = np.linalg.norm(q)
     return q / norm if norm > 0 else q
 
+def quat_rotate_vector(q: np.ndarray, v: np.ndarray) -> np.ndarray:
+    """Rotate a vector v by a quaternion q."""
+    v_quat = np.array([0.0, v[0], v[1], v[2]])
+    rotated = quat_multiply(quat_multiply(q, v_quat), quat_conjugate(q))
+    return rotated[1:]  # Return the vector part
+
+def quat_to_rotation_matrix(q: np.ndarray) -> np.ndarray:
+    """Convert a quaternion [w, x, y, z] to 3x3 rotation matrix."""
+    q = quat_normalize(q)
+    w, x, y, z = q
+    return np.array([
+        [1 - 2*(y*y + z*z),     2*(x*y - z*w),      2*(x*z + y*w)],
+        [    2*(x*y + z*w), 1 - 2*(x*x + z*z),      2*(y*z - w*x)],
+        [    2*(x*z - y*w),     2*(y*z + w*x),  1 - 2*(x*x + y*y)],
+    ])
+
+def quat_from_euler(roll: float, pitch: float, yaw: float) -> np.ndarray:
+    """Euler angles (ZYX convention, radians) -> quaternion [w, x, y, z]."""
+    cr, sr = np.cos(roll / 2), np.sin(roll / 2)
+    cp, sp = np.cos(pitch / 2), np.sin(pitch / 2)
+    cy, sy = np.cos(yaw / 2), np.sin(yaw / 2)
+    return np.array([
+        cr * cp * cy + sr * sp * sy,
+        sr * cp * cy - cr * sp * sy,
+        cr * sp * cy + sr * cp * sy,
+        cr * cp * sy - sr * sp * cy
+    ])
+
+def quat_to_euler(q: np.ndarray) -> np.ndarray:
+    """Unit quaternion [w, x, y, z] -> Euler angles (ZYX convention, radians)."""
+    w, x, y, z = quat_normalize(q)
+    sinp = 2 * (w*y - z*x)
+    sinp = np.clip(sinp, -1.0, 1.0)  # Clamp to avoid numerical issues
+    roll = np.arctan2(2*(w*x + y*z), 1 - 2*(x*x + y*y))
+    pitch = np.arcsin(sinp)
+    yaw = np.arctan2(2 * (w*z + x*y), 1 - 2 * (y*y + z*z))
+    return np.array([roll, pitch, yaw])
+
+def quat_from_axis_angle(axis: np.ndarray, angle: float) -> np.ndarray:
+    """Axis-angle -> unit quaternion. Axis need not be normalized."""
+    axis = np.asarray(axis, dtype=np.float64)
+    axis = axis / np.linalg.norm(axis)
+    half_angle = angle / 2
+    return np.array([np.cos(half_angle), *(np.sin(half_angle) * axis)])
+
+def quat_derivative(q: np.ndarray, omega: np.ndarray) -> np.ndarray:
+    """Quaternion time-derivative: q_dot = 0.5 * q x [0, omega]."""
+    omega_quat = np.array([0.0, *omega])
+    return 0.5 * quat_multiply(q, omega_quat)
+
+def slerp(q0: np.ndarray, q1: np.ndarray, t: float) -> np.ndarray:
+    """Spherical linear interpolation between two unit quaternions."""
+    q0 = quat_normalize(q0)
+    q1 = quat_normalize(q1)
+    dot = np.dot(q0, q1)
+    
+    if dot < 0.0:
+        q1 = -q1
+        dot = -dot
+    dot = np.clip(dot, -1.0, 1.0)
+    
+    if dot > 0.9995:
+        result = q0 + t * (q1 - q0)
+        return quat_normalize(result)
+
+    theta_0 = np.arccos(dot)
+    sin_theta_0 = np.sin(theta_0)
+    theta_t = theta_0 * t
+    sin_theta_t = np.sin(theta_t)
+
+    s0 = np.cos(theta_t) - dot * sin_theta_t / sin_theta_0
+    s1 = sin_theta_t / sin_theta_0
+
+    return s0 * q0 + s1 * q1
 
 # Rotation matrix utilities
 
