@@ -8,7 +8,7 @@ alwaysApply: false
 
 These are Karpathy-style physics notebooks for Icarus Phase 4, not a Python course.
 
-- Load the `learn-rocket-dynamics` skill. Status: `context/notebooks.md`.
+- Load the `learn-rocket-dynamics` skill. Status: `context/notebooks.md`. Public list: `learn-rocket-dynamics/README.md`.
 - Never `Read` a full `.ipynb` (outputs explode tokens). Outline or dump cells:
 
 ```bash

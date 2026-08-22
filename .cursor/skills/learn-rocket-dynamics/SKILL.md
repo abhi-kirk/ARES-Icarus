@@ -11,7 +11,7 @@ description: >-
 
 Goal: Abhi understands rotational rigid-body dynamics deeply enough to implement 6-DOF attitude + gimbal TVC in C++. Not a Python tutorial. Derive, implement, plot, then write C++.
 
-Full status and conventions: `context/notebooks.md`. C++ mapping: [cpp-mapping.md](cpp-mapping.md).
+Status and C++ mapping: `context/notebooks.md`. Public notebook list: `learn-rocket-dynamics/README.md`.
 
 ## Collaboration
 
@@ -48,12 +48,12 @@ If Abhi points at a section by name, `--grep` then `--cells`; do not ingest the 
 - Named intermediates; readable over clever. Same bar as the C++ engine.
 - Show the failure (Euler energy drift, gimbal lock) before the fix (RK4, quaternions).
 - Integrator API: `f(t, state)` so it matches C++ `SystemDynamics`.
-- Quaternions `[w, x, y, z]`; Euler ZYX. Reuse `utils.py`.
+- Quaternions `[w, x, y, z]`; Euler ZYX. `euler_angle_rates` for the $\omega\to\dot{(\phi,\theta,\psi)}$ map. Reuse `utils.py`.
 - Use `plotting.setup_style()` and existing palette colors.
 
 ## Review checklist
 
 - Physics and numerics are correct; plots match the claim in the markdown.
-- Conventions match [cpp-mapping.md](cpp-mapping.md) (frames, quaternion order, `f(t, state)`).
+- Conventions match `context/notebooks.md` (frames, quaternion order, `f(t, state)`).
 - No unexplained new helpers that belong in `utils.py`.
 - Markdown cells teach; code cells are short enough to follow by hand.

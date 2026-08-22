@@ -74,6 +74,23 @@ def quat_derivative(q: np.ndarray, omega: np.ndarray) -> np.ndarray:
     omega_quat = np.array([0.0, *omega])
     return 0.5 * quat_multiply(q, omega_quat)
 
+
+def euler_angle_rates(omega: np.ndarray, roll: float, pitch: float) -> np.ndarray:
+    """Body rates ω = (p, q, r) to ZYX Euler rates (φ̇, θ̇, ψ̇).
+
+    Singular at pitch = ±π/2: the tan(θ) and 1/cos(θ) terms diverge.
+    """
+    p, q, r = omega
+    sin_roll = np.sin(roll)
+    cos_roll = np.cos(roll)
+    cos_pitch = np.cos(pitch)
+    tan_pitch = np.tan(pitch)
+
+    roll_dot = p + (q * sin_roll + r * cos_roll) * tan_pitch
+    pitch_dot = q * cos_roll - r * sin_roll
+    yaw_dot = (q * sin_roll + r * cos_roll) / cos_pitch
+    return np.array([roll_dot, pitch_dot, yaw_dot])
+
 def slerp(q0: np.ndarray, q1: np.ndarray, t: float) -> np.ndarray:
     """Spherical linear interpolation between two unit quaternions."""
     q0 = quat_normalize(q0)
