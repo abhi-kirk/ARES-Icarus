@@ -19,4 +19,8 @@ python3 .cursor/skills/learn-rocket-dynamics/scripts/nb_sources.py learn-rocket-
 - Edit with `EditNotebook` only. Do not rewrite notebook JSON.
 - Abhi writes; fix bugs/typos directly; propose new sections before inserting.
 - Shared math goes in `utils.py`; plots use `plotting.py`; GIFs in `animations/`.
-- Integrators: `f(t, state)`. Quaternions: `[w, x, y, z]`. Euler: ZYX.
+- After editing a notebook, regenerate reader HTML:
+
+```bash
+./.venv/bin/python .cursor/skills/learn-rocket-dynamics/scripts/export_html.py learn-rocket-dynamics/<nb>.ipynb
+```

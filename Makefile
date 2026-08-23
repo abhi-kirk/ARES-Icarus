@@ -1,7 +1,7 @@
 BUILD_DIR := build
 CMAKE := cmake
 
-.PHONY: all configure build clean rebuild run
+.PHONY: all configure build clean rebuild run notebooks-html
 
 all: build
 
@@ -18,3 +18,7 @@ rebuild: clean build
 
 run: build
 	./$(BUILD_DIR)/Icarus
+
+# Dark, no-code HTML for reading notebooks. Output is gitignored.
+notebooks-html:
+	./.venv/bin/python .cursor/skills/learn-rocket-dynamics/scripts/export_html.py

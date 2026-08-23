@@ -39,6 +39,13 @@ python3 .cursor/skills/learn-rocket-dynamics/scripts/nb_sources.py learn-rocket-
 4. Shared code lives in `learn-rocket-dynamics/utils.py` and `plotting.py`. Prefer adding a helper over duplicating integrator or quaternion code in a cell.
 
 5. Animations: GIFs in `learn-rocket-dynamics/animations/`, embedded in markdown (GitHub-renderable). Do not store large plot outputs in the notebook.
+6. After any notebook edit, regenerate reader HTML for that file:
+
+```bash
+./.venv/bin/python .cursor/skills/learn-rocket-dynamics/scripts/export_html.py learn-rocket-dynamics/<nb>.ipynb
+```
+
+Output is gitignored under `learn-rocket-dynamics/html/`. Abhi's shortcut: **Opt+Cmd+H** (task `Export notebook HTML`). All notebooks: `make notebooks-html`.
 
 If Abhi points at a section by name, `--grep` then `--cells`; do not ingest the whole file.
 

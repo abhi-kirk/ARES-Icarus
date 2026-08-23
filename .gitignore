@@ -48,6 +48,9 @@ stc/icarus_plotting.egg-info/
 # Plots
 src/results/*
 
+# Generated notebook reader HTML (source of truth is the .ipynb)
+learn-rocket-dynamics/html/
+
 CLAUDE.md
 .claude/*
 context/
