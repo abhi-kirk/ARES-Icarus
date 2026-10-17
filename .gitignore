@@ -41,6 +41,9 @@ cmake_install.cmake
 .vscode/
 *.code-workspace
 
+# Local Obsidian vault settings
+.obsidian/
+
 .cache/*
 
 stc/icarus_plotting.egg-info/
