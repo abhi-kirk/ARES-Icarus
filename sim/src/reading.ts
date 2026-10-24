@@ -1,0 +1,120 @@
+import type { SceneId } from "./scenes";
+
+// Words beside the picture. A scene can hold several blocks. Each block has its own Q&A.
+// Questions are not stored here. Grok writes them.
+
+export type Note = {
+  tex: string;
+  text: string;
+  tip?: string;
+};
+
+export type Block = {
+  id: string;
+  title: string;
+  notes: Note[];
+};
+
+export type Reading = {
+  blocks: Block[];
+  placeholder: string;
+};
+
+export const READING: Record<SceneId, Reading> = {
+  state: {
+    blocks: [
+      {
+        id: "force",
+        title: "The force",
+        notes: [
+          {
+            tex: String.raw`m\ddot{x} = -kx`,
+            text: "The damper is open, so there is no term in the speed.",
+            tip: String.raw`$m$ is the mass, $1\,\mathrm{kg}$. $k$ is the spring, $1\,\mathrm{N/m}$. $x$ is the height from the rest point, in meters.`,
+          },
+          {
+            tex: String.raw`\ddot{x} = -x`,
+            text: "The mass starts at rest, $1\\,\\mathrm{m}$ above the rest point.",
+          },
+        ],
+      },
+      {
+        id: "state",
+        title: "The state",
+        notes: [
+          {
+            tex: String.raw`x = \cos t \qquad v = -\sin t`,
+            text: "The height and the rate stay on this curve for the whole swing.",
+            tip: String.raw`$x$ is the state, the height from rest. $v$ is the rate, in meters per second. $t$ is the clock on the slider.`,
+          },
+        ],
+      },
+    ],
+    placeholder: "What does $v$ stand for?",
+  },
+  step: {
+    blocks: [
+      {
+        id: "step",
+        title: "One step",
+        notes: [
+          {
+            tex: String.raw`v_{n+1} = v_n - \Delta t\, x_n`,
+            text: "The new rate uses the height and the rate from the start of the step. It does not look up the true curve.",
+            tip: String.raw`$n$ is this step and $n+1$ is the next one. $\Delta t$ is the length of the step. $x_n$ and $v_n$ are the height and the rate at the start of it.`,
+          },
+          {
+            tex: String.raw`x_{n+1} = x_n + \Delta t\, v_n`,
+            text: "The new height uses that same old rate. The gold mass holds it until the next step. The wire box is $x = \\cos t$.",
+          },
+        ],
+      },
+    ],
+    placeholder: "What does the subscript $n$ mean?",
+  },
+  mass: {
+    blocks: [
+      {
+        id: "tank",
+        title: "The tank",
+        notes: [
+          {
+            tex: String.raw`m(t) = 1.5 + 1.5\,\max(0,\, 1 - t/4)`,
+            text: "The tank empties in a straight line, and then the thrust stops.",
+            tip: String.raw`The first $1.5\,\mathrm{kg}$ is the rocket with an empty tank. The other $1.5\,\mathrm{kg}$ is fuel. The fuel is gone at $4\,\mathrm{s}$.`,
+          },
+          {
+            tex: String.raw`a = F/m - g`,
+            text: "Acceleration is thrust over mass, with gravity taken off.",
+            tip: String.raw`$F$ is the thrust on the slider, in newtons. $g$ is $9.81\,\mathrm{m/s^2}$. $a$ is the acceleration on the chart.`,
+          },
+        ],
+      },
+    ],
+    placeholder: "What is $m$ at $2\\,\\mathrm{s}$?",
+  },
+  engine: {
+    blocks: [
+      {
+        id: "lag",
+        title: "The lag",
+        notes: [
+          {
+            tex: String.raw`\dot{F} = (u - F)/\tau`,
+            text: "The engine does not jump to the command. Drag the rocket to change the lag.",
+            tip: String.raw`$u$ is the command, the Ask slider. $F$ is the thrust the engine is making. $\tau$ is how many seconds that closing takes.`,
+          },
+          {
+            tex: String.raw`0 \le F \le 50`,
+            text: "After each little bit of lag, the thrust is held inside this range. The pale line can ask for more. The gold line is $F$.",
+          },
+        ],
+      },
+    ],
+    placeholder: "What does $\\tau$ do?",
+  },
+};
+
+export function readingFor(id: SceneId): Reading {
+  return READING[id];
+}

@@ -1,162 +1,152 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChartView } from "./ChartView";
+import { ChatDock } from "./chat/ChatDock";
+import { Essay } from "./Essay";
+import { Landing } from "./Landing";
+import { TopBar } from "./TopBar";
 import { Viewport } from "./Viewport";
-import { buildOption, liveOption } from "./chartOption";
-import { localTurn, type ChartAsk, type LocalTurn } from "./localChat";
-import { T_END, height, rate } from "./model";
-import { setTime, togglePlay, usePlaying, useTime } from "./sceneStore";
-
-type Message = {
-  role: "user" | "assistant";
-  text: string;
-  chart?: ChartAsk;
-};
-
-async function ask(text: string, time: number): Promise<LocalTurn> {
-  try {
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, t: time }),
-    });
-    if (response.ok) {
-      const data = (await response.json()) as { text?: string; t?: number | null; chart?: ChartAsk | null };
-      const columns = (data.chart?.y ?? []).filter((name) => name === "height" || name === "rate");
-      return {
-        text: data.text || "I could not read that reply.",
-        time: typeof data.t === "number" ? data.t : undefined,
-        chart: columns.length && data.chart ? { title: data.chart.title || "Chart", y: columns } : undefined,
-      };
-    }
-  } catch {
-    // The dev server has no worker. The local reply is the loop.
-  }
-  return localTurn(text, time);
-}
-
-const PARTS = [
-  { id: "model", name: "The model", here: true },
-  { id: "loop", name: "The loop", here: false },
-  { id: "turn", name: "The turn", here: false },
-  { id: "vehicle", name: "The vehicle", here: false },
-  { id: "descent", name: "The best descent", here: false },
-];
+import { liveOption } from "./chartOption";
+import { chatBrief, durationOf, knobOf, readout, sceneById, SCENES, type SceneId } from "./scenes";
+import { setKnob, setScene, setTime, togglePlay, useKnobs, usePlaying, useScene, useTime } from "./sceneStore";
+import { soundOn, toggleSound, unlock } from "./sound";
+import { usePath } from "./route";
 
 export function App() {
-  const time = useTime();
-  const playing = usePlaying();
-  const live = useMemo(() => liveOption(time), [time]);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      text: "The bead's height is the state. The slope of that height is the rate. Drag the bead, or tell me a time.",
-    },
-  ]);
-  const [draft, setDraft] = useState("");
-  const [note, setNote] = useState<string | null>(null);
-  const thread = useRef<HTMLDivElement>(null);
+  const path = usePath();
+  const model = path === "/model";
+  const [asking, setAsking] = useState(false);
 
   useEffect(() => {
-    const box = thread.current;
-    if (box) box.scrollTop = box.scrollHeight;
-  }, [messages]);
+    document.title = model ? "Icarus · Rocket Dynamics" : "Icarus";
+  }, [model]);
 
-  async function send() {
-    const text = draft.trim();
-    if (!text) return;
-    setDraft("");
-    const turn = await ask(text, time);
-    if (turn.time !== undefined) setTime(turn.time);
-    setMessages((prev) => [...prev, { role: "user", text }, { role: "assistant", text: turn.text, chart: turn.chart }]);
+  return (
+    <div className={model ? "site" : "site is-cover"}>
+      <TopBar model={model} asking={asking} onAsk={() => setAsking((open) => !open)} />
+      {model ? <Model open={asking} onClose={() => setAsking(false)} /> : <Landing />}
+    </div>
+  );
+}
+
+function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const time = useTime();
+  const scene = useScene();
+  const knobs = useKnobs();
+  const playing = usePlaying();
+  const spec = sceneById(scene);
+  const live = useMemo(() => liveOption(scene, knobs, time), [scene, knobs, time]);
+  const knob = knobOf(scene, knobs);
+  const lines = readout(scene, time, knobs);
+  const [hear, setHear] = useState(soundOn);
+  const [prompts, setPrompts] = useState<Record<string, string>>({});
+  const remember = useCallback((id: string, prompt: string) => {
+    setPrompts((prev) => (prev[id] === prompt ? prev : { ...prev, [id]: prompt }));
+  }, []);
+
+  useEffect(() => {
+    setPrompts({});
+  }, [scene]);
+
+  const question = Object.values(prompts).filter(Boolean).join("\n");
+
+  function openScene(id: SceneId) {
+    if (id === scene) return;
+    setScene(id);
   }
 
   return (
-    <div className="frame">
-      <main className="reading">
-        <header>
-          <p className="mark">Icarus</p>
-          <p className="meta">The model</p>
-        </header>
-        <article>
-          <h1>A state and its rate</h1>
-          <p className="lede">
-            The bead moves on a straight rod. Its height is the state. How fast that height is changing is the rate.
-            At the top and the bottom, the bead turns around and the rate is zero.
-          </p>
-        </article>
-        <form
-          className="chat"
-          onSubmit={(event) => {
-            event.preventDefault();
-            send();
-          }}
-        >
-          <div className="thread" ref={thread}>
-            {messages.map((message, index) => (
-              <div className={message.role} key={index}>
-                <p>{message.text}</p>
-                {message.chart ? (
-                  <ChartView option={buildOption(message.chart.y, message.chart.title, time)} />
-                ) : null}
-              </div>
-            ))}
+    <>
+      <div className="frame">
+        <main className="reading">
+          <header className="reading-head">
+            <h1>{spec.title}</h1>
+            <p className="lede">{spec.lede}</p>
+            <nav className="beats" aria-label="Scenes">
+              {SCENES.map((item, index) => (
+                <button key={item.id} type="button" aria-current={item.id === scene ? "page" : undefined} onClick={() => openScene(item.id)}>
+                  <span className="num">0{index + 1}</span>
+                  {item.name}
+                </button>
+              ))}
+            </nav>
+          </header>
+          <div className="reading-scroll">
+            <Essay scene={scene} brief={chatBrief(scene, knobs)} onPrompt={remember} />
           </div>
-          <div className="composer">
-            <label>
-              <span className="prompt-label">Talk about the picture</span>
-              <input
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                placeholder="Go to 1.57, or plot the rate"
-              />
-            </label>
-            <button type="submit">Send</button>
-          </div>
-        </form>
-      </main>
+        </main>
 
-      <section className="stage">
-        <ol className="scale">
-          {PARTS.map((part, index) => (
-            <li key={part.id}>
-              <button
-                type="button"
-                aria-current={part.here ? "page" : undefined}
-                onClick={() => setNote(part.here ? null : `${part.name} is not drawn yet.`)}
-              >
-                <i className="tick" />
-                <span className="num">0{index + 1}</span>
-                {part.name}
-              </button>
-            </li>
-          ))}
-        </ol>
-        <div className="viewport">
-          <Viewport />
-          {note ? <p className="stage-note">{note}</p> : null}
-          <div className="slider-row">
-            <label htmlFor="time">Time</label>
-            <button type="button" className="play" aria-pressed={playing} onClick={togglePlay}>
-              {playing ? "Pause" : "Play"}
-            </button>
-            <input
-              id="time"
-              type="range"
-              min={0}
-              max={T_END}
-              step={0.01}
-              value={time}
-              onChange={(event) => setTime(Number(event.target.value))}
-            />
-            <output>
-              <span>{time.toFixed(2)} s</span>
-              <span>{height(time).toFixed(2)} m</span>
-              <span className="rate">{rate(time).toFixed(2)} m/s</span>
-            </output>
+        <section className="stage">
+          <div className="viewport">
+            <Viewport />
+            <div className="controls">
+              <div className="slider-row">
+                <label htmlFor="time">Time</label>
+                <div className="transport">
+                  <button
+                    type="button"
+                    className="play"
+                    aria-pressed={playing}
+                    onClick={() => {
+                      void unlock();
+                      togglePlay();
+                    }}
+                  >
+                    {playing ? "Pause" : "Play"}
+                  </button>
+                  <button
+                    type="button"
+                    className="play"
+                    aria-pressed={hear}
+                    onClick={() => setHear(toggleSound())}
+                  >
+                    {hear ? "Sound" : "Muted"}
+                  </button>
+                </div>
+                <input
+                  id="time"
+                  type="range"
+                  min={0}
+                  max={durationOf(scene)}
+                  step={0.01}
+                  value={time}
+                  onChange={(event) => {
+                    void unlock();
+                    setTime(Number(event.target.value));
+                  }}
+                />
+                <output>
+                  {lines.map((line) => (
+                    <span key={line.text} className={line.gold ? "gold" : undefined}>
+                      {line.text}
+                    </span>
+                  ))}
+                </output>
+              </div>
+              {knob ? (
+                <div className="slider-row">
+                  <label htmlFor="knob">{knob.label}</label>
+                  <span />
+                  <input
+                    id="knob"
+                    type="range"
+                    min={knob.min}
+                    max={knob.max}
+                    step={knob.step}
+                    value={knob.value}
+                    onChange={(event) => setKnob(knob.key, Number(event.target.value))}
+                  />
+                  <output>
+                    <span>{knob.show}</span>
+                    {knob.aside ? <span className="gold">{knob.aside}</span> : null}
+                  </output>
+                </div>
+              ) : null}
+            </div>
+            <ChartView option={live} />
           </div>
-          <ChartView option={live} />
-        </div>
-      </section>
-    </div>
+          <ChatDock key={scene} open={open} onClose={onClose} question={question} />
+        </section>
+      </div>
+    </>
   );
 }

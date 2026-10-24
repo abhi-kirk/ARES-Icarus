@@ -1,18 +1,20 @@
 import { useSyncExternalStore } from "react";
-import { T_END } from "./model";
+import { durationOf, KNOBS, type Knobs, type SceneId } from "./scenes";
 
-// One clock. The bead, the slider, the chart, and play all use it.
-// Play runs at real time and stops at the end, so the trace stays complete.
+// One clock for the page. Dragging the slider, the body, or a chat time pauses it.
+// Play runs at real time: one second on the picture is one second on the wall.
 
 let time = 0.4;
 let playing = false;
-let frame = 0;
+let scene: SceneId = "state";
+let knobs: Knobs = { ...KNOBS };
 let lastStamp = 0;
+let frame = 0;
 
 const listeners = new Set<() => void>();
 const playListeners = new Set<() => void>();
 
-function publishTime(): void {
+function publish(): void {
   listeners.forEach((listener) => listener());
 }
 
@@ -20,19 +22,31 @@ function publishPlay(): void {
   playListeners.forEach((listener) => listener());
 }
 
-// The end of the trace is a real time. Wrapping it back to zero would erase the line.
-function place(next: number): number {
-  if (next >= T_END - 1e-9 && next <= T_END + 1e-6) return T_END;
-  const wrapped = ((next % T_END) + T_END) % T_END;
-  return wrapped;
-}
-
 export function getTime(): number {
   return time;
 }
 
+export function getScene(): SceneId {
+  return scene;
+}
+
+export function getKnobs(): Knobs {
+  return knobs;
+}
+
 export function isPlaying(): boolean {
   return playing;
+}
+
+function endOf(): number {
+  return durationOf(scene);
+}
+
+function place(next: number): number {
+  const end = endOf();
+  if (next >= end) return end;
+  if (next < 0) return 0;
+  return next;
 }
 
 export function setTime(next: number): void {
@@ -40,7 +54,7 @@ export function setTime(next: number): void {
   const placed = place(next);
   if (Math.abs(placed - time) < 1e-6) return;
   time = placed;
-  publishTime();
+  publish();
 }
 
 function stop(): void {
@@ -57,25 +71,27 @@ function tick(now: number): void {
   lastStamp = now;
   const step = Math.min(0.05, elapsed);
   const next = time + step;
+  const end = endOf();
 
-  if (next >= T_END) {
-    time = T_END;
-    publishTime();
+  if (next >= end) {
+    time = end;
+    publish();
     stop();
     return;
   }
 
   time = next;
-  publishTime();
+  publish();
   frame = requestAnimationFrame(tick);
 }
 
 export function play(): void {
   if (playing) return;
 
-  if (time >= T_END - 1e-4) {
+  const end = endOf();
+  if (time >= end - 1e-4) {
     time = 0;
-    publishTime();
+    publish();
   }
 
   playing = true;
@@ -89,14 +105,30 @@ export function togglePlay(): void {
   else play();
 }
 
+export function setScene(next: SceneId): void {
+  if (next === scene) return;
+  stop();
+  scene = next;
+  time = next === "state" ? 0.4 : 0;
+  publish();
+}
+
+export function setKnob(key: keyof Knobs, value: number): void {
+  stop();
+  knobs = { ...knobs, [key]: value };
+  publish();
+}
+
 export function useTime(): number {
-  return useSyncExternalStore(
-    (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-    getTime,
-  );
+  return useSyncExternalStore(subscribe, getTime);
+}
+
+export function useScene(): SceneId {
+  return useSyncExternalStore(subscribe, getScene);
+}
+
+export function useKnobs(): Knobs {
+  return useSyncExternalStore(subscribe, getKnobs);
 }
 
 export function usePlaying(): boolean {
@@ -107,4 +139,9 @@ export function usePlaying(): boolean {
     },
     isPlaying,
   );
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
 }

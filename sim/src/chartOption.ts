@@ -1,104 +1,101 @@
 import type { EChartsOption } from "echarts";
-import { BUFFER, T_END, height, rate, type Column, type Sample } from "./model";
+import { axisOf, durationOf, plotOf, sceneById, type Column, type Knobs, type SceneId } from "./scenes";
 
-const INK = "#d7ded8";
-const DIM = "rgba(215, 222, 216, 0.45)";
 const GOLD = "#e2a43a";
-const HEIGHT = "#d7ded8";
+const INK = "#d7ded8";
+const GRID = "#243038";
+const MUTED = "#8b9690";
 
-const LABELS: Record<Column, string> = {
-  height: "Height (m)",
-  rate: "Rate (m/s)",
-};
-
-export function liveOption(t: number): EChartsOption {
-  return buildOption(["height", "rate"], "Height and rate", t, "live");
+export function liveOption(scene: SceneId, knobs: Knobs, time: number): EChartsOption {
+  const spec = sceneById(scene);
+  return option(scene, spec.live, knobs, time, spec.chartTitle, time);
 }
 
-// The live strip is a pen. It draws only the samples the bead has reached.
-// A chart asked for in chat is the whole series, with the same time marked.
-function rowsFor(t: number, mode: "live" | "full"): Sample[] {
-  if (mode === "full") return BUFFER;
-  const rows = BUFFER.filter((row) => row.t <= t + 1e-9);
-  const tip = rows[rows.length - 1];
-  if (!tip || Math.abs(tip.t - t) > 1e-4) {
-    rows.push({ t, height: height(t), rate: rate(t) });
-  }
-  return rows;
+export function chartOption(scene: SceneId, knobs: Knobs, columns: Column[], title: string, mark: number): EChartsOption {
+  return option(scene, columns, knobs, durationOf(scene), title, mark);
 }
 
-export function buildOption(
+function option(
+  scene: SceneId,
   columns: Column[],
+  knobs: Knobs,
+  until: number,
   title: string,
-  t: number,
-  mode: "live" | "full" = "full",
+  mark: number,
 ): EChartsOption {
-  const rows = rowsFor(t, mode);
-  const series = columns.map((column) => {
-    const color = column === "rate" ? GOLD : HEIGHT;
-    const tip = rows[rows.length - 1];
-    return {
-      name: LABELS[column],
-      type: "line" as const,
-      showSymbol: false,
-      data: rows.map((row) => [row.t, row[column]]),
-      lineStyle: { width: 2, color },
-      itemStyle: { color },
-      markPoint: tip
-        ? {
-            symbol: "circle",
-            symbolSize: 8,
-            itemStyle: { color },
-            label: { show: false },
-            data: [{ name: column, coord: [tip.t, tip[column]] as [number, number] }],
-          }
-        : undefined,
-      markLine: {
-        symbol: "none",
-        animation: false,
-        lineStyle: { color: GOLD, width: 1 },
-        label: { show: false },
-        data: [{ xAxis: t }],
-      },
-    };
-  });
+  const series = plotOf(scene, columns, knobs, until);
+  const axis = axisOf(scene, columns, knobs);
+  const hasSecond = series.some((item) => item.axis === 1);
 
   return {
-    backgroundColor: "transparent",
     animation: false,
+    backgroundColor: "transparent",
     title: {
       text: title,
       left: 8,
       top: 4,
-      textStyle: { color: DIM, fontSize: 11, fontFamily: "Fragment Mono, ui-monospace, monospace", fontWeight: 400 },
+      textStyle: { color: INK, fontSize: 13, fontWeight: 500, fontFamily: "Barlow, Helvetica Neue, sans-serif" },
     },
     legend: {
-      top: 4,
-      right: 8,
-      textStyle: { color: INK, fontSize: 11, fontFamily: "Fragment Mono, ui-monospace, monospace" },
-      icon: "rect",
-      itemWidth: 10,
+      top: 6,
+      right: hasSecond ? 72 : 12,
+      textStyle: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 10 },
+      itemWidth: 14,
       itemHeight: 2,
     },
-    grid: { left: 48, right: 16, top: 36, bottom: 28 },
+    grid: { left: 52, right: hasSecond ? 52 : 16, top: 40, bottom: 32 },
     tooltip: { show: false },
     xAxis: {
       type: "value",
       min: 0,
-      max: T_END,
+      max: durationOf(scene),
       name: "t (s)",
-      nameTextStyle: { color: DIM, fontFamily: "Fragment Mono, ui-monospace, monospace" },
-      axisLabel: { color: DIM, fontFamily: "Fragment Mono, ui-monospace, monospace" },
-      axisLine: { lineStyle: { color: DIM } },
-      splitLine: { lineStyle: { color: "rgba(215, 222, 216, 0.08)" } },
+      nameLocation: "middle",
+      nameGap: 22,
+      nameTextStyle: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 11 },
+      axisLine: { lineStyle: { color: GRID } },
+      axisTick: { show: false },
+      axisLabel: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 10 },
+      splitLine: { lineStyle: { color: GRID } },
     },
-    yAxis: {
-      type: "value",
-      min: -4.8,
-      max: 4.8,
-      axisLabel: { color: DIM, fontFamily: "Fragment Mono, ui-monospace, monospace" },
-      splitLine: { lineStyle: { color: "rgba(215, 222, 216, 0.08)" } },
-    },
-    series,
+    yAxis: [
+      {
+        type: "value",
+        min: axis.y[0],
+        max: axis.y[1],
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 10 },
+        splitLine: { lineStyle: { color: GRID } },
+      },
+      {
+        type: "value",
+        min: axis.y2 ? axis.y2[0] : 0,
+        max: axis.y2 ? axis.y2[1] : 1,
+        show: Boolean(axis.y2),
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 10 },
+        splitLine: { show: false },
+      },
+    ],
+    series: series.map((item, index) => ({
+      name: item.name,
+      type: "line" as const,
+      yAxisIndex: item.axis,
+      showSymbol: false,
+      data: item.points,
+      lineStyle: { color: item.gold ? GOLD : INK, width: item.gold ? 2 : 1.5 },
+      markLine:
+        index === 0
+          ? {
+              silent: true,
+              symbol: "none",
+              lineStyle: { color: GOLD, type: "solid" as const, width: 1 },
+              label: { show: false },
+              data: [{ xAxis: mark }],
+            }
+          : undefined,
+    })),
   };
 }

@@ -10,10 +10,10 @@ export function ChartView({ option }: { option: EChartsOption }) {
     if (!host.current) return;
     const instance = echarts.init(host.current);
     chart.current = instance;
-    const onResize = () => instance.resize();
-    window.addEventListener("resize", onResize);
+    const observer = new ResizeObserver(() => instance.resize());
+    observer.observe(host.current);
     return () => {
-      window.removeEventListener("resize", onResize);
+      observer.disconnect();
       instance.dispose();
       chart.current = null;
     };

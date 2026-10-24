@@ -58,6 +58,9 @@ sim/node_modules/
 sim/dist/
 sim/.wrangler/
 sim/*.tsbuildinfo
+sim/.dev.vars
+sim/.dev.vars.*
+!sim/.dev.vars.example
 
 CLAUDE.md
 .claude/*

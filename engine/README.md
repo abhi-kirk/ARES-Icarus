@@ -16,4 +16,4 @@ Phase 2, from 300 m. The outer loops command a reference velocity. The inner loo
 
 The writeups are in [docs/](docs/): stability, mechanics, and the build.
 
-Scenes on the site keep their own clock in the browser, so the picture and the chart are the same buffer. This tree is the finished landing.
+Scenes on [icarus-arc.com](https://icarus-arc.com) keep their own clock in the browser, so the picture and the chart are the same buffer. This tree is the finished landing.
