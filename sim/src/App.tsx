@@ -112,7 +112,6 @@ export function App() {
             </label>
             <button type="submit">Send</button>
           </div>
-          <p className="note">This reply is local. Grok joins when the worker has a key.</p>
         </form>
       </main>
 
