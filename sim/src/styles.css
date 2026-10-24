@@ -226,7 +226,7 @@ body {
 
 .slider-row {
   display: grid;
-  grid-template-columns: 4.2rem minmax(0, 1fr) 3.6rem;
+  grid-template-columns: auto auto minmax(0, 1fr) 5.4rem;
   align-items: center;
   gap: 0.8rem;
   padding: 0.7rem 1.1rem;
@@ -234,6 +234,24 @@ body {
   font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.play {
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--instrument);
+  background: transparent;
+  border: 1px solid rgba(215, 222, 216, 0.35);
+  padding: 0.35rem 0.55rem;
+  cursor: pointer;
+}
+
+.play[aria-pressed="true"] {
+  color: #1b1916;
+  background: var(--plume);
+  border-color: var(--plume);
 }
 
 .slider-row input[type="range"] {
@@ -253,7 +271,18 @@ body {
   border: none;
 }
 
-.slider-row output { color: var(--plume); text-align: right; }
+.slider-row output {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.12rem;
+  color: var(--instrument);
+  text-align: right;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.slider-row output .rate { color: var(--plume); }
 
 .viewport .chart { height: 13rem; }
 

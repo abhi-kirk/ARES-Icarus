@@ -3,8 +3,8 @@ import { ChartView } from "./ChartView";
 import { Viewport } from "./Viewport";
 import { buildOption, liveOption } from "./chartOption";
 import { localTurn, type ChartAsk, type LocalTurn } from "./localChat";
-import { T_END } from "./model";
-import { setTime, useTime } from "./sceneStore";
+import { T_END, height, rate } from "./model";
+import { setTime, togglePlay, usePlaying, useTime } from "./sceneStore";
 
 type Message = {
   role: "user" | "assistant";
@@ -44,6 +44,7 @@ const PARTS = [
 
 export function App() {
   const time = useTime();
+  const playing = usePlaying();
   const live = useMemo(() => liveOption(time), [time]);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -136,6 +137,9 @@ export function App() {
           {note ? <p className="stage-note">{note}</p> : null}
           <div className="slider-row">
             <label htmlFor="time">Time</label>
+            <button type="button" className="play" aria-pressed={playing} onClick={togglePlay}>
+              {playing ? "Pause" : "Play"}
+            </button>
             <input
               id="time"
               type="range"
@@ -145,7 +149,11 @@ export function App() {
               value={time}
               onChange={(event) => setTime(Number(event.target.value))}
             />
-            <output>{time.toFixed(2)}s</output>
+            <output>
+              <span>{time.toFixed(2)} s</span>
+              <span>{height(time).toFixed(2)} m</span>
+              <span className="rate">{rate(time).toFixed(2)} m/s</span>
+            </output>
           </div>
           <ChartView option={live} />
         </div>
