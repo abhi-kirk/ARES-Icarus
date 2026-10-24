@@ -8,13 +8,13 @@ A scene is a picture you can move and a chart drawn from the same samples. The p
 
 Four scenes, one clock.
 
-A mass on a spring, with the damper open. Height from the rest point is the state. The rate is how fast that height is changing. At the top, and again at the bottom, the mass turns around and the rate is zero.
+The spring. A mass hangs from a spring with the damper open. Height from the rest point is the state, and the rate is how fast that height is changing. At the top of the swing, and again at the bottom, the mass turns around and the rate is zero.
 
-A numerical step. The spring force sets the rate. Each step adds that rate times a time step and holds it. The wire box is the true height. The gold mass is the step. A coarse step feeds energy in, so the gold mass swings wider.
+The step. The spring force sets the rate, and each step adds that rate times the time step before holding the new height. The wire box is the true height and the gold mass is the step. A coarse step feeds energy in, so the gold mass swings wider.
 
-A mass that changes. Thrust stays constant while the tank empties, so the acceleration climbs. At four seconds the thrust stops.
+The burn. Thrust stays constant while the tank empties, so the acceleration climbs, and at four seconds the thrust stops.
 
-An engine with a lag and a limit. The command jumps. The engine follows, and it cannot pass 50 N.
+The engine. The command jumps and the engine follows, but the thrust cannot pass 50 N.
 
 Under the title, that column scrolls: the equations, then an Icarus Q&A card with beginner, intermediate, and advanced questions. A typed answer is graded by Grok. Ask can move the time or plot a series. It does not answer a question on a card.
 

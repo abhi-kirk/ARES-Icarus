@@ -60,12 +60,12 @@ export const READING: Record<SceneId, Reading> = {
         notes: [
           {
             tex: String.raw`v_{n+1} = v_n - \Delta t\, x_n`,
-            text: "The new rate uses the height and the rate from the start of the step. It does not look up the true curve.",
+            text: "The new rate uses the height and the rate from the start of the step, without looking up the true curve.",
             tip: String.raw`$n$ is this step and $n+1$ is the next one. $\Delta t$ is the length of the step. $x_n$ and $v_n$ are the height and the rate at the start of it.`,
           },
           {
             tex: String.raw`x_{n+1} = x_n + \Delta t\, v_n`,
-            text: "The new height uses that same old rate. The gold mass holds it until the next step. The wire box is $x = \\cos t$.",
+            text: "The new height uses that same old rate, and the gold mass holds it until the next step. The wire box is the true height, $x = \\cos t$.",
           },
         ],
       },
@@ -101,12 +101,12 @@ export const READING: Record<SceneId, Reading> = {
         notes: [
           {
             tex: String.raw`\dot{F} = (u - F)/\tau`,
-            text: "The engine does not jump to the command. Drag the rocket to change the lag.",
+            text: "The engine does not jump to the command, and dragging the rocket changes the lag.",
             tip: String.raw`$u$ is the command, the Ask slider. $F$ is the thrust the engine is making. $\tau$ is how many seconds that closing takes.`,
           },
           {
             tex: String.raw`0 \le F \le 50`,
-            text: "After each little bit of lag, the thrust is held inside this range. The pale line can ask for more. The gold line is $F$.",
+            text: "After each little bit of lag, the thrust is held inside this range, so the pale line can ask for more while the gold line is $F$.",
           },
         ],
       },
