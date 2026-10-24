@@ -1,5 +1,6 @@
 {
   "name": "icarus-s",
+  "account_id": "606b7014789251bf2e2c595ac567fa29",
   "main": "worker/chat.ts",
   "compatibility_date": "2026-10-24",
   "assets": {

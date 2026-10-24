@@ -26,4 +26,4 @@ The questions and Ask call the Worker. The Grok key is the secret `GROK_API_KEY`
 
 ## Run
 
-From this folder, `npm run dev` serves http://127.0.0.1:5174/. Copy `.dev.vars.example` to `.dev.vars` and fill in the two secrets, or Ask and the questions will not answer. Deploy with `npm run build && npx wrangler deploy`. Wrangler publishes the config the build writes under `dist/`.
+From this folder, `npm run dev` serves http://127.0.0.1:5174/. Copy `.dev.vars.example` to `.dev.vars` and fill in the two secrets, or Ask and the questions will not answer. A push to `main` deploys the site. GitHub Actions builds this folder and runs Wrangler against the config the build writes under `dist/`.
