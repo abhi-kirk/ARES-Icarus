@@ -1,3 +1,4 @@
+import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChartView } from "./ChartView";
 import { ChatDock } from "./chat/ChatDock";
@@ -85,21 +86,23 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
                   <button
                     type="button"
                     className="play"
+                    aria-label={playing ? "Pause" : "Play"}
                     aria-pressed={playing}
                     onClick={() => {
                       void unlock();
                       togglePlay();
                     }}
                   >
-                    {playing ? "Pause" : "Play"}
+                    {playing ? <Pause size={14} strokeWidth={1.75} /> : <Play size={14} strokeWidth={1.75} />}
                   </button>
                   <button
                     type="button"
                     className="play"
+                    aria-label={hear ? "Sound" : "Muted"}
                     aria-pressed={hear}
                     onClick={() => setHear(toggleSound())}
                   >
-                    {hear ? "Sound" : "Muted"}
+                    {hear ? <Volume2 size={14} strokeWidth={1.75} /> : <VolumeX size={14} strokeWidth={1.75} />}
                   </button>
                 </div>
                 <input

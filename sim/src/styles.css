@@ -754,14 +754,14 @@ body {
 }
 
 .play {
-  font-family: "Fragment Mono", ui-monospace, monospace;
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
   color: var(--instrument);
   background: transparent;
   border: 1px solid rgba(215, 222, 216, 0.35);
-  padding: 0.35rem 0.55rem;
   cursor: pointer;
 }
 
