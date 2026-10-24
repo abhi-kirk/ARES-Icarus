@@ -48,11 +48,15 @@ cmake_install.cmake
 
 stc/icarus_plotting.egg-info/
 
-# Plots
-src/results/*
+# Plots and local engine output
+engine/src/results/*
+engine/build/
+engine/**/*.egg-info/
 
-# Generated notebook reader HTML (source of truth is the .ipynb)
-learn-rocket-dynamics/html/
+# Icarus-S
+sim/node_modules/
+sim/dist/
+sim/.wrangler/
 
 CLAUDE.md
 .claude/*
