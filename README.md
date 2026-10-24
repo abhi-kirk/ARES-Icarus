@@ -1,16 +1,27 @@
 # Icarus
 
-Icarus is a powered-descent project in two parts that share one story.
+<p align="center">
+  <img src="engine/images/icarus.jpg" alt="Icarus" width="500"/>
+</p>
 
-**Icarus-S** (`sim/`) is the public site. It tells how a rocket comes down, with a picture you can move, a chart of the numbers, and a conversation beside them.
+Icarus is a study of how a rocket comes down. The landing is the hard part: the vehicle is lightest when it has to be most precise, and the loop that holds it there is unstable if you stay too long.
 
-**Icarus-I** (`rockets/icarus-i/`) is the first airframe, a LOC IV being built for an L1 flight. Later rockets are Icarus-II and so on. A second flight of the same rocket is not a new number.
+Three pieces of that study live here.
 
-**engine/** is the earlier C++ landing, Phases 1 to 3. It still builds. The site does not call it. New scenes run in the browser so the picture and the chart share one buffer.
+**Icarus-S** ([sim/](sim/)) is the public site. A picture you can move, a chart of the same numbers, and a conversation that can move the picture or ask for another series. The first scene is one state and its rate.
 
-```bash
-cd sim && npm install && npm run dev
-cd engine && make run
-```
+**Icarus-I** ([rockets/](rockets/)) is the first airframe, a LOC IV in build for a Level 1 flight. The number belongs to the rocket. A later flight of this one stays Icarus-I. The next rocket built is Icarus-II.
 
-What you do by hand for the domain and the Grok key is in `SETUP.md`.
+**The landing** ([engine/](engine/)) is a C++ simulation through three finished phases: a vertical landing, a 3-DOF descent onto a moving pad in wind, and a stability analysis of that loop.
+
+<p align="center">
+  <img src="engine/images/trajectory_pid_3dof.png" alt="3-DOF powered descent from 300 m onto a drifting pad" width="900"/>
+</p>
+
+Phase 2. Cascade PID from 300 m, with wind and a pad that drifts. Thrust is a force vector. The tank gets lighter as it burns, so the same newton buys more acceleration near the ground. The rocket meets the pad.
+
+<p align="center">
+  <img src="engine/images/icarus-architecture.png" alt="Guidance, control, and dynamics for the 3-DOF landing" width="900"/>
+</p>
+
+Guidance turns position error into a reference velocity. Control turns velocity error into thrust. Dynamics integrates that force, with gravity, drag, and a mass that changes.
