@@ -61,6 +61,8 @@ sim/*.tsbuildinfo
 
 CLAUDE.md
 .claude/*
+.cursor/
 context/
+SETUP.md
 src/icarus_plotting.egg-info/
 __pycache__/
