@@ -57,6 +57,7 @@ engine/**/*.egg-info/
 sim/node_modules/
 sim/dist/
 sim/.wrangler/
+sim/*.tsbuildinfo
 
 CLAUDE.md
 .claude/*
