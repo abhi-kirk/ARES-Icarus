@@ -37,7 +37,7 @@ Notes:
 
 ### 3) Configure and build
 
-From the repo root:
+From `engine/`:
 
 ```bash
 make build
@@ -116,7 +116,6 @@ in `.vscode/settings.json`.
 
 ### Alternative: clangd (often more robust)
 
-There is a `.clangd` file in the repo configured to use `build/` as the
-compilation database. If you install the `clangd` VS Code extension, it will
-use `build/compile_commands.json` directly.
+`engine/.clangd` points clangd at `build/` in this folder. `make build` writes
+`build/compile_commands.json`.
 
