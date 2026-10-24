@@ -299,6 +299,51 @@ body {
 
 .tip p { margin: 0; }
 
+.door-tip {
+  max-width: 22rem;
+  text-align: left;
+  font-family: var(--sans);
+  animation: door-tip-in 220ms ease-out;
+}
+
+.door-tip-body {
+  animation: door-tip-rise 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes door-tip-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes door-tip-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.door-tip p + p,
+.door-tip ul {
+  margin-top: 0.5rem;
+}
+
+.door-tip ul {
+  margin-bottom: 0;
+  padding-left: 1.1rem;
+}
+
+.door-tip li + li {
+  margin-top: 0.28rem;
+}
+
+.door-tip strong {
+  font-weight: 500;
+}
+
 .essay figcaption {
   margin: 0.15rem 0 0.35rem;
   max-width: 36rem;
@@ -684,12 +729,25 @@ body {
 .landing-doors {
   display: flex;
   justify-content: center;
-  gap: 1.6rem;
+  align-items: center;
   margin-top: 1.15rem;
+}
+
+.landing-door {
+  display: flex;
+  align-items: center;
+}
+
+.landing-dot {
+  margin: 0 0.7rem;
+  color: #f5f5f5;
+  pointer-events: none;
+  user-select: none;
 }
 
 .landing-doors a,
 .landing-doors button {
+  position: relative;
   font: inherit;
   font-size: 1.05rem;
   color: #f5f5f5;
@@ -701,9 +759,35 @@ body {
   pointer-events: auto;
 }
 
-.landing-doors a:hover,
-.landing-doors button:hover {
-  box-shadow: inset 0 -1px 0 #f5f5f5;
+.landing-doors a::after,
+.landing-doors button::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: #f5f5f5;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.landing-doors a:hover::after,
+.landing-doors button:hover::after,
+.landing-doors a:focus-visible::after,
+.landing-doors button:focus-visible::after {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .door-tip,
+  .door-tip-body,
+  .landing-doors a::after,
+  .landing-doors button::after {
+    animation: none;
+    transition: none;
+  }
 }
 
 .landing-copy .nav-note {

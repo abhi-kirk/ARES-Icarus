@@ -1,5 +1,7 @@
+import * as Tooltip from "@radix-ui/react-tooltip";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { COMING_SOON, DOORS } from "./doors";
+import { Markdown } from "./Markdown";
 import { follow } from "./route";
 
 // Take off through the top of the screen, stay gone, come back down onto the pad.
@@ -304,19 +306,39 @@ export function Landing() {
       <div className="landing-combo">
         <div className="landing-copy">
           <h1>Icarus</h1>
-          <div className="landing-doors">
-            {DOORS.map((door) =>
-              door.href ? (
-                <a key={door.id} href={door.href} onClick={(event) => follow(event, door.href)}>
-                  {door.name}
-                </a>
-              ) : (
-                <button key={door.id} type="button" onClick={() => setNote(COMING_SOON)}>
-                  {door.name}
-                </button>
-              ),
-            )}
-          </div>
+          <Tooltip.Provider delayDuration={350} skipDelayDuration={200}>
+            <div className="landing-doors">
+              {DOORS.map((door, index) => (
+                <span key={door.id} className="landing-door">
+                  {index > 0 ? (
+                    <span className="landing-dot" aria-hidden="true">
+                      ·
+                    </span>
+                  ) : null}
+                  <Tooltip.Root>
+                    <Tooltip.Trigger asChild>
+                      {door.href ? (
+                        <a href={door.href} onClick={(event) => follow(event, door.href)}>
+                          {door.name}
+                        </a>
+                      ) : (
+                        <button type="button" onClick={() => setNote(COMING_SOON)}>
+                          {door.name}
+                        </button>
+                      )}
+                    </Tooltip.Trigger>
+                    <Tooltip.Portal>
+                      <Tooltip.Content className="tip door-tip" side="bottom" align="center" sideOffset={12} collisionPadding={16}>
+                        <div className="door-tip-body">
+                          <Markdown text={door.blurb} />
+                        </div>
+                      </Tooltip.Content>
+                    </Tooltip.Portal>
+                  </Tooltip.Root>
+                </span>
+              ))}
+            </div>
+          </Tooltip.Provider>
           {note ? <p className="nav-note">{note}</p> : null}
         </div>
         <div className="landing-mark" ref={mark} />

@@ -1,8 +1,21 @@
-// The two public doors. A door with no href is named, and says it is coming soon.
+// The two public doors. A door with no href says Coming Soon.
+// Each blurb is markdown: paragraphs separated by a blank line.
 
 export const COMING_SOON = "Coming Soon";
 
 export const DOORS = [
-  { id: "dynamics", name: "Rocket Dynamics", href: "/model" },
-  { id: "simulator", name: "Simulator", href: "" },
+  {
+    id: "dynamics",
+    name: "Rocket Dynamics",
+    href: "/model",
+    blurb: `Learn the fundamentals of Rocket dynamics.`,
+  },
+  {
+    id: "simulator",
+    name: "Simulator",
+    href: "",
+    blurb: `Experiment with sims for landing a rocket vertically.
+
+Coming Soon.`,
+  },
 ] as const;
