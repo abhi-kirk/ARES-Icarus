@@ -578,23 +578,23 @@ body {
 .is-wrong .verdict-mark { color: var(--muted); }
 
 .drawer {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 6;
-  width: min(34rem, 100%);
+  position: relative;
+  flex: none;
+  width: 0;
+  height: 100%;
+  min-height: 0;
   display: flex;
+  overflow: hidden;
   background: var(--steel);
   color: var(--ink);
-  border-left: 1px solid var(--hairline);
-  transform: translateX(100%);
-  transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+  border-left: 0 solid var(--hairline);
   pointer-events: none;
+  transition: width 0.26s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .drawer.is-open {
-  transform: none;
+  width: min(28rem, 42%);
+  border-left-width: 1px;
   pointer-events: auto;
 }
 
@@ -961,6 +961,7 @@ body {
 
 .stage {
   position: relative;
+  display: flex;
   background: var(--viewport);
   color: var(--instrument);
   min-width: 0;
@@ -1133,11 +1134,31 @@ body {
 }
 
 .viewport-stack > canvas,
-.viewport-stack > div:has(> canvas) {
+.viewport-stack > div:has(> canvas),
+.picture,
+.picture > div:has(> canvas) {
   width: 100%;
   height: 100%;
   min-height: 0;
   min-width: 0;
+}
+
+.picture {
+  position: relative;
+}
+
+.drag-hint {
+  position: absolute;
+  left: 1rem;
+  bottom: 0.85rem;
+  z-index: 2;
+  margin: 0;
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--instrument-dim);
+  pointer-events: none;
 }
 
 .stage-veil {
@@ -1163,7 +1184,6 @@ body {
 
 .controls {
   min-width: 0;
-  overflow: hidden;
 }
 
 .stage-note {
@@ -1179,7 +1199,7 @@ body {
 
 .slider-row {
   display: grid;
-  grid-template-columns: 4.4rem auto minmax(0, 1fr) minmax(0, auto);
+  grid-template-columns: 6.2rem auto minmax(0, 1fr) minmax(0, auto);
   align-items: center;
   gap: 0.8rem;
   min-width: 0;
@@ -1207,7 +1227,7 @@ body {
   cursor: pointer;
 }
 
-.play[aria-pressed="true"] {
+.play[aria-pressed="true"]:not(.sound) {
   color: var(--viewport);
   background: var(--instrument);
   border-color: var(--instrument);
@@ -1217,17 +1237,38 @@ body {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
+  height: 1.5rem;
+  background: transparent;
+  margin: 0;
+  cursor: pointer;
+}
+
+.slider-row input[type="range"]::-webkit-slider-runnable-track {
   height: 2px;
   background: rgba(215, 222, 216, 0.7);
-  margin: 0;
 }
 
 .slider-row input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 0.72rem;
   height: 0.72rem;
+  margin-top: -5px;
   background: var(--plume);
   border: none;
+}
+
+.slider-row input[type="range"]::-moz-range-track {
+  height: 2px;
+  background: rgba(215, 222, 216, 0.7);
+  border: none;
+}
+
+.slider-row input[type="range"]::-moz-range-thumb {
+  width: 0.72rem;
+  height: 0.72rem;
+  background: var(--plume);
+  border: none;
+  border-radius: 0;
 }
 
 .slider-row output {
@@ -1243,12 +1284,24 @@ body {
 
 .slider-row output .gold { color: var(--plume); }
 
+.readout-name {
+  margin-right: 0.4rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .viewport .chart {
   width: 100%;
   height: 100%;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  user-select: none;
+}
+
+.viewport .chart.is-scrub {
+  cursor: crosshair;
 }
 
 @media (max-width: 860px) {
@@ -1268,7 +1321,15 @@ body {
   .reading-head, .reading-scroll { padding: 0; overflow: visible; }
   .reading h1 { margin-top: 1.2rem; }
   .beats { flex-direction: row; flex-wrap: wrap; gap: 0.4rem 1rem; }
-  .stage { overflow: visible; border-top: 1px solid var(--hairline); }
+  .stage { overflow: visible; border-top: 1px solid var(--hairline); flex-direction: column; }
+  .viewport { flex: none; height: auto; }
+  .drawer { width: 100%; height: 0; border-left: none; transition: height 0.26s cubic-bezier(0.22, 1, 0.36, 1); }
+  .drawer.is-open {
+    width: 100%;
+    height: min(22rem, 46vh);
+    border-left-width: 0;
+    border-top: 1px solid var(--hairline);
+  }
   .viewport-stack {
     height: auto;
     min-height: 0;

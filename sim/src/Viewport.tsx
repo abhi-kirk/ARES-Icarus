@@ -13,9 +13,9 @@ import {
 } from "three";
 import type { Group, Mesh } from "three";
 import type { OrbitControls as OrbitRig } from "three-stdlib";
-import { Rocket } from "./Rocket";
+import { NOZZLE_Y, Rocket } from "./Rocket";
 import { bodyAt, clampKnob, viewSpan, type SceneId, type Knobs } from "./scenes";
-import { getKnobs, getScene, getTime, setKnob, setTime } from "./sceneStore";
+import { getKnobs, getScene, getTime, setKnob, setTime, useKnobs, useScene } from "./sceneStore";
 import { unlock } from "./sound";
 
 const NIGHT = "#000000";
@@ -27,11 +27,35 @@ const CEILING = 1.62;
 const MASS_H = 0.3;
 const DAMPER_X = 0.28;
 const SLEEVE_LEN = 0.72;
-const CAMERA = { position: [4.2, 0.4, 6.2] as [number, number, number], fov: 40 };
-const TARGET: [number, number, number] = [0, 0.15, 0];
+const ROCKET_SCALE = 0.4;
+// NOZZLE_Y is below the mesh origin. Lifting the drawing by this amount puts the
+// nozzle on height 0. The state itself stays the center of mass.
+const NOZZLE_LIFT = -NOZZLE_Y * ROCKET_SCALE;
+const CAMERA = { position: [3.05, 0.32, 4.5] as [number, number, number], fov: 36 };
+const TARGET: [number, number, number] = [0, 0.2, 0];
 const POLAR = Math.acos(
   (CAMERA.position[1] - TARGET[1]) / Math.hypot(CAMERA.position[0], CAMERA.position[1] - TARGET[1], CAMERA.position[2]),
 );
+
+function altitudeTicks(min: number, max: number): number[] {
+  const span = Math.max(max - min, 1);
+  const raw = span / 3;
+  const exp = Math.pow(10, Math.floor(Math.log10(raw)));
+  const base = raw / exp;
+  let step = exp;
+  if (base > 5) step = 10 * exp;
+  else if (base > 2) step = 5 * exp;
+  else if (base > 1) step = 2 * exp;
+  const ticks: number[] = [];
+  const start = Math.ceil((min - step * 0.01) / step) * step;
+  for (let value = start; value <= max + step * 0.01; value += step) {
+    const rounded = Math.round(value * 100) / 100;
+    if (rounded < min - step * 0.05 || rounded > max + step * 0.05) continue;
+    ticks.push(rounded);
+    if (ticks.length >= 5) break;
+  }
+  return ticks;
+}
 
 function viewY(height: number, scene: SceneId, knobs: Knobs): number {
   const span = viewSpan(scene, knobs);
@@ -147,7 +171,7 @@ const FLAME_FRAG = `
   }
 `;
 
-function Picture({ orbit }: { orbit: RefObject<OrbitRig | null> }) {
+function Picture({ orbit, onBodyDrag }: { orbit: RefObject<OrbitRig | null>; onBodyDrag?: () => void }) {
   const rig = useRef<Group>(null);
   const spring = useRef<Mesh>(null);
   const piston = useRef<Mesh>(null);
@@ -155,11 +179,12 @@ function Picture({ orbit }: { orbit: RefObject<OrbitRig | null> }) {
   const ghost = useRef<Mesh>(null);
   const rocket = useRef<Group>(null);
   const flame = useRef<Mesh>(null);
-  const ground = useRef<Mesh>(null);
+  const ground = useRef<Group>(null);
   const drag = useRef<{ y: number } | null>(null);
   const release = useRef<(() => void) | null>(null);
   const sprung = useRef(Number.NaN);
   const sleeve = useMemo(() => sleeveGeometry(SLEEVE_LEN, 0.05, 0.03), []);
+  const gl = useThree((state) => state.gl);
   const flameMat = useMemo(
     () =>
       new ShaderMaterial({
@@ -208,8 +233,8 @@ function Picture({ orbit }: { orbit: RefObject<OrbitRig | null> }) {
 
     if (rocket.current) {
       rocket.current.visible = !showRig;
-      rocket.current.position.y = y;
-      rocket.current.scale.setScalar(0.4);
+      rocket.current.position.y = y + NOZZLE_LIFT;
+      rocket.current.scale.setScalar(ROCKET_SCALE);
     }
     if (flame.current) {
       const burning = !showRig && body.flame > 0.02;
@@ -222,7 +247,7 @@ function Picture({ orbit }: { orbit: RefObject<OrbitRig | null> }) {
     }
     if (ground.current) {
       ground.current.visible = !showRig;
-      ground.current.position.y = viewY(0, scene, knobs) - 0.62;
+      ground.current.position.y = viewY(0, scene, knobs);
     }
   });
 
@@ -233,6 +258,8 @@ function Picture({ orbit }: { orbit: RefObject<OrbitRig | null> }) {
   function onPointerDown(event: { clientY: number; stopPropagation: () => void }) {
     void unlock();
     event.stopPropagation();
+    onBodyDrag?.();
+    gl.domElement.style.cursor = "ns-resize";
     release.current?.();
     const controls = orbit.current;
     if (controls) controls.enabled = false;
@@ -249,6 +276,7 @@ function Picture({ orbit }: { orbit: RefObject<OrbitRig | null> }) {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       if (controls) controls.enabled = true;
+      gl.domElement.style.cursor = "grab";
       if (release.current === up) release.current = null;
     };
     release.current = up;
@@ -283,6 +311,13 @@ function Picture({ orbit }: { orbit: RefObject<OrbitRig | null> }) {
           radius={0.035}
           smoothness={3}
           onPointerDown={onPointerDown}
+          onPointerOver={(event) => {
+            event.stopPropagation();
+            gl.domElement.style.cursor = "ns-resize";
+          }}
+          onPointerOut={() => {
+            gl.domElement.style.cursor = "grab";
+          }}
         >
           <meshPhysicalMaterial color={GOLD} metalness={0.48} roughness={0.32} />
           <mesh position={[DAMPER_X, MASS_H / 2, 0]}>
@@ -295,15 +330,86 @@ function Picture({ orbit }: { orbit: RefObject<OrbitRig | null> }) {
       <group
         ref={rocket}
         visible={false}
-        scale={0.4}
+        scale={ROCKET_SCALE}
         onPointerDown={onPointerDown}
+        onPointerOver={(event) => {
+          event.stopPropagation();
+          gl.domElement.style.cursor = "ns-resize";
+        }}
+        onPointerOut={() => {
+          gl.domElement.style.cursor = "grab";
+        }}
       >
         <Rocket flameRef={flame} flameMat={flameMat} />
       </group>
 
-      <mesh ref={ground} visible={false} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[2.4, 40]} />
-        <meshStandardMaterial color="#070707" roughness={1} metalness={0} />
+      <group ref={ground} visible={false}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.42, 40]} />
+          <meshStandardMaterial color="#1a1c1b" roughness={1} metalness={0} />
+        </mesh>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
+          <ringGeometry args={[0.42, 0.62, 48]} />
+          <meshBasicMaterial color="#6d7c76" />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+function StageGuide() {
+  const scene = useScene();
+  const knobs = useKnobs();
+  const rig = scene === "state" || scene === "step";
+  const span = viewSpan(scene, knobs);
+  const restY = viewY(0, scene, knobs);
+  const groundY = viewY(0, scene, knobs);
+  const topY = viewY(span.max, scene, knobs);
+  const ticks = altitudeTicks(span.min, span.max);
+  const now = useRef<Mesh>(null);
+
+  useFrame(() => {
+    if (!now.current) return;
+    const current = getScene();
+    const show = current !== "state" && current !== "step";
+    now.current.visible = show;
+    if (!show) return;
+    const height = bodyAt(current, getTime(), getKnobs()).height;
+    now.current.position.y = viewY(height, current, getKnobs());
+  });
+
+  if (rig) {
+    return (
+      <group position={[0, restY, 0.28]}>
+        <mesh>
+          <boxGeometry args={[1.8, 0.008, 0.008]} />
+          <meshBasicMaterial color="#6d7c76" />
+        </mesh>
+      </group>
+    );
+  }
+
+  const spanY = Math.max(0.2, topY - groundY);
+  return (
+    <group>
+      <mesh position={[-1.15, groundY + spanY / 2, 0]}>
+        <boxGeometry args={[0.008, spanY, 0.008]} />
+        <meshBasicMaterial color="#6d7c76" />
+      </mesh>
+      {ticks.map((meter) => {
+        const y = viewY(meter, scene, knobs);
+        return (
+          <group key={meter} position={[-1.15, y, 0]}>
+            <mesh position={[0.08, 0, 0]}>
+              <boxGeometry args={[0.14, 0.008, 0.008]} />
+              <meshBasicMaterial color="#6d7c76" />
+            </mesh>
+          </group>
+        );
+      })}
+      <mesh ref={now} position={[-1.15, groundY, 0]}>
+        <boxGeometry args={[0.28, 0.016, 0.012]} />
+        <meshBasicMaterial color="#e2a43a" />
       </mesh>
     </group>
   );
@@ -326,11 +432,19 @@ function FirstFrame({ target }: { target: [number, number, number] }) {
   return null;
 }
 
-export function Viewport() {
+export function Viewport({ onBodyDrag }: { onBodyDrag?: () => void }) {
   const orbit = useRef<OrbitRig | null>(null);
 
   return (
-    <Canvas camera={CAMERA} gl={{ antialias: true, alpha: false }} onCreated={({ gl }) => gl.setClearColor(NIGHT, 1)}>
+    <Canvas
+      camera={CAMERA}
+      gl={{ antialias: true, alpha: false }}
+      style={{ cursor: "grab" }}
+      onCreated={({ gl }) => {
+        gl.setClearColor(NIGHT, 1);
+        gl.domElement.style.cursor = "grab";
+      }}
+    >
       <color attach="background" args={[NIGHT]} />
       <ambientLight intensity={0.38} />
       <directionalLight position={[4, 6, 3]} intensity={3.4} color="#fff6ea" />
@@ -341,7 +455,8 @@ export function Viewport() {
         <Lightformer form="rect" intensity={1.3} color="#ffffff" position={[0, 3.4, -2]} scale={[5, 1.4, 1]} />
       </Environment>
       <FirstFrame target={TARGET} />
-      <Picture orbit={orbit} />
+      <Picture orbit={orbit} onBodyDrag={onBodyDrag} />
+      <StageGuide />
       <OrbitControls ref={orbit} enablePan={false} minPolarAngle={POLAR} maxPolarAngle={POLAR} target={TARGET} />
     </Canvas>
   );

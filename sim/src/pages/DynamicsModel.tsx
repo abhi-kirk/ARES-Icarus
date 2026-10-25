@@ -2,17 +2,27 @@ import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChartView } from "../ChartView";
 import { ChatDock } from "../chat/ChatDock";
-import { liveOption } from "../chartOption";
+import { liveOption, liveSeriesColor } from "../chartOption";
 import { CHAPTERS, chapterForSceneId, pathForEntry, readyScenesInChapter } from "../catalog";
 import { Essay } from "../Essay";
 import { pathForScene } from "../paths";
-import { durationOf, knobOf, readout, sceneById, type SceneId } from "../scenes";
+import { dragHint, durationOf, knobsOf, readout, sceneById, type SceneId } from "../scenes";
 import { SCENE_VEIL_IN_MS, SCENE_VEIL_OUT_MS, sceneMotionOk } from "../sceneTransition";
 import { setKnob, setTime, togglePlay, useKnobs, usePlaying, useScene, useTime } from "../sceneStore";
 import { soundOn, toggleSound, unlock } from "../sound";
 import { clampSplit, defaultSplit, loadSplit, saveSplit } from "../splitPane";
 import { visit } from "../route";
 import { Viewport } from "../Viewport";
+
+const HINT_KEY = "icarus-drag-hint";
+
+function hintStillOn(): boolean {
+  try {
+    return sessionStorage.getItem(HINT_KEY) !== "1";
+  } catch {
+    return true;
+  }
+}
 
 export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const time = useTime();
@@ -28,8 +38,37 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
     return { id: item.id, title: item.title, href: pathForEntry(item.slug, first.slug) };
   }).filter(Boolean) as { id: string; title: string; href: string }[];
   const live = useMemo(() => liveOption(scene, knobs, time), [scene, knobs, time]);
-  const knob = knobOf(scene, knobs);
-  const lines = readout(scene, time, knobs);
+  const controls = knobsOf(scene, knobs);
+  const lines = readout(scene, time, knobs).map((line) => ({
+    ...line,
+    color: line.column ? liveSeriesColor(scene, line.column) : null,
+  }));
+  const [hintOn, setHintOn] = useState(hintStillOn);
+  const forgetHint = useCallback(() => {
+    setHintOn(false);
+    try {
+      sessionStorage.setItem(HINT_KEY, "1");
+    } catch {
+      // The hint can stay for this visit if storage is blocked.
+    }
+  }, []);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.code !== "Space") return;
+      const target = event.target;
+      if (target instanceof HTMLElement) {
+        const tag = target.tagName;
+        if (tag === "BUTTON" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) return;
+        if (target instanceof HTMLInputElement && target.type !== "range") return;
+      }
+      event.preventDefault();
+      void unlock();
+      togglePlay();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const [hear, setHear] = useState(soundOn);
   const [stageVeil, setStageVeil] = useState(false);
   const sceneSwitchRef = useRef<number | null>(null);
@@ -193,10 +232,13 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
         }}
       />
 
-      <section className="stage">
+      <section className={open ? "stage is-asking" : "stage"}>
         <div className="viewport">
           <div className="viewport-stack">
-            <Viewport />
+            <div className="picture">
+              <Viewport onBodyDrag={forgetHint} />
+              {hintOn ? <p className="drag-hint">{dragHint(scene)}</p> : null}
+            </div>
             <div className="controls">
               <div className="slider-row">
                 <label htmlFor="time">Time</label>
@@ -215,7 +257,7 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
                   </button>
                   <button
                     type="button"
-                    className="play"
+                    className="play sound"
                     aria-label={hear ? "Sound" : "Muted"}
                     aria-pressed={hear}
                     onClick={() => setHear(toggleSound())}
@@ -230,6 +272,7 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
                   max={durationOf(scene)}
                   step={0.01}
                   value={time}
+                  aria-valuetext={lines[0]?.text}
                   onChange={(event) => {
                     void unlock();
                     setTime(Number(event.target.value));
@@ -237,23 +280,31 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
                 />
                 <output>
                   {lines.map((line) => (
-                    <span key={line.text} className={line.gold ? "gold" : undefined}>
-                      {line.text}
+                    <span key={line.name} style={line.color ? { color: line.color } : undefined}>
+                      {line.name === "Time" ? (
+                        line.text
+                      ) : (
+                        <>
+                          <span className="readout-name">{line.name}</span>
+                          {line.text}
+                        </>
+                      )}
                     </span>
                   ))}
                 </output>
               </div>
-              {knob ? (
-                <div className="slider-row">
-                  <label htmlFor="knob">{knob.label}</label>
+              {controls.map((knob) => (
+                <div className="slider-row" key={knob.key}>
+                  <label htmlFor={`knob-${knob.key}`}>{knob.label}</label>
                   <span />
                   <input
-                    id="knob"
+                    id={`knob-${knob.key}`}
                     type="range"
                     min={knob.min}
                     max={knob.max}
                     step={knob.step}
                     value={knob.value}
+                    aria-valuetext={knob.show}
                     onChange={(event) => setKnob(knob.key, Number(event.target.value))}
                   />
                   <output>
@@ -261,9 +312,17 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
                     {knob.aside ? <span className="gold">{knob.aside}</span> : null}
                   </output>
                 </div>
-              ) : null}
+              ))}
             </div>
-            <ChartView option={live} layoutKey={readingPx} sceneKey={scene} />
+            <ChartView
+              option={live}
+              layoutKey={readingPx}
+              sceneKey={scene}
+              onScrub={(next) => {
+                void unlock();
+                setTime(next);
+              }}
+            />
             <div className={stageVeil ? "stage-veil is-active" : "stage-veil"} aria-hidden />
           </div>
         </div>

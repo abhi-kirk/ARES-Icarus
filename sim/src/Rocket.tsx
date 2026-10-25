@@ -8,6 +8,18 @@ import type { Mesh, ShaderMaterial } from "three";
 
 const BODY_R = 0.11;
 const FIN_Y = 0.78;
+const ENGINE_Y = -1.12;
+const CENTER_BELL = 1.12;
+const BELL_PROFILE = [
+  new Vector2(0.012, 0.015),
+  new Vector2(0.016, 0),
+  new Vector2(0.022, -0.035),
+  new Vector2(0.03, -0.075),
+  new Vector2(0.036, -0.105),
+];
+
+// Mesh y of the center nozzle. The origin of this model is the center of mass.
+export const NOZZLE_Y = ENGINE_Y + Math.min(...BELL_PROFILE.map((point) => point.y)) * CENTER_BELL;
 
 const PAINT = "#f3f4f5";
 const SOOT = "#c4c0b6";
@@ -16,14 +28,7 @@ const TITANIUM = "#9a9188";
 const BELL = "#8d8478";
 
 function bellGeometry(): LatheGeometry {
-  const profile = [
-    new Vector2(0.012, 0.015),
-    new Vector2(0.016, 0),
-    new Vector2(0.022, -0.035),
-    new Vector2(0.03, -0.075),
-    new Vector2(0.036, -0.105),
-  ];
-  return new LatheGeometry(profile, 18);
+  return new LatheGeometry(BELL_PROFILE, 18);
 }
 
 function GridFin() {
@@ -53,7 +58,7 @@ function GridFin() {
 }
 
 function Engines({ geometry }: { geometry: LatheGeometry }) {
-  const seats = [{ x: 0, z: 0, scale: 1.12 }];
+  const seats = [{ x: 0, z: 0, scale: CENTER_BELL }];
   for (let i = 0; i < 8; i++) {
     const angle = (i + 0.5) * (Math.PI / 4);
     seats.push({
@@ -64,7 +69,7 @@ function Engines({ geometry }: { geometry: LatheGeometry }) {
   }
 
   return (
-    <group position={[0, -1.12, 0]}>
+    <group position={[0, ENGINE_Y, 0]}>
       {seats.map((seat, index) => (
         <mesh key={index} position={[seat.x, 0, seat.z]} scale={seat.scale} geometry={geometry}>
           <meshPhysicalMaterial color={BELL} metalness={0.78} roughness={0.32} />

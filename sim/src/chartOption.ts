@@ -1,5 +1,5 @@
 import type { EChartsOption } from "echarts";
-import { axisOf, chartMarkers, columnLabel, durationOf, plotOf, rowsFor, sceneById, type Column, type Knobs, type SceneId } from "./scenes";
+import { axisOf, chartMarkers, columnLabel, columnUnit, durationOf, plotOf, rowsFor, sceneById, type Column, type Knobs, type SceneId } from "./scenes";
 
 const GOLD = "#e2a43a";
 const INK = "#d7ded8";
@@ -25,6 +25,13 @@ function dataColorIndex(columns: Column[], index: number): number {
   return slot;
 }
 
+export function liveSeriesColor(scene: SceneId, column: Column): string | null {
+  const columns = sceneById(scene).live;
+  const index = columns.indexOf(column);
+  if (index < 0) return null;
+  return seriesLook(columns, index).color;
+}
+
 function seriesLook(columns: Column[], index: number): { color: string; width: number; kind: LineKind } {
   const column = columns[index];
   if (MUTED_COLUMNS.has(column)) {
@@ -40,20 +47,43 @@ function seriesLook(columns: Column[], index: number): { color: string; width: n
 
 function formatAxisValue(value: number): string {
   const abs = Math.abs(value);
+  if (abs < 5e-4) return "0";
   if (abs >= 100) return value.toFixed(0);
   if (abs >= 10) return value.toFixed(1);
   if (abs >= 1) return value.toFixed(2);
   return value.toFixed(3);
 }
 
+const LIVE_WINDOW_S = 1;
+
+export function liveDomain(scene: SceneId, time: number): number {
+  const duration = durationOf(scene);
+  const minimum = Math.min(duration, LIVE_WINDOW_S);
+  if (time <= minimum) return minimum;
+  return Math.min(duration, time);
+}
+
 export function liveOption(scene: SceneId, knobs: Knobs, time: number): EChartsOption {
   const spec = sceneById(scene);
-  return option(scene, spec.live, knobs, time, spec.chartTitle, time, false);
+  return option(scene, spec.live, knobs, time, spec.chartTitle, time, false, liveDomain(scene, time), true);
 }
 
 export function chartOption(scene: SceneId, knobs: Knobs, columns: Column[], title: string, mark: number, x?: Column): EChartsOption {
   if (x) return phaseOption(scene, knobs, x, columns, title, mark);
   return option(scene, columns, knobs, durationOf(scene), title, mark);
+}
+
+function axisUnit(series: { column: Column; axis: number }[], axisIndex: number): string {
+  const units = new Set<string>();
+  for (const item of series) {
+    if (item.axis !== axisIndex) continue;
+    const unit = columnUnit(item.column);
+    if (unit === "unitless") continue;
+    if (unit === "m/s2") units.add("m/s²");
+    else units.add(unit);
+  }
+  if (units.size !== 1) return "";
+  return [...units][0];
 }
 
 function option(
@@ -64,11 +94,51 @@ function option(
   title: string,
   mark: number,
   interactive = true,
+  xMax = durationOf(scene),
+  tip = false,
 ): EChartsOption {
   const series = plotOf(scene, columns, knobs, until);
   const axis = axisOf(scene, columns, knobs);
   const hasSecond = series.some((item) => item.axis === 1);
-  const markers = chartMarkers(scene, knobs).filter((item) => item.t <= durationOf(scene));
+  const leftUnit = axisUnit(series, 0);
+  const rightUnit = axisUnit(series, 1);
+  const markers = chartMarkers(scene, knobs).filter((item) => item.t <= xMax + 1e-9);
+  const labelFont = { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 10 };
+  const axisLabel = { ...labelFont, formatter: (value: number) => formatAxisValue(value) };
+  // A hidden 0-to-1 axis sticks around and steals the series, so only the
+  // scales a series actually uses go into the chart.
+  const yAxis: EChartsOption["yAxis"] = [
+    {
+      id: "y",
+      type: "value",
+      min: axis.y[0],
+      max: axis.y[1],
+      name: leftUnit,
+      nameLocation: "middle",
+      nameGap: 40,
+      nameTextStyle: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 11 },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel,
+      splitLine: { lineStyle: { color: GRID } },
+    },
+  ];
+  if (hasSecond && axis.y2) {
+    yAxis.push({
+      id: "y2",
+      type: "value",
+      min: axis.y2[0],
+      max: axis.y2[1],
+      name: rightUnit,
+      nameLocation: "middle",
+      nameGap: 40,
+      nameTextStyle: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 11 },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel,
+      splitLine: { show: false },
+    });
+  }
 
   return {
     animation: false,
@@ -92,7 +162,12 @@ function option(
       itemHeight: 5,
       itemGap: 18,
     },
-    grid: { left: 52, right: hasSecond ? 52 : 16, top: 48, bottom: 32 },
+    grid: {
+      left: leftUnit ? 64 : 52,
+      right: hasSecond ? (rightUnit ? 64 : 52) : 16,
+      top: 52,
+      bottom: 36,
+    },
     tooltip: interactive ? {
       trigger: "axis",
       confine: true,
@@ -141,37 +216,17 @@ function option(
     xAxis: {
       type: "value",
       min: 0,
-      max: durationOf(scene),
+      max: xMax,
       name: "t (s)",
       nameLocation: "middle",
       nameGap: 22,
       nameTextStyle: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 11 },
       axisLine: { lineStyle: { color: GRID } },
       axisTick: { show: false },
-      axisLabel: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 10 },
+      axisLabel,
       splitLine: { lineStyle: { color: GRID } },
     },
-    yAxis: [
-      {
-        type: "value",
-        min: axis.y[0],
-        max: axis.y[1],
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 10 },
-        splitLine: { lineStyle: { color: GRID } },
-      },
-      {
-        type: "value",
-        min: axis.y2 ? axis.y2[0] : 0,
-        max: axis.y2 ? axis.y2[1] : 1,
-        show: Boolean(axis.y2),
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 10 },
-        splitLine: { show: false },
-      },
-    ],
+    yAxis,
     color: [...STAGE_DATA_COLORS],
     series: series.map((item, index) => {
       const look = seriesLook(columns, index);
@@ -184,20 +239,47 @@ function option(
       color: look.color,
       itemStyle: { color: look.color },
       lineStyle: { color: look.color, width: look.width, type: look.kind },
+      markPoint:
+        tip && item.points.length
+          ? {
+              silent: true,
+              symbol: "circle",
+              symbolSize: 8,
+              itemStyle: { color: look.color },
+              label: { show: false },
+              data: [{ name: "", coord: item.points[item.points.length - 1] }],
+            }
+          : undefined,
       markLine:
         index === 0
           ? {
               silent: true,
               symbol: "none",
               lineStyle: { color: GOLD, type: "solid" as const, width: 1 },
-              label: { show: false, color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 10 },
+              label: { ...labelFont, show: false },
               data: [
-                { xAxis: mark },
-                ...markers.map((item) => ({
-                  xAxis: item.t,
-                  name: item.label,
+                {
+                  xAxis: mark,
+                  label: {
+                    show: true,
+                    formatter: `${formatAxisValue(mark)} s`,
+                    position: "insideEndTop" as const,
+                    color: GOLD,
+                    fontFamily: "Fragment Mono, monospace",
+                    fontSize: 10,
+                  },
+                },
+                ...markers.map((marker) => ({
+                  xAxis: marker.t,
+                  name: marker.label,
                   lineStyle: { color: GRID, type: "dashed" as const, width: 1 },
-                  label: { show: item.label !== "sample", formatter: item.label, position: "insideEndTop" as const },
+                  label: {
+                    show: marker.label !== "sample",
+                    formatter: marker.label,
+                    position: "start" as const,
+                    distance: 8,
+                    ...labelFont,
+                  },
                 })),
               ],
             }

@@ -183,7 +183,7 @@ export const SCENES: {
     id: "engine",
     name: "The engine",
     title: "The engine",
-    lede: "The command jumps, and the pale line is what you asked for while the gold line is what the engine does. Height and rate follow from that thrust. Drag the rocket to change the lag, and the slider sets the command input.",
+    lede: "The command jumps, and the pale line is what you asked for while the gold line is what the engine does. Height and rate follow from that thrust. Drag the rocket to change the lag.",
     opener: "The command is an input. The gold line is thrust the engine makes. Height and rate are the state. Ask me what a symbol means, or set a lag.",
     live: ["actual", "command"],
     askable: ["actual", "command", "height", "rate", "accel"],
@@ -596,6 +596,9 @@ export function seriesPoints(id: SceneId, column: Column, knobs: Knobs, until: n
 
 export function plotOf(id: SceneId, columns: Column[], knobs: Knobs, until: number): PlotSeries[] {
   const primaryUnit = COLUMNS[columns[0] ?? "height"].unit;
+  // Height and rate on the spring share one scale. Splitting them by unit
+  // would park the rate on an axis that is not drawn.
+  const shareScale = id === "state";
   return columns.map((column) => ({
     name: COLUMNS[column].label,
     column,
@@ -611,7 +614,7 @@ export function plotOf(id: SceneId, columns: Column[], knobs: Knobs, until: numb
       column === "measured" ||
       column === "discrete",
     points: seriesPoints(id, column, knobs, until),
-    axis: COLUMNS[column].unit === primaryUnit ? 0 : 1,
+    axis: shareScale || COLUMNS[column].unit === primaryUnit ? 0 : 1,
   }));
 }
 
@@ -634,9 +637,12 @@ function pad(values: number[], includeZero: boolean): [number, number] {
     hi = Math.max(hi, 0);
   }
   const span = hi - lo || 1;
-  lo -= span * 0.08;
-  hi += span * 0.08;
-  return nice(lo, hi);
+  let padLo = lo - span * 0.08;
+  let padHi = hi + span * 0.08;
+  // A trace that never crosses zero should not grow a large empty side.
+  if (lo >= 0) padLo = 0;
+  if (hi <= 0) padHi = 0;
+  return nice(padLo, padHi);
 }
 
 function nice(lo: number, hi: number): [number, number] {
@@ -653,135 +659,121 @@ function nice(lo: number, hi: number): [number, number] {
   return [Math.round(start * 1000) / 1000, Math.round(end * 1000) / 1000];
 }
 
-export function readout(id: SceneId, t: number, knobs: Knobs): { text: string; gold: boolean }[] {
+export type ReadoutLine = { name: string; text: string; column?: Column };
+
+export function readout(id: SceneId, t: number, knobs: Knobs): ReadoutLine[] {
   if (id === "state") {
     return [
-      { text: `${t.toFixed(2)} s`, gold: false },
-      { text: `${springHeight(t).toFixed(2)} m`, gold: false },
-      { text: `${springRate(t).toFixed(2)} m/s`, gold: true },
+      { name: "Time", text: `${t.toFixed(2)} s` },
+      { name: "Height", text: `${springHeight(t).toFixed(2)} m`, column: "height" },
+      { name: "Rate", text: `${springRate(t).toFixed(2)} m/s`, column: "rate" },
     ];
   }
   if (id === "step") {
     return [
-      { text: `${t.toFixed(2)} s`, gold: false },
-      { text: `${steppedHeight(t, knobs.dt).toFixed(2)} m`, gold: true },
-      { text: `${springHeight(t).toFixed(2)} true`, gold: false },
+      { name: "Time", text: `${t.toFixed(2)} s` },
+      { name: "Step", text: `${steppedHeight(t, knobs.dt).toFixed(2)} m`, column: "stepped" },
+      { name: "True", text: `${springHeight(t).toFixed(2)} m`, column: "truth" },
     ];
   }
   const row = rowAt(rowsFor(id, knobs), t);
   if (id === "mass") {
     return [
-      { text: `${t.toFixed(2)} s`, gold: false },
-      { text: `${row.height.toFixed(1)} m`, gold: false },
-      { text: `${row.rate.toFixed(1)} m/s`, gold: true },
+      { name: "Time", text: `${t.toFixed(2)} s` },
+      { name: "Height", text: `${row.height.toFixed(1)} m`, column: "height" },
+      { name: "Rate", text: `${row.rate.toFixed(1)} m/s`, column: "rate" },
     ];
   }
   if (isLoopScene(id)) {
     return [
-      { text: `${t.toFixed(2)} s`, gold: false },
-      { text: `${row.height.toFixed(2)} m`, gold: false },
-      { text: `${row.rate.toFixed(2)} m/s`, gold: true },
+      { name: "Time", text: `${t.toFixed(2)} s` },
+      { name: "Height", text: `${row.height.toFixed(2)} m`, column: "height" },
+      { name: "Rate", text: `${row.rate.toFixed(2)} m/s`, column: "rate" },
     ];
   }
   return [
-    { text: `${t.toFixed(2)} s`, gold: false },
-    { text: `${row.height.toFixed(1)} m`, gold: false },
-    { text: `${row.rate.toFixed(1)} m/s`, gold: true },
-    { text: `${row.actual.toFixed(0)} N`, gold: false },
+    { name: "Time", text: `${t.toFixed(2)} s` },
+    { name: "Height", text: `${row.height.toFixed(1)} m`, column: "height" },
+    { name: "Rate", text: `${row.rate.toFixed(1)} m/s`, column: "rate" },
+    { name: "Actual", text: `${row.actual.toFixed(0)} N`, column: "actual" },
   ];
 }
 
-export function knobOf(
-  id: SceneId,
-  knobs: Knobs,
-): { key: KnobKey; label: string; value: number; min: number; max: number; step: number; show: string; aside?: string } | null {
+export type KnobControl = {
+  key: KnobKey;
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  show: string;
+  aside?: string;
+};
+
+function knob(
+  key: KnobKey,
+  label: string,
+  value: number,
+  min: number,
+  max: number,
+  step: number,
+  show: string,
+  aside?: string,
+): KnobControl {
+  return { key, label, value, min, max, step, show, aside };
+}
+
+export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
   if (id === "step") {
-    return { key: "dt", label: "Step", value: knobs.dt, min: LIMITS.dt.min, max: LIMITS.dt.max, step: 0.05, show: `${knobs.dt.toFixed(2)} s` };
+    return [knob("dt", "Step", knobs.dt, LIMITS.dt.min, LIMITS.dt.max, 0.05, `${knobs.dt.toFixed(2)} s`)];
   }
   if (id === "mass") {
-    return { key: "thrust", label: "Thrust", value: knobs.thrust, min: LIMITS.thrust.min, max: LIMITS.thrust.max, step: 1, show: `${knobs.thrust.toFixed(0)} N` };
+    return [knob("thrust", "Thrust", knobs.thrust, LIMITS.thrust.min, LIMITS.thrust.max, 1, `${knobs.thrust.toFixed(0)} N`)];
   }
   if (id === "engine") {
-    return {
-      key: "ask",
-      label: "Ask",
-      value: knobs.ask,
-      min: LIMITS.ask.min,
-      max: LIMITS.ask.max,
-      step: 1,
-      show: `${knobs.ask.toFixed(0)} N`,
-      aside: `lag ${knobs.tau.toFixed(2)} s`,
-    };
+    return [
+      knob("ask", "Command", knobs.ask, LIMITS.ask.min, LIMITS.ask.max, 1, `${knobs.ask.toFixed(0)} N`),
+      knob("tau", "Lag", knobs.tau, LIMITS.tau.min, LIMITS.tau.max, 0.01, `${knobs.tau.toFixed(2)} s`),
+    ];
   }
   if (id === "loopOpen") {
-    return {
-      key: "extraThrust",
-      label: "Extra",
-      value: knobs.extraThrust,
-      min: LIMITS.extraThrust.min,
-      max: LIMITS.extraThrust.max,
-      step: 1,
-      show: `${knobs.extraThrust.toFixed(0)} N`,
-    };
+    return [knob("extraThrust", "Extra", knobs.extraThrust, LIMITS.extraThrust.min, LIMITS.extraThrust.max, 1, `${knobs.extraThrust.toFixed(0)} N`)];
   }
   if (id === "loopError") {
-    return {
-      key: "kp",
-      label: "Gain",
-      value: knobs.kp,
-      min: LIMITS.kp.min,
-      max: LIMITS.kp.max,
-      step: 1,
-      show: `Kp ${knobs.kp.toFixed(0)}`,
-      aside: `Ki ${knobs.ki.toFixed(0)} Kd ${knobs.kd.toFixed(0)}`,
-    };
+    return [
+      knob(
+        "kp",
+        "Gain",
+        knobs.kp,
+        LIMITS.kp.min,
+        LIMITS.kp.max,
+        1,
+        `Kp ${knobs.kp.toFixed(0)}`,
+        `Ki ${knobs.ki.toFixed(0)} Kd ${knobs.kd.toFixed(0)}`,
+      ),
+    ];
   }
   if (id === "loopEquil") {
-    return {
-      key: "perturb",
-      label: "Offset",
-      value: knobs.perturb,
-      min: LIMITS.perturb.min,
-      max: LIMITS.perturb.max,
-      step: 0.02,
-      show: `${knobs.perturb.toFixed(2)} m`,
-    };
+    return [knob("perturb", "Offset", knobs.perturb, LIMITS.perturb.min, LIMITS.perturb.max, 0.02, `${knobs.perturb.toFixed(2)} m`)];
   }
   if (id === "loopHover") {
-    return {
-      key: "unstable",
-      label: "Open μ",
-      value: knobs.unstable,
-      min: LIMITS.unstable.min,
-      max: LIMITS.unstable.max,
-      step: 0.1,
-      show: `${knobs.unstable.toFixed(1)}`,
-    };
+    return [knob("unstable", "Open μ", knobs.unstable, LIMITS.unstable.min, LIMITS.unstable.max, 0.1, `${knobs.unstable.toFixed(1)}`)];
   }
   if (id === "loopMode") {
-    return {
-      key: "coupling",
-      label: "Coupling",
-      value: knobs.coupling,
-      min: LIMITS.coupling.min,
-      max: LIMITS.coupling.max,
-      step: 0.02,
-      show: `${knobs.coupling.toFixed(2)}`,
-    };
+    return [knob("coupling", "Coupling", knobs.coupling, LIMITS.coupling.min, LIMITS.coupling.max, 0.02, `${knobs.coupling.toFixed(2)}`)];
   }
   if (id === "loopSample") {
-    return {
-      key: "dt",
-      label: "Sample",
-      value: knobs.dt,
-      min: LIMITS.dt.min,
-      max: LIMITS.dt.max,
-      step: 0.01,
-      show: `${knobs.dt.toFixed(2)} s`,
-      aside: `delay ${knobs.tau.toFixed(2)} s`,
-    };
+    return [
+      knob("dt", "Sample", knobs.dt, LIMITS.dt.min, LIMITS.dt.max, 0.01, `${knobs.dt.toFixed(2)} s`),
+      knob("tau", "Delay", knobs.tau, LIMITS.tau.min, LIMITS.tau.max, 0.01, `${knobs.tau.toFixed(2)} s`),
+    ];
   }
-  return null;
+  return [];
+}
+
+export function dragHint(id: SceneId): string {
+  if (id === "state" || id === "step") return "Drag the mass";
+  return "Drag the rocket";
 }
 
 export function viewSpan(id: SceneId, knobs: Knobs): { min: number; max: number } {

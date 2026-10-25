@@ -58,7 +58,7 @@ export function lessonContext(scene: SceneId, knobs: Knobs, time: number, blockI
     model: chatBrief(scene, knobs),
     visual: visualContext(scene),
     time,
-    readout: readout(scene, time, knobs).map((item) => item.text),
+    readout: readout(scene, time, knobs).map((item) => `${item.name} ${item.text}`),
     columns: chartColumns(scene).map((column) => ({
       id: column,
       name: columnName(column),

@@ -12,7 +12,7 @@ let rumbleFilter: BiquadFilterNode | null = null;
 let tone: OscillatorNode | null = null;
 let toneGain: GainNode | null = null;
 let frame = 0;
-let enabled = true;
+let enabled = false;
 
 export function soundOn(): boolean {
   return enabled;
