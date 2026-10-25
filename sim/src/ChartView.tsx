@@ -2,7 +2,15 @@ import { useEffect, useRef } from "react";
 import * as echarts from "echarts";
 import type { EChartsOption } from "echarts";
 
-export function ChartView({ option, layoutKey }: { option: EChartsOption; layoutKey?: number }) {
+export function ChartView({
+  option,
+  layoutKey,
+  sceneKey,
+}: {
+  option: EChartsOption;
+  layoutKey?: number;
+  sceneKey?: string;
+}) {
   const host = useRef<HTMLDivElement>(null);
   const chart = useRef<echarts.ECharts | null>(null);
 
@@ -25,6 +33,14 @@ export function ChartView({ option, layoutKey }: { option: EChartsOption; layout
   useEffect(() => {
     chart.current?.setOption(option, { notMerge: false, lazyUpdate: true });
   }, [option]);
+
+  useEffect(() => {
+    if (!sceneKey || !chart.current) return;
+    chart.current.setOption(
+      { animation: true, animationDuration: 220, animationEasing: "cubicOut" },
+      { notMerge: false, lazyUpdate: true },
+    );
+  }, [sceneKey]);
 
   useEffect(() => {
     if (layoutKey === undefined) return;

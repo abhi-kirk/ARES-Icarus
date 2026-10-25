@@ -14,6 +14,7 @@ import { soundOn, toggleSound, unlock } from "./sound";
 import { isDynamicsPath, pathForScene, redirectForPath, sceneFromPath } from "./paths";
 import { usePath, visit } from "./route";
 import { clampSplit, defaultSplit, loadSplit, saveSplit } from "./splitPane";
+import { SCENE_VEIL_IN_MS, SCENE_VEIL_OUT_MS, sceneMotionOk } from "./sceneTransition";
 
 export function App() {
   const path = usePath();
@@ -54,6 +55,9 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
   const knob = knobOf(scene, knobs);
   const lines = readout(scene, time, knobs);
   const [hear, setHear] = useState(soundOn);
+  const [stageVeil, setStageVeil] = useState(false);
+  const sceneSwitchRef = useRef<number | null>(null);
+  const sceneSwitchGen = useRef(0);
   const [prompts, setPrompts] = useState<Record<string, string>>({});
   const remember = useCallback((id: string, prompt: string) => {
     setPrompts((prev) => (prev[id] === prompt ? prev : { ...prev, [id]: prompt }));
@@ -62,6 +66,12 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
   useEffect(() => {
     setPrompts({});
   }, [scene]);
+
+  useEffect(() => {
+    return () => {
+      if (sceneSwitchRef.current !== null) window.clearTimeout(sceneSwitchRef.current);
+    };
+  }, []);
 
   const question = Object.values(prompts).filter(Boolean).join("\n");
 
@@ -121,7 +131,25 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   function openScene(id: SceneId) {
     if (id === scene) return;
-    visit(pathForScene(id));
+    if (sceneSwitchRef.current !== null) window.clearTimeout(sceneSwitchRef.current);
+
+    if (!sceneMotionOk()) {
+      visit(pathForScene(id));
+      return;
+    }
+
+    const gen = sceneSwitchGen.current + 1;
+    sceneSwitchGen.current = gen;
+    setStageVeil(true);
+    sceneSwitchRef.current = window.setTimeout(() => {
+      if (sceneSwitchGen.current !== gen) return;
+      visit(pathForScene(id));
+      sceneSwitchRef.current = window.setTimeout(() => {
+        if (sceneSwitchGen.current !== gen) return;
+        setStageVeil(false);
+        sceneSwitchRef.current = null;
+      }, SCENE_VEIL_OUT_MS);
+    }, SCENE_VEIL_IN_MS);
   }
 
   return (
@@ -178,6 +206,7 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
 
         <section className="stage">
           <div className="viewport">
+            <div className="viewport-stack">
             <Viewport />
             <div className="controls">
               <div className="slider-row">
@@ -245,7 +274,9 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </div>
               ) : null}
             </div>
-            <ChartView option={live} layoutKey={readingPx} />
+            <ChartView option={live} layoutKey={readingPx} sceneKey={scene} />
+            <div className={stageVeil ? "stage-veil is-active" : "stage-veil"} aria-hidden />
+            </div>
           </div>
           <ChatDock open={open} onClose={onClose} question={question} />
         </section>
