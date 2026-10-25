@@ -7,7 +7,7 @@ export const DOORS = [
   {
     id: "dynamics",
     name: "Rocket Dynamics",
-    href: "/model",
+    href: "/dynamics/state/spring",
     blurb: `Learn the fundamentals of Rocket dynamics.`,
   },
   {

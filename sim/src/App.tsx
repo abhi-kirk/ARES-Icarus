@@ -7,24 +7,36 @@ import { Landing } from "./Landing";
 import { TopBar } from "./TopBar";
 import { Viewport } from "./Viewport";
 import { liveOption } from "./chartOption";
-import { chatBrief, durationOf, knobOf, readout, sceneById, SCENES, type SceneId } from "./scenes";
+import { chapterForSceneId, readyScenesInChapter } from "./catalog";
+import { chatBrief, durationOf, knobOf, readout, sceneById, type SceneId } from "./scenes";
 import { setKnob, setScene, setTime, togglePlay, useKnobs, usePlaying, useScene, useTime } from "./sceneStore";
 import { soundOn, toggleSound, unlock } from "./sound";
-import { usePath } from "./route";
+import { isDynamicsPath, pathForScene, redirectForPath, sceneFromPath } from "./paths";
+import { usePath, visit } from "./route";
 
 export function App() {
   const path = usePath();
-  const model = path === "/model";
+  const dynamics = isDynamicsPath(path) || redirectForPath(path) !== null;
   const [asking, setAsking] = useState(false);
 
   useEffect(() => {
-    document.title = model ? "Icarus · Rocket Dynamics" : "Icarus";
-  }, [model]);
+    const redirect = redirectForPath(path);
+    if (redirect) {
+      visit(redirect);
+      return;
+    }
+    const sceneId = sceneFromPath(path);
+    if (sceneId) setScene(sceneId);
+  }, [path]);
+
+  useEffect(() => {
+    document.title = dynamics ? "Icarus · Rocket Dynamics" : "Icarus";
+  }, [dynamics]);
 
   return (
-    <div className={model ? "site" : "site is-cover"}>
-      <TopBar model={model} asking={asking} onAsk={() => setAsking((open) => !open)} />
-      {model ? <Model open={asking} onClose={() => setAsking(false)} /> : <Landing />}
+    <div className={dynamics ? "site" : "site is-cover"}>
+      <TopBar dynamics={dynamics} asking={asking} onAsk={() => setAsking((open) => !open)} />
+      {dynamics ? <Model open={asking} onClose={() => setAsking(false)} /> : <Landing />}
     </div>
   );
 }
@@ -35,6 +47,8 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
   const knobs = useKnobs();
   const playing = usePlaying();
   const spec = sceneById(scene);
+  const chapter = chapterForSceneId(scene);
+  const beats = readyScenesInChapter(chapter.id);
   const live = useMemo(() => liveOption(scene, knobs, time), [scene, knobs, time]);
   const knob = knobOf(scene, knobs);
   const lines = readout(scene, time, knobs);
@@ -52,7 +66,7 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   function openScene(id: SceneId) {
     if (id === scene) return;
-    setScene(id);
+    visit(pathForScene(id));
   }
 
   return (
@@ -60,11 +74,17 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
       <div className="frame">
         <main className="reading">
           <header className="reading-head">
+            <p className="meta">{chapter.title}</p>
             <h1>{spec.title}</h1>
             <p className="lede">{spec.lede}</p>
             <nav className="beats" aria-label="Scenes">
-              {SCENES.map((item, index) => (
-                <button key={item.id} type="button" aria-current={item.id === scene ? "page" : undefined} onClick={() => openScene(item.id)}>
+              {beats.map((item, index) => (
+                <button
+                  key={item.sceneId}
+                  type="button"
+                  aria-current={item.sceneId === scene ? "page" : undefined}
+                  onClick={() => openScene(item.sceneId)}
+                >
                   <span className="num">0{index + 1}</span>
                   {item.name}
                 </button>

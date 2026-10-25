@@ -3,11 +3,11 @@ import { COMING_SOON, DOORS } from "./doors";
 import { follow } from "./route";
 
 export function TopBar({
-  model,
+  dynamics,
   asking,
   onAsk,
 }: {
-  model: boolean;
+  dynamics: boolean;
   asking: boolean;
   onAsk: () => void;
 }) {
@@ -24,7 +24,7 @@ export function TopBar({
             door.href ? (
               <a
                 key={door.id}
-                className={model && door.href === "/model" ? "nav-link is-current" : "nav-link"}
+                className={dynamics && door.id === "dynamics" ? "nav-link is-current" : "nav-link"}
                 href={door.href}
                 onClick={(event) => {
                   setNote("");
@@ -43,7 +43,7 @@ export function TopBar({
         </nav>
       </div>
       <div className="bar-end">
-        {model ? (
+        {dynamics ? (
           <button type="button" className="ask" aria-pressed={asking} onClick={onAsk}>
             {asking ? "Close" : "Ask"}
           </button>
