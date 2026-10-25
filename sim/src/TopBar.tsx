@@ -44,7 +44,7 @@ export function TopBar({
       </div>
       <div className="bar-end">
         {dynamics ? (
-          <button type="button" className="ask" aria-pressed={asking} onClick={onAsk}>
+          <button type="button" className="ask" data-ask-toggle aria-pressed={asking} onClick={onAsk}>
             {asking ? "Close" : "Ask"}
           </button>
         ) : null}

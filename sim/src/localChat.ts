@@ -49,7 +49,7 @@ export function localTurn(text: string, time: number, scene: SceneId, knobs: Kno
 
   if (/\b(who are you|what are you|your name|what is icarus|what is this page|what is this site)\b/.test(lower)) {
     return {
-      text: "I am Icarus. This page is Rocket Dynamics, four pictures of a changing state. The landing simulator is the other half of the site. Ask me about the picture in front of you.",
+      text: "I am Icarus. Rocket Dynamics is where you learn rocket dynamics fundamentals. Simulator is for vertical landing sims and says Coming Soon on the home page. Ask me about the lesson you are on, or the ideas behind it.",
     };
   }
 
@@ -103,7 +103,11 @@ export function localTurn(text: string, time: number, scene: SceneId, knobs: Kno
     return { text: explain(scene, number, knobs), time: number };
   }
 
-  if (wants(lower, ["what", "why", "explain", "state", "rate", "height"])) {
+  // Readout at the current slider time, not general fundamentals (those need Grok).
+  if (
+    wants(lower, ["right now", "at this time", "beside the slider", "readout", "on the chart"]) ||
+    (wants(lower, ["what is the", "what's the"]) && wants(lower, ["height", "rate", "mass", "thrust", "accel", "line"]))
+  ) {
     return { text: explain(scene, time, knobs) };
   }
 

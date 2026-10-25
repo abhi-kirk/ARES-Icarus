@@ -167,7 +167,7 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
             </div>
             <ChartView option={live} />
           </div>
-          <ChatDock key={scene} open={open} onClose={onClose} question={question} />
+          <ChatDock open={open} onClose={onClose} question={question} />
         </section>
       </div>
     </>

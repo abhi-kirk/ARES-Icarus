@@ -495,7 +495,7 @@ body {
   right: 0;
   bottom: 0;
   z-index: 6;
-  width: min(26rem, 100%);
+  width: min(34rem, 100%);
   display: flex;
   background: var(--steel);
   color: var(--ink);
@@ -520,8 +520,20 @@ body {
 
 .drawer-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: 0.75rem;
+  flex: none;
+}
+
+.drawer-headings {
+  min-width: 0;
+}
+
+.drawer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
   flex: none;
 }
 
@@ -529,6 +541,34 @@ body {
   margin: 0;
   font-weight: 500;
   letter-spacing: -0.03em;
+}
+
+.chat-context {
+  margin: 0.2rem 0 0;
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.chat-tool {
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  padding: 0.15rem 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.chat-tool:hover { color: var(--ink); }
+
+.chat-tool:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .drawer .thread {
@@ -553,9 +593,187 @@ body {
 
 .thread p { margin: 0; line-height: 1.45; }
 
-.thread .user p { font-weight: 600; }
+.chat-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 100%;
+}
 
-.thread .chart { height: 11rem; margin-top: 0.4rem; }
+.chat-turn.is-user {
+  align-items: flex-end;
+}
+
+.chat-turn.is-assistant {
+  align-items: flex-start;
+}
+
+.chat-label {
+  margin: 0;
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.chat-bubble {
+  position: relative;
+  max-width: 92%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--hairline);
+  line-height: 1.45;
+}
+
+.chat-turn.is-user .chat-bubble {
+  background: rgba(245, 245, 245, 0.06);
+  border-color: rgba(245, 245, 245, 0.22);
+}
+
+.chat-turn.is-assistant .chat-bubble {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.chat-bubble-tools {
+  display: flex;
+  gap: 0.65rem;
+  margin-top: 0.45rem;
+}
+
+.chat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chat-chip {
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.65rem;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--hairline);
+  padding: 0.25rem 0.45rem;
+  cursor: pointer;
+}
+
+.chat-chip:hover { border-color: var(--ink); }
+
+.chat-chart {
+  width: 100%;
+  margin-top: 0.35rem;
+}
+
+.chat-chart .chart {
+  height: 11rem;
+}
+
+.chat-chart.is-tall .chart {
+  height: 18rem;
+}
+
+.chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1rem 0.5rem 0.5rem;
+  color: var(--muted);
+}
+
+.chat-mark {
+  width: 5.5rem;
+  height: auto;
+  color: var(--ink);
+  opacity: 0.14;
+  margin-bottom: 0.75rem;
+}
+
+.chat-empty-lede {
+  margin: 0;
+  max-width: 22rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.chat-starters {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.chat-starter {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 0.92rem;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--hairline);
+  padding: 0.5rem 0.65rem;
+  cursor: pointer;
+  line-height: 1.35;
+}
+
+.chat-starter:hover { border-color: var(--ink); }
+
+.chat-lessons {
+  margin-top: 1.2rem;
+  width: 100%;
+}
+
+.chat-lesson-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-top: 0.45rem;
+}
+
+.chat-lesson-link {
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.65rem;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--hairline);
+  padding: 0.25rem 0.45rem;
+  cursor: pointer;
+}
+
+.chat-lesson-link:hover { border-color: var(--ink); }
+
+.chat-thinking {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.chat-dots::after {
+  content: "";
+  animation: chat-dots 1.2s steps(4, end) infinite;
+}
+
+@keyframes chat-dots {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75%, 100% { content: "..."; }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 .composer {
   display: grid;
@@ -565,19 +783,17 @@ body {
   margin-top: 0.8rem;
 }
 
-.composer button {
-  font-family: "Fragment Mono", ui-monospace, monospace;
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.composer-send {
+  display: grid;
+  place-items: center;
   color: var(--ink);
   background: transparent;
   border: 1px solid var(--hairline);
-  padding: 0.45rem 0.7rem;
+  padding: 0.45rem 0.55rem;
   cursor: pointer;
 }
 
-.composer button:hover { border-color: var(--ink); }
+.composer-send:hover { border-color: var(--ink); }
 
 .prompt-label {
   display: block;
@@ -588,44 +804,45 @@ body {
   color: var(--muted);
 }
 
-.field {
-  position: relative;
+.field-textarea {
   display: block;
+  margin-top: 0.4rem;
+  border: 1px solid var(--hairline);
+  padding: 0.45rem 0.55rem;
 }
 
-.composer input {
+.composer-field {
+  display: block;
+  min-width: 0;
+}
+
+.composer textarea {
   display: block;
   width: 100%;
-  margin-top: 0.4rem;
-  padding: 0.45rem 0;
+  min-width: 0;
+  min-height: 2.6rem;
+  max-height: 8rem;
+  resize: vertical;
   border: none;
-  border-bottom: 1px solid var(--ink);
   background: transparent;
   color: var(--ink);
   font: inherit;
-  font-size: 1.05rem;
+  font-size: 1.02rem;
+  line-height: 1.45;
 }
 
-.ghost {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0.4rem;
-  padding: 0.45rem 0;
+.composer textarea::placeholder {
   color: var(--muted);
-  pointer-events: none;
-  font-size: 1.05rem;
-  white-space: nowrap;
-  overflow: hidden;
 }
 
-.composer input:focus-visible,
+.composer textarea:focus-visible,
 .qa-answer input:focus-visible,
 .slider-row input:focus-visible,
 .beats button:focus-visible,
 .qa-trigger:focus-visible,
 .qa-refresh:focus-visible,
 .qa-answer button:focus-visible,
+.composer-send:focus-visible,
 .info:focus-visible,
 .play:focus-visible {
   outline: 2px solid var(--focus);

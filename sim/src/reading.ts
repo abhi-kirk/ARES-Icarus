@@ -17,7 +17,6 @@ export type Block = {
 
 export type Reading = {
   blocks: Block[];
-  placeholder: string;
 };
 
 export const READING: Record<SceneId, Reading> = {
@@ -54,7 +53,6 @@ export const READING: Record<SceneId, Reading> = {
         ],
       },
     ],
-    placeholder: "What does $v$ stand for?",
   },
   step: {
     blocks: [
@@ -74,7 +72,6 @@ export const READING: Record<SceneId, Reading> = {
         ],
       },
     ],
-    placeholder: "What does the subscript $n$ mean?",
   },
   mass: {
     blocks: [
@@ -106,7 +103,6 @@ export const READING: Record<SceneId, Reading> = {
         ],
       },
     ],
-    placeholder: "What is $m$ at $2\\,\\mathrm{s}$?",
   },
   engine: {
     blocks: [
@@ -136,7 +132,6 @@ export const READING: Record<SceneId, Reading> = {
         ],
       },
     ],
-    placeholder: "What does $\\tau$ do?",
   },
 };
 

@@ -1,5 +1,7 @@
-import { grokText, missingKey, readJson } from "./grok";
+import { chatDisplayFromPartial, parseChatReply } from "./chatParse";
+import { grokStreamDeltas, grokText, missingKey, readJson } from "./grok";
 import { levelById } from "./levels";
+import { buildChatInstructions, buildChatUserMessage } from "./prompts";
 import type { ChatRequest, GradeResponse, QuestionResponse, TutorRequest } from "./types";
 
 const QUESTION = `You write one question about the picture the reader is looking at.
@@ -9,14 +11,6 @@ The prompt uses $...$ around symbols and short equations. No em dashes. Do not i
 const GRADE = `You grade one short answer about the picture.
 Reply with JSON only: {"correct": boolean, "note": string}.
 note is one sentence. If the answer is wrong, say what is true in a calm tone, without saying the reader failed. If it is right, confirm why. Use $...$ around symbols. No em dashes.`;
-
-const CHAT = `You are Icarus, the guide on this site. Icarus shows how a rocket comes down. This page is the model: one scene at a time, with a picture, a chart, and a clock.
-Reply with JSON only: {"text": string, "t": number or null, "chart": {"title": string, "y": string[]} or null}.
-Speak as yourself, in the first person. If the reader asks who you are, or what this site is, say you are Icarus, that the site is Rocket Dynamics and a landing simulator, and that this page is Rocket Dynamics. Do not recite the scene's equations unless they asked about the picture or a symbol.
-text is one to three sentences. Use $...$ around symbols. No em dashes.
-Set t only when they should be moved to a time. Set chart only when they asked to see a series, and only with allowed columns.
-Do not invent samples. The page fills the chart from its own buffer.
-Questions on the cards are for the reader to try. Do not answer those, and do not say whether they are right. You may define a symbol, move the time, or plot an allowed series.`;
 
 async function question(key: string, level: NonNullable<ReturnType<typeof levelById>>, body: TutorRequest): Promise<Response> {
   if (body.op !== "question") return Response.json({ error: "Unknown request" }, { status: 400 });
@@ -65,12 +59,40 @@ export async function handleTutor(request: Request, key: string | undefined): Pr
 export async function handleChat(request: Request, key: string | undefined): Promise<Response> {
   if (!key) return missingKey();
   const body = (await request.json()) as ChatRequest;
-  const question = body.question?.trim() ? clip(body.question, 500) : "(none on the card yet)";
-  const user = `The reader is on Rocket Dynamics, a page of Icarus.\nScene: ${clip(body.brief ?? "", 1200)}\nCurrent time is ${body.t ?? 0} seconds.\nQuestion on the card, which you must not answer: ${question}\nThe reader said: ${clip(body.text ?? "", 800)}`;
-  try {
-    const raw = await grokText(key, CHAT, user, "low");
-    return Response.json(readJson(raw));
-  } catch {
-    return Response.json({ error: "Grok request failed" }, { status: 502 });
-  }
+  const card = body.question?.trim() ? clip(body.question, 500) : "None yet.";
+  const instructions = buildChatInstructions();
+  const user = buildChatUserMessage({
+    brief: clip(body.brief ?? "", 1200),
+    time: body.t ?? 0,
+    cardQuestion: card,
+    readerMessage: clip(body.text ?? "", 800),
+  });
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const enc = new TextEncoder();
+      let raw = "";
+      try {
+        for await (const delta of grokStreamDeltas(key, instructions, user, "low")) {
+          raw += delta;
+          const partial = chatDisplayFromPartial(raw);
+          controller.enqueue(enc.encode(`data: ${JSON.stringify({ partial })}\n\n`));
+        }
+        const reply = parseChatReply(raw);
+        controller.enqueue(enc.encode(`data: ${JSON.stringify({ done: true, ...reply })}\n\n`));
+        controller.close();
+      } catch {
+        controller.enqueue(enc.encode(`data: ${JSON.stringify({ error: "Grok request failed" })}\n\n`));
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+    },
+  });
 }

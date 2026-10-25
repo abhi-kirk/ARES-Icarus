@@ -27,3 +27,9 @@ export type ChatRequest = {
   brief: string;
   question?: string;
 };
+
+export type ChatReply = {
+  text: string;
+  t?: number | null;
+  chart?: { title: string; y: string[] } | null;
+};
