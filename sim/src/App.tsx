@@ -1,5 +1,5 @@
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChartView } from "./ChartView";
 import { ChatDock } from "./chat/ChatDock";
 import { Essay } from "./Essay";
@@ -13,6 +13,7 @@ import { setKnob, setScene, setTime, togglePlay, useKnobs, usePlaying, useScene,
 import { soundOn, toggleSound, unlock } from "./sound";
 import { isDynamicsPath, pathForScene, redirectForPath, sceneFromPath } from "./paths";
 import { usePath, visit } from "./route";
+import { clampSplit, defaultSplit, loadSplit, saveSplit } from "./splitPane";
 
 export function App() {
   const path = usePath();
@@ -64,6 +65,60 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   const question = Object.values(prompts).filter(Boolean).join("\n");
 
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [readingPx, setReadingPx] = useState(() => loadSplit() ?? 560);
+  const [resizing, setResizing] = useState(false);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    const stored = loadSplit();
+    const width = frame.getBoundingClientRect().width;
+    setReadingPx(stored !== null ? clampSplit(stored, width) : defaultSplit(width));
+  }, []);
+
+  useEffect(() => {
+    if (!resizing) return;
+    const frame = frameRef.current;
+    if (!frame) return;
+
+    const onMove = (event: PointerEvent) => {
+      const rect = frame.getBoundingClientRect();
+      setReadingPx(clampSplit(event.clientX - rect.left, rect.width));
+    };
+
+    const onUp = (event: PointerEvent) => {
+      setResizing(false);
+      const rect = frame.getBoundingClientRect();
+      const next = clampSplit(event.clientX - rect.left, rect.width);
+      setReadingPx(next);
+      saveSplit(next);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [resizing]);
+
+  useEffect(() => {
+    const onResize = () => {
+      const frame = frameRef.current;
+      if (!frame) return;
+      setReadingPx((prev) => clampSplit(prev, frame.getBoundingClientRect().width));
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
+  }, [readingPx]);
+
   function openScene(id: SceneId) {
     if (id === scene) return;
     visit(pathForScene(id));
@@ -71,7 +126,11 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   return (
     <>
-      <div className="frame">
+      <div
+        ref={frameRef}
+        className={resizing ? "frame is-resizing" : "frame"}
+        style={{ gridTemplateColumns: `${readingPx}px 6px minmax(0, 1fr)` }}
+      >
         <main className="reading">
           <header className="reading-head">
             <p className="meta">{chapter.title}</p>
@@ -95,6 +154,27 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
             <Essay scene={scene} brief={chatBrief(scene, knobs)} onPrompt={remember} />
           </div>
         </main>
+
+        <div
+          className="split-handle"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize reading panel"
+          aria-valuenow={Math.round(readingPx)}
+          onPointerDown={(event) => {
+            if (event.button !== 0) return;
+            event.preventDefault();
+            setResizing(true);
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }}
+          onDoubleClick={() => {
+            const frame = frameRef.current;
+            if (!frame) return;
+            const next = defaultSplit(frame.getBoundingClientRect().width);
+            setReadingPx(next);
+            saveSplit(next);
+          }}
+        />
 
         <section className="stage">
           <div className="viewport">
@@ -165,7 +245,7 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </div>
               ) : null}
             </div>
-            <ChartView option={live} />
+            <ChartView option={live} layoutKey={readingPx} />
           </div>
           <ChatDock open={open} onClose={onClose} question={question} />
         </section>
