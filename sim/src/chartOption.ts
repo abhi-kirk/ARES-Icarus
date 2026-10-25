@@ -65,7 +65,7 @@ export function liveDomain(scene: SceneId, time: number): number {
 
 export function liveOption(scene: SceneId, knobs: Knobs, time: number): EChartsOption {
   const spec = sceneById(scene);
-  return option(scene, spec.live, knobs, time, spec.chartTitle, time, false, liveDomain(scene, time), true);
+  return option(scene, spec.live, knobs, time, spec.chartTitle, time, true, liveDomain(scene, time), true);
 }
 
 export function chartOption(scene: SceneId, knobs: Knobs, columns: Column[], title: string, mark: number, x?: Column): EChartsOption {
@@ -169,6 +169,7 @@ function option(
       bottom: 36,
     },
     tooltip: interactive ? {
+      show: true,
       trigger: "axis",
       confine: true,
       backgroundColor: PANEL,
