@@ -213,7 +213,7 @@ export function ChatDock({
 
   function newChat() {
     if (sending) stopStream();
-    if (messages.length > 0 && !window.confirm("Start a new chat on this lesson?")) return;
+    if (messages.length > 0 && !window.confirm("Start a new chat on this scene?")) return;
     clearThread(path);
     setMessages([]);
     setDraft("");
@@ -269,7 +269,7 @@ export function ChatDock({
           {empty ? (
             <div className="chat-empty">
               <RocketMark />
-              <p className="chat-empty-lede">Ask about rocket fundamentals or this lesson. I can see the picture and chart on the page.</p>
+              <p className="chat-empty-lede">Ask about rocket fundamentals or this scene. I can see the picture and chart on the page.</p>
               <ul className="chat-starters">
                 {starters.map((line) => (
                   <li key={line}>
@@ -281,7 +281,7 @@ export function ChatDock({
               </ul>
               {siblings.length > 0 ? (
                 <div className="chat-lessons">
-                  <p className="meta">Other lessons in this chapter</p>
+                  <p className="meta">Other scenes in this chapter</p>
                   <div className="chat-lesson-links">
                     {siblings.map((item) =>
                       item.sceneId ? (

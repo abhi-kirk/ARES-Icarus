@@ -306,32 +306,36 @@ body {
   font-size: 0.68rem;
 }
 
-.block { margin-top: 1.8rem; }
+.scene-thread { margin-top: 1.9rem; }
 
-.block h2 {
+.scene-thread h2 {
   margin: 0;
   font-size: 1.35rem;
   font-weight: 500;
   letter-spacing: -0.03em;
 }
 
-.block-bridge,
-.chart-hint {
+.scene-thread-look,
+.scene-thread-trace {
   max-width: 36rem;
   line-height: 1.55;
 }
 
-.block-bridge {
+.scene-thread-look {
   margin: 0.45rem 0 0;
   color: var(--ink);
 }
 
-.chart-hint {
+.scene-thread-trace {
   margin: 0.65rem 0 0;
   color: var(--muted);
 }
 
 .essay figure { margin: 0; }
+
+.relation.is-contrast .formula {
+  color: var(--muted);
+}
 
 .formula-row {
   display: flex;

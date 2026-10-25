@@ -1,4 +1,4 @@
-import { readingFor, type Block } from "./reading";
+import { readingFor, type Thread } from "./reading";
 import {
   chartColumns,
   chatBrief,
@@ -23,29 +23,34 @@ export type LessonContext = {
   block?: {
     id: string;
     title: string;
-    objectives: string[];
-    visualCue?: string;
-    chartHint?: string;
-    notes: { tex: string; text: string; tip?: string }[];
+    focus: string[];
+    segments: string[];
   };
 };
 
-function blockContext(block: Block | undefined): LessonContext["block"] {
-  if (!block) return undefined;
+function segmentLine(thread: Thread, index: number): string {
+  const segment = thread.segments[index];
+  if (segment.kind === "look") return `Look: ${segment.text}`;
+  if (segment.kind === "trace") return `Trace: ${segment.text}`;
+  const label = segment.kind === "contrast" ? "Contrast" : "Relation";
+  const gloss = segment.gloss ? ` Gloss: ${segment.gloss}` : "";
+  return `${label}: ${segment.tex}. Stake: ${segment.stake}${gloss}`;
+}
+
+function threadContext(thread: Thread | undefined): LessonContext["block"] {
+  if (!thread) return undefined;
   return {
-    id: block.id,
-    title: block.title,
-    objectives: block.objectives ?? [],
-    visualCue: block.visualCue,
-    chartHint: block.chartHint,
-    notes: block.notes,
+    id: thread.id,
+    title: thread.title,
+    focus: thread.focus,
+    segments: thread.segments.map((_, index) => segmentLine(thread, index)),
   };
 }
 
 export function lessonContext(scene: SceneId, knobs: Knobs, time: number, blockId?: string): LessonContext {
   const spec = sceneById(scene);
   const page = readingFor(scene);
-  const block = blockId ? page.blocks.find((item) => item.id === blockId) : undefined;
+  const thread = blockId ? page.threads.find((item) => item.id === blockId) : undefined;
   return {
     sceneId: scene,
     title: spec.title,
@@ -59,7 +64,7 @@ export function lessonContext(scene: SceneId, knobs: Knobs, time: number, blockI
       name: columnName(column),
       label: columnLabel(column),
     })),
-    block: blockContext(block),
+    block: threadContext(thread),
   };
 }
 
@@ -76,15 +81,9 @@ export function renderLessonContext(context: LessonContext): string {
   ];
 
   if (context.block) {
-    lines.push(`Block: ${context.block.title}`);
-    if (context.block.objectives.length) lines.push(`Objectives: ${context.block.objectives.join(" | ")}`);
-    if (context.block.visualCue) lines.push(`Visual cue: ${context.block.visualCue}`);
-    if (context.block.chartHint) lines.push(`Chart hint: ${context.block.chartHint}`);
-    for (const note of context.block.notes) {
-      lines.push(`Equation: ${note.tex}`);
-      lines.push(`Caption: ${note.text}`);
-      if (note.tip) lines.push(`Symbol tip: ${note.tip}`);
-    }
+    lines.push(`Thread: ${context.block.title}`);
+    if (context.block.focus.length) lines.push(`Tutor focus: ${context.block.focus.join(" | ")}`);
+    for (const segment of context.block.segments) lines.push(segment);
   }
 
   return lines.join("\n");
