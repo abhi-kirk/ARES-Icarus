@@ -34,7 +34,7 @@ export const READING: Record<SceneId, Reading> = {
           },
           {
             tex: String.raw`\ddot{x} = -x`,
-            text: "The mass starts at rest, $1\\,\\mathrm{m}$ above the rest point.",
+            text: "The mass starts at rest, $1\\,\\mathrm{m}$ above the rest point. Those starting values are the initial conditions.",
           },
         ],
       },
@@ -46,6 +46,10 @@ export const READING: Record<SceneId, Reading> = {
             tex: String.raw`x = \cos t \qquad v = -\sin t`,
             text: "The height and the rate stay on this curve for the whole swing.",
             tip: String.raw`$x$ is the state, the height from rest. $v$ is the rate, in meters per second. $t$ is the clock on the slider.`,
+          },
+          {
+            tex: String.raw`(x,\, v)`,
+            text: "Plot height against rate and you trace one closed loop: a phase plane for this spring.",
           },
         ],
       },
@@ -85,8 +89,19 @@ export const READING: Record<SceneId, Reading> = {
           },
           {
             tex: String.raw`a = F/m - g`,
-            text: "Acceleration is thrust over mass, with gravity taken off.",
-            tip: String.raw`$F$ is the thrust on the slider, in newtons. $g$ is $9.81\,\mathrm{m/s^2}$. $a$ is the acceleration on the chart.`,
+            text: "Acceleration is thrust over mass, with gravity taken off. $F$ on the slider is an input you choose, not part of the state.",
+            tip: String.raw`$F$ is the thrust on the slider, in newtons. $g$ is $9.81\,\mathrm{m/s^2}$. $a$ is the acceleration you can ask the chart to plot.`,
+          },
+        ],
+      },
+      {
+        id: "integrate",
+        title: "Height and rate",
+        notes: [
+          {
+            tex: String.raw`\dot v = a \qquad \dot x = v`,
+            text: "Each little step adds $a\\,\\Delta t$ to the rate and $v\\,\\Delta t$ to the height. The chart shows $x$ and $v$; ask for acceleration or mass if you want those too.",
+            tip: String.raw`$x$ is height in meters, from the pad at zero. $v$ is the rate in meters per second. They start at zero on the pad.`,
           },
         ],
       },
@@ -101,12 +116,22 @@ export const READING: Record<SceneId, Reading> = {
         notes: [
           {
             tex: String.raw`\dot{F} = (u - F)/\tau`,
-            text: "The engine does not jump to the command, and dragging the rocket changes the lag.",
+            text: "The engine does not jump to the command. $u$ is an input; $F$ is what the engine is doing now. Dragging the rocket changes the lag.",
             tip: String.raw`$u$ is the command, the Ask slider. $F$ is the thrust the engine is making. $\tau$ is how many seconds that closing takes.`,
           },
           {
             tex: String.raw`0 \le F \le 50`,
             text: "After each little bit of lag, the thrust is held inside this range, so the pale line can ask for more while the gold line is $F$.",
+          },
+        ],
+      },
+      {
+        id: "motion",
+        title: "Height and rate",
+        notes: [
+          {
+            tex: String.raw`\dot v = F/m - g \qquad \dot x = v`,
+            text: "The same integration as the burn: thrust sets acceleration, and height and rate are the state. The readout beside the slider shows them while the live chart follows command and actual thrust.",
           },
         ],
       },

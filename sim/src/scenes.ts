@@ -97,17 +97,17 @@ export const SCENES: {
     id: "mass",
     name: "The burn",
     title: "The burn",
-    lede: "Thrust stays on while the tank empties, and at four seconds the tank is empty so the thrust stops. Drag the rocket to change the thrust.",
-    opener: "Thrust is on until the tank is empty. Ask me what a symbol means, or set a thrust.",
-    live: ["accel", "mass"],
-    chartTitle: "Acceleration and mass",
+    lede: "Thrust stays on while the tank empties, and at four seconds the tank is empty so the thrust stops. Height and rate come from integrating acceleration. Drag the rocket to change the thrust input.",
+    opener: "Height and rate are the state. Thrust is an input until the tank is empty. Ask me what a symbol means, or set a thrust.",
+    live: ["height", "rate"],
+    chartTitle: "Height and rate",
   },
   {
     id: "engine",
     name: "The engine",
     title: "The engine",
-    lede: "The command jumps, and the pale line is what you asked for while the gold line is what the engine does. Drag the rocket to change the lag, and the slider sets how hard you ask.",
-    opener: "The pale line is the command. The gold line is the engine. Ask me what a symbol means, or set a lag.",
+    lede: "The command jumps, and the pale line is what you asked for while the gold line is what the engine does. Height and rate follow from that thrust. Drag the rocket to change the lag, and the slider sets the command input.",
+    opener: "The command is an input. The gold line is thrust the engine makes. Height and rate are the state. Ask me what a symbol means, or set a lag.",
     live: ["actual", "command"],
     chartTitle: "Command and actual",
   },
@@ -235,6 +235,7 @@ function massRows(thrust: number): Row[] {
     const accel = pushing / mass - G;
     const row = blank(t);
     row.height = height;
+    row.rate = velocity;
     row.accel = accel;
     row.mass = mass;
     row.actual = pushing;
@@ -262,6 +263,7 @@ function engineRows(tau: number, ask: number): Row[] {
     const accel = thrust / mass - G;
     const row = blank(t);
     row.height = height;
+    row.rate = velocity;
     row.accel = accel;
     row.command = command;
     row.actual = thrust;
@@ -422,13 +424,14 @@ export function readout(id: SceneId, t: number, knobs: Knobs): { text: string; g
     return [
       { text: `${t.toFixed(2)} s`, gold: false },
       { text: `${row.height.toFixed(1)} m`, gold: false },
-      { text: `${row.accel.toFixed(1)} m/s²`, gold: true },
+      { text: `${row.rate.toFixed(1)} m/s`, gold: true },
     ];
   }
   return [
     { text: `${t.toFixed(2)} s`, gold: false },
     { text: `${row.height.toFixed(1)} m`, gold: false },
-    { text: `${row.actual.toFixed(0)} N`, gold: true },
+    { text: `${row.rate.toFixed(1)} m/s`, gold: true },
+    { text: `${row.actual.toFixed(0)} N`, gold: false },
   ];
 }
 
@@ -483,6 +486,8 @@ export function chatBrief(id: SceneId, knobs: Knobs): string {
   const scene = sceneById(id);
   if (id === "state") return `${scene.title}. Undamped spring, mass ${SPRING_M} kg, stiffness ${SPRING_K} N/m. Height from rest is cos(t) meters. Rate is -sin(t) meters per second. Allowed chart columns: height, rate.`;
   if (id === "step") return `${scene.title}. True height is cos(t). Stepped height is explicit Euler of the spring force with dt = ${knobs.dt.toFixed(2)} s. Allowed chart columns: stepped, truth.`;
-  if (id === "mass") return `${scene.title}. Thrust is ${knobs.thrust.toFixed(0)} N until t = ${BURN} s, then zero. Dry mass ${DRY} kg, fuel ${FUEL} kg. Allowed chart columns: accel, mass.`;
-  return `${scene.title}. Command steps to ${knobs.ask.toFixed(0)} N at ${ASK_AT} s. Lag is ${knobs.tau.toFixed(2)} s. Thrust is clamped to ${LIMIT} N after the lag. Allowed chart columns: command, actual.`;
+  if (id === "mass") {
+    return `${scene.title}. Thrust input is ${knobs.thrust.toFixed(0)} N until t = ${BURN} s, then zero. Dry mass ${DRY} kg, fuel ${FUEL} kg. Height and rate integrate acceleration. Allowed chart columns: height, rate, accel, mass.`;
+  }
+  return `${scene.title}. Command input steps to ${knobs.ask.toFixed(0)} N at ${ASK_AT} s. Lag is ${knobs.tau.toFixed(2)} s. Thrust is clamped to ${LIMIT} N. Height and rate integrate thrust. Allowed chart columns: height, rate, accel, command, actual.`;
 }

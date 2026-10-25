@@ -125,7 +125,7 @@ function explain(scene: SceneId, time: number, knobs: Knobs): string {
   }
   const row = rowAt(rowsFor(scene, knobs), time);
   if (scene === "mass") {
-    return `Thrust is $${knobs.thrust.toFixed(0)}\\,\\mathrm{N}$ while the tank has fuel. At $t = ${time.toFixed(2)}\\,\\mathrm{s}$ the mass is $m = ${row.mass.toFixed(2)}\\,\\mathrm{kg}$. Acceleration is the gold line.`;
+    return `Thrust input is $${knobs.thrust.toFixed(0)}\\,\\mathrm{N}$ while the tank has fuel. At $t = ${time.toFixed(2)}\\,\\mathrm{s}$, height is $${row.height.toFixed(2)}\\,\\mathrm{m}$ and rate is $${row.rate.toFixed(2)}\\,\\mathrm{m/s}$. Mass is $m = ${row.mass.toFixed(2)}\\,\\mathrm{kg}$.`;
   }
-  return `At $t = ${time.toFixed(2)}\\,\\mathrm{s}$ the pale line is the command and the gold line is the engine. The lag is $\\tau = ${knobs.tau.toFixed(2)}\\,\\mathrm{s}$.`;
+  return `At $t = ${time.toFixed(2)}\\,\\mathrm{s}$ the command is $${row.command.toFixed(0)}\\,\\mathrm{N}$ and thrust is $${row.actual.toFixed(0)}\\,\\mathrm{N}$. Height is $${row.height.toFixed(2)}\\,\\mathrm{m}$ and rate is $${row.rate.toFixed(2)}\\,\\mathrm{m/s}$. Lag is $\\tau = ${knobs.tau.toFixed(2)}\\,\\mathrm{s}$.`;
 }
