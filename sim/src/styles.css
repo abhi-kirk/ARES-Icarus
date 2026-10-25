@@ -315,6 +315,22 @@ body {
   letter-spacing: -0.03em;
 }
 
+.block-bridge,
+.chart-hint {
+  max-width: 36rem;
+  line-height: 1.55;
+}
+
+.block-bridge {
+  margin: 0.45rem 0 0;
+  color: var(--ink);
+}
+
+.chart-hint {
+  margin: 0.65rem 0 0;
+  color: var(--muted);
+}
+
 .essay figure { margin: 0; }
 
 .formula-row {
@@ -499,8 +515,10 @@ body {
   margin-top: 0.8rem;
 }
 
-.qa-answer input {
+.qa-answer textarea {
   width: 100%;
+  min-height: 2.25rem;
+  resize: vertical;
   padding: 0.45rem 0;
   border: none;
   border-bottom: 1px solid var(--ink);
@@ -508,6 +526,7 @@ body {
   color: var(--ink);
   font: inherit;
   font-size: 1.05rem;
+  line-height: 1.35;
 }
 
 .qa-answer button {
@@ -901,7 +920,7 @@ body {
 }
 
 .composer textarea:focus-visible,
-.qa-answer input:focus-visible,
+.qa-answer textarea:focus-visible,
 .split-handle:focus-visible {
   outline: none;
 }

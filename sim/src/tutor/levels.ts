@@ -4,17 +4,17 @@ export const LEVELS = [
   {
     id: "beginner",
     label: "Beginner",
-    aim: "Ask for one symbol or one number the reader can read off the picture or the equations. One sentence.",
+    aim: "Ask for one symbol, value, or visible relationship, and make the reader connect it to the picture or chart. One sentence.",
   },
   {
     id: "intermediate",
     label: "Intermediate",
-    aim: "Ask how two parts of the picture fit together. One or two sentences.",
+    aim: "Ask how an equation, the moving picture, and the chart fit together. One or two sentences.",
   },
   {
     id: "advanced",
     label: "Advanced",
-    aim: "Ask what changes if the reader moves a knob or waits. One or two sentences. Do not ask for a derivation.",
+    aim: "Ask the reader to predict what changes if a knob moves or the clock advances. One or two sentences. Do not ask for a derivation.",
   },
 ] as const;
 

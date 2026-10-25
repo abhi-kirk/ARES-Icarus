@@ -6,6 +6,7 @@ import { cachedPrompt, rememberPrompt } from "./cache";
 import { postJson } from "../tutor/client";
 import { LEVELS, type LevelId } from "../tutor/levels";
 import type { GradeResponse, QuestionResponse } from "../tutor/types";
+import type { LessonContext } from "../lessonContext";
 
 type Slot = {
   prompt: string;
@@ -19,11 +20,11 @@ const EMPTY: Slot = { prompt: "", draft: "", grade: null, error: "", busy: "" };
 
 export function QaCard({
   cacheKey,
-  brief,
+  context,
   onPrompt,
 }: {
   cacheKey: string;
-  brief: string;
+  context: LessonContext;
   onPrompt: (prompt: string) => void;
 }) {
   const [level, setLevel] = useState<LevelId>("beginner");
@@ -39,9 +40,9 @@ export function QaCard({
     }
     return next;
   });
-  const briefRef = useRef(brief);
+  const contextRef = useRef(context);
   const tickets = useRef<Record<LevelId, number>>({ beginner: 0, intermediate: 0, advanced: 0 });
-  briefRef.current = brief;
+  contextRef.current = context;
   const current = slots[level];
 
   const tell = useRef(onPrompt);
@@ -75,7 +76,7 @@ export function QaCard({
       const data = await postJson<QuestionResponse>("/api/tutor", {
         op: "question",
         level: id,
-        brief: briefRef.current,
+        context: contextRef.current,
         previous,
       });
       if (tickets.current[id] !== ticket) return;
@@ -98,7 +99,7 @@ export function QaCard({
       const data = await postJson<GradeResponse>("/api/tutor", {
         op: "grade",
         level: id,
-        brief: briefRef.current,
+        context: contextRef.current,
         question: current.prompt,
         answer,
       });
@@ -139,7 +140,8 @@ export function QaCard({
                 <MathText text={current.prompt} />
               </p>
               <div className="qa-answer">
-                <input
+                <textarea
+                  rows={level === "beginner" ? 1 : 3}
                   value={current.draft}
                   onChange={(event) => patch(level, { draft: event.target.value })}
                   aria-label="Your answer"

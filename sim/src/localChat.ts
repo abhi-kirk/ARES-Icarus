@@ -1,6 +1,6 @@
-import { clampNamed, columnName, columnWords, rowAt, rowsFor, sceneById, springHeight, type Column, type Knobs, type KnobKey, type SceneId } from "./scenes";
+import { chartColumns, clampNamed, columnName, columnWords, rowAt, rowsFor, sceneById, springHeight, type Column, type Knobs, type KnobKey, type SceneId } from "./scenes";
 
-export type ChartAsk = { title: string; y: Column[] };
+export type ChartAsk = { title: string; y: Column[]; x?: Column };
 
 export type LocalTurn = {
   text: string;
@@ -22,7 +22,14 @@ function readNumber(text: string): number | undefined {
 
 function plotTurn(text: string, scene: SceneId): LocalTurn {
   const spec = sceneById(scene);
-  const picked = spec.live.filter((column) => mentioned(text, column));
+  const allowed = chartColumns(scene);
+  const picked = allowed.filter((column) => mentioned(text, column));
+  if (scene === "state" && wants(text, ["phase", "phase plane", "against rate", "height against rate"])) {
+    return {
+      text: "Here is the state as a phase plot: rate against height. A point on this loop is the whole spring state.",
+      chart: { title: "Phase plane", x: "height", y: ["rate"] },
+    };
+  }
   const columns = picked.length ? picked : spec.live;
   const title = columns.length === spec.live.length ? spec.chartTitle : columns.map(labelOf).join(" and ");
   return {

@@ -1,17 +1,20 @@
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { Formula, MathText } from "./Formula";
 import { InfoTip } from "./InfoTip";
+import { lessonContext } from "./lessonContext";
 import { QaCard } from "./qa/QaCard";
 import { readingFor } from "./reading";
-import type { SceneId } from "./scenes";
+import type { Knobs, SceneId } from "./scenes";
 
 export function Essay({
   scene,
-  brief,
+  knobs,
+  time,
   onPrompt,
 }: {
   scene: SceneId;
-  brief: string;
+  knobs: Knobs;
+  time: number;
   onPrompt: (id: string, prompt: string) => void;
 }) {
   const page = readingFor(scene);
@@ -22,6 +25,11 @@ export function Essay({
       {page.blocks.map((block) => (
         <section className="block" key={`${scene}-${block.id}`}>
           <h2>{block.title}</h2>
+          {block.visualCue ? (
+            <p className="block-bridge prose">
+              <MathText text={block.visualCue} />
+            </p>
+          ) : null}
           {block.notes.map((note) => (
             <figure key={note.tex}>
               <div className="formula-row">
@@ -33,9 +41,14 @@ export function Essay({
               </figcaption>
             </figure>
           ))}
+          {block.chartHint ? (
+            <p className="chart-hint prose">
+              <MathText text={block.chartHint} />
+            </p>
+          ) : null}
           <QaCard
-            cacheKey={`${scene}-${block.id}`}
-            brief={`${brief}\nThis part is: ${block.title}.`}
+            cacheKey={`${scene}-${block.id}-${lessonContext(scene, knobs, time, block.id).model}`}
+            context={lessonContext(scene, knobs, time, block.id)}
             onPrompt={(prompt) => onPrompt(block.id, prompt)}
           />
         </section>

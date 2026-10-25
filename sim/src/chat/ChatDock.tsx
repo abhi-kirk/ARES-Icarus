@@ -4,10 +4,11 @@ import { chapterForSceneId, readyScenesInChapter } from "../catalog";
 import { ChartView } from "../ChartView";
 import { MathText } from "../Formula";
 import { chartOption } from "../chartOption";
+import { lessonContext } from "../lessonContext";
 import { localTurn } from "../localChat";
 import { pathForScene } from "../paths";
 import { usePath, visit } from "../route";
-import { chatBrief, sceneById, type Column, type SceneId } from "../scenes";
+import { chartColumns, sceneById, type Column, type SceneId } from "../scenes";
 import { setKnob, setTime, useKnobs, useScene, useTime } from "../sceneStore";
 import { postChatStream } from "../tutor/client";
 import { RocketMark } from "./RocketMark";
@@ -115,13 +116,13 @@ export function ChatDock({
         { id: nextId(), role: "assistant", text: "", pending: true },
       ]);
 
-      const allowed = new Set(spec.live);
+      const allowed = new Set(chartColumns(scene));
       const controller = new AbortController();
       abortRef.current = controller;
 
       try {
         const data = await postChatStream(
-          { text, t: time, brief: chatBrief(scene, knobs), question },
+          { text, t: time, context: lessonContext(scene, knobs, time), question },
           (partial) => {
             streamedRef.current = partial;
             setLiveText(partial);
@@ -130,8 +131,10 @@ export function ChatDock({
           controller.signal,
         );
         const columns = (data.chart?.y ?? []).filter((name): name is Column => allowed.has(name as Column));
-        const chart =
-          columns.length && data.chart ? { title: data.chart.title || "Chart", y: columns } : undefined;
+        const x = data.chart?.x && allowed.has(data.chart.x as Column) ? (data.chart.x as Column) : undefined;
+        const modelChart = columns.length && data.chart ? { title: data.chart.title || "Chart", y: columns, x } : undefined;
+        const localChart = !modelChart && /\b(plot|chart|graph|show)\b/i.test(text) ? localTurn(text, time, scene, knobs, question).chart : undefined;
+        const chart = modelChart ?? localChart;
         const replyText = data.text || streamedRef.current || "I could not read that reply.";
         const actions: Message["actions"] = {};
         if (typeof data.t === "number") actions.time = data.t;
@@ -149,7 +152,14 @@ export function ChatDock({
         } else {
           const streamed = streamedRef.current.trim();
           if (streamed) {
-            patchAssistant({ text: streamed, pending: false, failed: true });
+            const offline = localTurn(text, time, scene, knobs, question);
+            patchAssistant({
+              text: streamed,
+              chart: offline.chart,
+              pending: false,
+              failed: true,
+              actions: offline.time !== undefined || offline.chart ? { time: offline.time, chart: offline.chart } : undefined,
+            });
           } else {
             const offline = localTurn(text, time, scene, knobs, question);
             const message =
@@ -160,7 +170,13 @@ export function ChatDock({
                   : "Grok did not answer. Try again.";
             if (offline.knob) setKnob(offline.knob.key, offline.knob.value);
             if (offline.time !== undefined) setTime(offline.time);
-            patchAssistant({ text: message, pending: false, failed: true });
+            patchAssistant({
+              text: message,
+              chart: offline.chart,
+              pending: false,
+              failed: true,
+              actions: offline.time !== undefined || offline.chart ? { time: offline.time, chart: offline.chart } : undefined,
+            });
           }
           setLiveText("");
         }
@@ -169,7 +185,7 @@ export function ChatDock({
       abortRef.current = null;
       setSending(false);
     },
-    [knobs, question, scene, spec.live, spec.opener, time],
+    [knobs, question, scene, spec.opener, time],
   );
 
   function sendText(text: string) {
@@ -333,7 +349,7 @@ export function ChatDock({
               ) : null}
               {message.chart ? (
                 <div className={chartTall[message.id] ? "chat-chart is-tall" : "chat-chart"}>
-                  <ChartView option={chartOption(scene, knobs, message.chart.y, message.chart.title, time)} />
+                  <ChartView option={chartOption(scene, knobs, message.chart.y, message.chart.title, time, message.chart.x)} />
                   <button
                     type="button"
                     className="chat-tool"
