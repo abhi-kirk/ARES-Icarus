@@ -1,8 +1,19 @@
-// Rocket Dynamics. Four pictures, one clock.
-// Each scene has a claim, a knob you can drag, and the columns the chart is allowed to draw.
+// Rocket Dynamics. One clock per scene. Each scene has a claim, a knob you can drag, and chart columns.
+
+import { loopRowAt, loopRowsFor, LOOP_LIMIT, LOOP_M, LOOP_T0 } from "./loopPlant";
 
 
-export type SceneId = "state" | "step" | "mass" | "engine";
+export type SceneId =
+  | "state"
+  | "step"
+  | "mass"
+  | "engine"
+  | "loopOpen"
+  | "loopError"
+  | "loopEquil"
+  | "loopHover"
+  | "loopMode"
+  | "loopSample";
 
 export type Column =
   | "height"
@@ -12,7 +23,20 @@ export type Column =
   | "accel"
   | "mass"
   | "command"
-  | "actual";
+  | "actual"
+  | "reference"
+  | "pHeight"
+  | "iHeight"
+  | "dHeight"
+  | "nonlinear"
+  | "linear"
+  | "openHeight"
+  | "closedHeight"
+  | "measured"
+  | "hiddenMode"
+  | "continuous"
+  | "discrete"
+  | "thrust";
 
 export type Row = {
   t: number;
@@ -24,6 +48,19 @@ export type Row = {
   mass: number;
   command: number;
   actual: number;
+  reference: number;
+  pHeight: number;
+  iHeight: number;
+  dHeight: number;
+  nonlinear: number;
+  linear: number;
+  openHeight: number;
+  closedHeight: number;
+  measured: number;
+  hiddenMode: number;
+  continuous: number;
+  discrete: number;
+  thrust: number;
 };
 
 export type Knobs = {
@@ -31,13 +68,27 @@ export type Knobs = {
   thrust: number;
   tau: number;
   ask: number;
+  kp: number;
+  ki: number;
+  kd: number;
+  perturb: number;
+  unstable: number;
+  coupling: number;
+  extraThrust: number;
 };
 
 export const KNOBS: Knobs = {
   dt: 0.4,
   thrust: 40,
-  tau: 0.6,
+  tau: 0.35,
   ask: 90,
+  extraThrust: 15,
+  kp: 12,
+  ki: 8,
+  kd: 15,
+  perturb: 0.35,
+  unstable: 4,
+  coupling: 0.35,
 };
 
 // Undamped spring. Mass 1 kg, stiffness 1 N/m, so one swing takes 2π seconds.
@@ -52,13 +103,31 @@ const BURN = 4;
 const LIMIT = 50;
 const ASK_AT = 0.4;
 
-export type KnobKey = "dt" | "thrust" | "tau" | "ask";
+export type KnobKey =
+  | "dt"
+  | "thrust"
+  | "tau"
+  | "ask"
+  | "kp"
+  | "ki"
+  | "kd"
+  | "perturb"
+  | "unstable"
+  | "coupling"
+  | "extraThrust";
 
 const LIMITS: Record<KnobKey, { min: number; max: number }> = {
-  dt: { min: 0.05, max: 1 },
+  dt: { min: 0.05, max: 0.5 },
   thrust: { min: 20, max: 80 },
-  tau: { min: 0.08, max: 2 },
+  tau: { min: 0.05, max: 0.8 },
   ask: { min: 0, max: 120 },
+  extraThrust: { min: 0, max: 35 },
+  kp: { min: 4, max: 24 },
+  ki: { min: 2, max: 16 },
+  kd: { min: 4, max: 28 },
+  perturb: { min: 0.08, max: 0.8 },
+  unstable: { min: 2, max: 7 },
+  coupling: { min: 0.1, max: 0.7 },
 };
 
 export function clampNamed(key: KnobKey, value: number): number {
@@ -111,6 +180,60 @@ export const SCENES: {
     live: ["actual", "command"],
     chartTitle: "Command and actual",
   },
+  {
+    id: "loopOpen",
+    name: "Open loop",
+    title: "Open loop",
+    lede: "The planner picks a thrust schedule and the rocket follows it. Nothing measures height and pushes back on the command, so a fixed extra thrust after one second lets the rocket drift above the target.",
+    opener: "Reference height is what you want. Height is what happens with no feedback. Drag the rocket to change the extra thrust.",
+    live: ["reference", "height"],
+    chartTitle: "Reference and height",
+  },
+  {
+    id: "loopError",
+    name: "Three reactions to an error",
+    title: "Three reactions to an error",
+    lede: "The target height steps up at two seconds. Three controllers each use one idea: proportional to error, integral of error, or derivative through the rate. Compare how each shape responds.",
+    opener: "The gold lines are the three responses. Drag the rocket to change the proportional gain used in the P run.",
+    live: ["pHeight", "iHeight", "dHeight"],
+    chartTitle: "P, I, and D",
+  },
+  {
+    id: "loopEquil",
+    name: "Equilibrium and linearization",
+    title: "Equilibrium and linearization",
+    lede: "Near hover, the same closed-loop law is shown twice: the full thrust-height relation and the linearized one. For a small starting offset they stay on top of each other.",
+    opener: "Nonlinear is the real plant. Linear is the small-signal model. Drag the rocket to change the starting offset.",
+    live: ["nonlinear", "linear"],
+    chartTitle: "Nonlinear and linear",
+  },
+  {
+    id: "loopHover",
+    name: "Hover that is unstable and still lands",
+    title: "Hover that is unstable and still lands",
+    lede: "Open loop, a wrong-sign term makes height run away from equilibrium. With feedback on height, the same plant is driven to a landing profile and settles on the pad.",
+    opener: "Open loop diverges. Closed loop lands. Drag the rocket to change how unstable the open loop is.",
+    live: ["openHeight", "closedHeight"],
+    chartTitle: "Open loop and closed loop",
+  },
+  {
+    id: "loopMode",
+    name: "A mode you cannot steer or see",
+    title: "A mode you cannot steer or see",
+    lede: "Height is what you measure. A hidden flexible mode grows in the background while feedback only acts on height. The chart shows both so you can see what the sensor misses.",
+    opener: "Measured height is what the loop sees. Hidden mode is internal. Drag the rocket to change how strongly the mode pushes on motion.",
+    live: ["measured", "hiddenMode"],
+    chartTitle: "Measured and hidden mode",
+  },
+  {
+    id: "loopSample",
+    name: "Sample time and delay",
+    title: "Sample time and delay",
+    lede: "Continuous feedback updates every instant. Discrete feedback holds thrust between samples, and delay uses an old height reading. The same gains feel different on the chart.",
+    opener: "Continuous is the ideal loop. Discrete uses sample time and delay. Drag the rocket to change the lag on the delayed height.",
+    live: ["continuous", "discrete"],
+    chartTitle: "Continuous and discrete",
+  },
 ];
 
 export function sceneById(id: SceneId) {
@@ -122,13 +245,30 @@ export function sceneById(id: SceneId) {
 export function durationOf(id: SceneId): number {
   if (id === "state" || id === "step") return 2 * Math.PI;
   if (id === "mass") return 8;
+  if (id === "engine") return 5;
+  if (id === "loopOpen") return 10;
+  if (id === "loopError") return 14;
+  if (id === "loopEquil") return 10;
+  if (id === "loopHover") return 14;
+  if (id === "loopMode") return 12;
+  if (id === "loopSample") return 12;
   return 5;
+}
+
+export function isLoopScene(id: SceneId): boolean {
+  return id.startsWith("loop");
 }
 
 export function clampKnob(id: SceneId, value: number): number {
   if (id === "step") return clampNamed("dt", value);
   if (id === "mass") return clampNamed("thrust", value);
   if (id === "engine") return clampNamed("tau", value);
+  if (id === "loopSample") return clampNamed("tau", value);
+  if (id === "loopOpen") return clampNamed("extraThrust", value);
+  if (id === "loopError") return clampNamed("kp", value);
+  if (id === "loopEquil") return clampNamed("perturb", value);
+  if (id === "loopHover") return clampNamed("unstable", value);
+  if (id === "loopMode") return clampNamed("coupling", value);
   return value;
 }
 
@@ -147,6 +287,19 @@ function blank(t: number): Row {
     mass: 0,
     command: 0,
     actual: 0,
+    reference: 0,
+    pHeight: 0,
+    iHeight: 0,
+    dHeight: 0,
+    nonlinear: 0,
+    linear: 0,
+    openHeight: 0,
+    closedHeight: 0,
+    measured: 0,
+    hiddenMode: 0,
+    continuous: 0,
+    discrete: 0,
+    thrust: 0,
   };
 }
 
@@ -276,14 +429,42 @@ function engineRows(tau: number, ask: number): Row[] {
 
 let rowCache: { key: string; rows: Row[] } | null = null;
 
+function fromLoopRow(row: ReturnType<typeof loopRowAt>): Row {
+  return {
+    t: row.t,
+    height: row.height,
+    rate: row.rate,
+    stepped: 0,
+    truth: 0,
+    accel: 0,
+    mass: 0,
+    command: row.command,
+    actual: row.actual,
+    reference: row.reference,
+    pHeight: row.pHeight,
+    iHeight: row.iHeight,
+    dHeight: row.dHeight,
+    nonlinear: row.nonlinear,
+    linear: row.linear,
+    openHeight: row.openHeight,
+    closedHeight: row.closedHeight,
+    measured: row.measured,
+    hiddenMode: row.hiddenMode,
+    continuous: row.continuous,
+    discrete: row.discrete,
+    thrust: row.thrust,
+  };
+}
+
 export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
-  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}`;
+  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}`;
   if (rowCache && rowCache.key === key) return rowCache.rows;
 
   let rows: Row[];
   if (id === "state" || id === "step") rows = springRows();
   else if (id === "mass") rows = massRows(knobs.thrust);
-  else rows = engineRows(knobs.tau, knobs.ask);
+  else if (id === "engine") rows = engineRows(knobs.tau, knobs.ask);
+  else rows = loopRowsFor(id, knobs).map(fromLoopRow);
 
   rowCache = { key, rows };
   return rows;
@@ -311,6 +492,10 @@ export function bodyAt(id: SceneId, t: number, knobs: Knobs): { height: number; 
     const burning = t < BURN && knobs.thrust > 0;
     return { height: row.height, truth: row.height, flame: burning ? knobs.thrust / LIMITS.thrust.max : 0 };
   }
+  if (isLoopScene(id)) {
+    const thrust = row.actual || row.thrust || LOOP_T0;
+    return { height: row.height, truth: row.height, flame: Math.min(1, Math.max(0, (thrust - LOOP_T0 * 0.85) / (LOOP_LIMIT - LOOP_T0 * 0.85))) };
+  }
   return { height: row.height, truth: row.height, flame: row.actual / LIMIT };
 }
 
@@ -331,6 +516,19 @@ const COLUMNS: Record<Column, { name: string; label: string; words: string[] }> 
   mass: { name: "Mass", label: "Mass (kg)", words: ["mass", "weight", "tank"] },
   command: { name: "Command", label: "Command (N)", words: ["command", "ask"] },
   actual: { name: "Actual", label: "Actual (N)", words: ["actual", "thrust", "engine"] },
+  reference: { name: "Reference", label: "Reference (m)", words: ["reference", "target", "setpoint"] },
+  pHeight: { name: "P response", label: "P (m)", words: ["proportional", "p"] },
+  iHeight: { name: "I response", label: "I (m)", words: ["integral", "i"] },
+  dHeight: { name: "D response", label: "D (m)", words: ["derivative", "d"] },
+  nonlinear: { name: "Nonlinear", label: "Nonlinear (m)", words: ["nonlinear", "full"] },
+  linear: { name: "Linear", label: "Linear (m)", words: ["linear", "linearized"] },
+  openHeight: { name: "Open loop", label: "Open loop (m)", words: ["open", "unstable"] },
+  closedHeight: { name: "Closed loop", label: "Closed loop (m)", words: ["closed", "feedback"] },
+  measured: { name: "Measured", label: "Measured (m)", words: ["measured", "sensor"] },
+  hiddenMode: { name: "Hidden mode", label: "Hidden mode", words: ["hidden", "mode", "internal"] },
+  continuous: { name: "Continuous", label: "Continuous (m)", words: ["continuous", "analog"] },
+  discrete: { name: "Discrete", label: "Discrete (m)", words: ["discrete", "sample", "digital"] },
+  thrust: { name: "Thrust", label: "Thrust (N)", words: ["thrust", "force"] },
 };
 
 export function columnName(column: Column): string {
@@ -360,7 +558,17 @@ export function plotOf(id: SceneId, columns: Column[], knobs: Knobs, until: numb
   return columns.map((column) => ({
     name: COLUMNS[column].label,
     column,
-    gold: column === "rate" || column === "stepped" || column === "accel" || column === "actual",
+    gold:
+      column === "rate" ||
+      column === "stepped" ||
+      column === "accel" ||
+      column === "actual" ||
+      column === "height" ||
+      column === "pHeight" ||
+      column === "nonlinear" ||
+      column === "openHeight" ||
+      column === "measured" ||
+      column === "discrete",
     points: seriesPoints(id, column, knobs, until),
     axis: column === "mass" ? 1 : 0,
   }));
@@ -427,6 +635,13 @@ export function readout(id: SceneId, t: number, knobs: Knobs): { text: string; g
       { text: `${row.rate.toFixed(1)} m/s`, gold: true },
     ];
   }
+  if (isLoopScene(id)) {
+    return [
+      { text: `${t.toFixed(2)} s`, gold: false },
+      { text: `${row.height.toFixed(2)} m`, gold: false },
+      { text: `${row.rate.toFixed(2)} m/s`, gold: true },
+    ];
+  }
   return [
     { text: `${t.toFixed(2)} s`, gold: false },
     { text: `${row.height.toFixed(1)} m`, gold: false },
@@ -455,6 +670,74 @@ export function knobOf(
       step: 1,
       show: `${knobs.ask.toFixed(0)} N`,
       aside: `lag ${knobs.tau.toFixed(2)} s`,
+    };
+  }
+  if (id === "loopOpen") {
+    return {
+      key: "extraThrust",
+      label: "Extra",
+      value: knobs.extraThrust,
+      min: LIMITS.extraThrust.min,
+      max: LIMITS.extraThrust.max,
+      step: 1,
+      show: `${knobs.extraThrust.toFixed(0)} N`,
+    };
+  }
+  if (id === "loopError") {
+    return {
+      key: "kp",
+      label: "Gain",
+      value: knobs.kp,
+      min: LIMITS.kp.min,
+      max: LIMITS.kp.max,
+      step: 1,
+      show: `Kp ${knobs.kp.toFixed(0)}`,
+      aside: `Ki ${knobs.ki.toFixed(0)} Kd ${knobs.kd.toFixed(0)}`,
+    };
+  }
+  if (id === "loopEquil") {
+    return {
+      key: "perturb",
+      label: "Offset",
+      value: knobs.perturb,
+      min: LIMITS.perturb.min,
+      max: LIMITS.perturb.max,
+      step: 0.02,
+      show: `${knobs.perturb.toFixed(2)} m`,
+    };
+  }
+  if (id === "loopHover") {
+    return {
+      key: "unstable",
+      label: "Open μ",
+      value: knobs.unstable,
+      min: LIMITS.unstable.min,
+      max: LIMITS.unstable.max,
+      step: 0.1,
+      show: `${knobs.unstable.toFixed(1)}`,
+    };
+  }
+  if (id === "loopMode") {
+    return {
+      key: "coupling",
+      label: "Coupling",
+      value: knobs.coupling,
+      min: LIMITS.coupling.min,
+      max: LIMITS.coupling.max,
+      step: 0.02,
+      show: `${knobs.coupling.toFixed(2)}`,
+    };
+  }
+  if (id === "loopSample") {
+    return {
+      key: "dt",
+      label: "Sample",
+      value: knobs.dt,
+      min: LIMITS.dt.min,
+      max: LIMITS.dt.max,
+      step: 0.01,
+      show: `${knobs.dt.toFixed(2)} s`,
+      aside: `delay ${knobs.tau.toFixed(2)} s`,
     };
   }
   return null;
@@ -489,5 +772,23 @@ export function chatBrief(id: SceneId, knobs: Knobs): string {
   if (id === "mass") {
     return `${scene.title}. Thrust input is ${knobs.thrust.toFixed(0)} N until t = ${BURN} s, then zero. Dry mass ${DRY} kg, fuel ${FUEL} kg. Height and rate integrate acceleration. Allowed chart columns: height, rate, accel, mass.`;
   }
-  return `${scene.title}. Command input steps to ${knobs.ask.toFixed(0)} N at ${ASK_AT} s. Lag is ${knobs.tau.toFixed(2)} s. Thrust is clamped to ${LIMIT} N. Height and rate integrate thrust. Allowed chart columns: height, rate, accel, command, actual.`;
+  if (id === "engine") {
+    return `${scene.title}. Command input steps to ${knobs.ask.toFixed(0)} N at ${ASK_AT} s. Lag is ${knobs.tau.toFixed(2)} s. Thrust is clamped to ${LIMIT} N. Height and rate integrate thrust. Allowed chart columns: height, rate, accel, command, actual.`;
+  }
+  if (id === "loopOpen") {
+    return `${scene.title}. Hover thrust is ${LOOP_T0.toFixed(1)} N on a ${LOOP_M} kg rocket. Extra thrust ${knobs.extraThrust.toFixed(0)} N after 1 s with no feedback. Allowed chart columns: reference, height, rate, thrust.`;
+  }
+  if (id === "loopError") {
+    return `${scene.title}. Target steps to 2 m at 2 s. Gains Kp=${knobs.kp}, Ki=${knobs.ki}, Kd=${knobs.kd} for the three single-mode runs. Allowed chart columns: reference, pHeight, iHeight, dHeight, height, rate.`;
+  }
+  if (id === "loopEquil") {
+    return `${scene.title}. Start offset ${knobs.perturb.toFixed(2)} m with closed-loop hover law. Allowed chart columns: nonlinear, linear, height, rate.`;
+  }
+  if (id === "loopHover") {
+    return `${scene.title}. Open-loop instability gain ${knobs.unstable.toFixed(1)} with closed-loop landing on the same model. Allowed chart columns: reference, openHeight, closedHeight, height, rate.`;
+  }
+  if (id === "loopMode") {
+    return `${scene.title}. Coupling ${knobs.coupling.toFixed(2)} from hidden mode into height. Allowed chart columns: reference, measured, hiddenMode, height, rate.`;
+  }
+  return `${scene.title}. Sample time ${knobs.dt.toFixed(2)} s and measurement delay ${knobs.tau.toFixed(2)} s versus continuous control. Allowed chart columns: reference, continuous, discrete, height, rate, command, actual.`;
 }

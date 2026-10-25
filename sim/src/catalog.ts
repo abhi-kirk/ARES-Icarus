@@ -35,12 +35,12 @@ export const CHAPTERS: CatalogChapter[] = [
     slug: "loop",
     title: "The loop",
     scenes: [
-      { slug: "open-loop", name: "Open loop", ready: false },
-      { slug: "error-response", name: "Three reactions to an error", ready: false },
-      { slug: "equilibrium", name: "Equilibrium and linearization", ready: false },
-      { slug: "unstable-hover", name: "Hover that is unstable and still lands", ready: false },
-      { slug: "hidden-mode", name: "A mode you cannot steer or see", ready: false },
-      { slug: "sample-time", name: "Sample time and delay", ready: false },
+      { slug: "open-loop", name: "Open loop", sceneId: "loopOpen", ready: true },
+      { slug: "error-response", name: "Three reactions to an error", sceneId: "loopError", ready: true },
+      { slug: "equilibrium", name: "Equilibrium and linearization", sceneId: "loopEquil", ready: true },
+      { slug: "unstable-hover", name: "Hover that is unstable and still lands", sceneId: "loopHover", ready: true },
+      { slug: "hidden-mode", name: "A mode you cannot steer or see", sceneId: "loopMode", ready: true },
+      { slug: "sample-time", name: "Sample time and delay", sceneId: "loopSample", ready: true },
     ],
   },
   {

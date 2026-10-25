@@ -7,7 +7,7 @@ import { Landing } from "./Landing";
 import { TopBar } from "./TopBar";
 import { Viewport } from "./Viewport";
 import { liveOption } from "./chartOption";
-import { chapterForSceneId, readyScenesInChapter } from "./catalog";
+import { CHAPTERS, chapterForSceneId, pathForEntry, readyScenesInChapter } from "./catalog";
 import { chatBrief, durationOf, knobOf, readout, sceneById, type SceneId } from "./scenes";
 import { setKnob, setScene, setTime, togglePlay, useKnobs, usePlaying, useScene, useTime } from "./sceneStore";
 import { soundOn, toggleSound, unlock } from "./sound";
@@ -51,6 +51,11 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
   const spec = sceneById(scene);
   const chapter = chapterForSceneId(scene);
   const beats = readyScenesInChapter(chapter.id);
+  const chapterLinks = CHAPTERS.map((item) => {
+    const first = item.scenes.find((entry) => entry.ready && entry.sceneId);
+    if (!first) return null;
+    return { id: item.id, title: item.title, href: pathForEntry(item.slug, first.slug) };
+  }).filter(Boolean) as { id: string; title: string; href: string }[];
   const live = useMemo(() => liveOption(scene, knobs, time), [scene, knobs, time]);
   const knob = knobOf(scene, knobs);
   const lines = readout(scene, time, knobs);
@@ -161,7 +166,21 @@ function Model({ open, onClose }: { open: boolean; onClose: () => void }) {
       >
         <main className="reading">
           <header className="reading-head">
-            <p className="meta">{chapter.title}</p>
+            <nav className="chapter-links" aria-label="Chapters">
+              {chapterLinks.map((item) => (
+                <a
+                  key={item.id}
+                  href={item.href}
+                  className={item.id === chapter.id ? "chapter-link is-current" : "chapter-link"}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    visit(item.href);
+                  }}
+                >
+                  {item.title}
+                </a>
+              ))}
+            </nav>
             <h1>{spec.title}</h1>
             <p className="lede">{spec.lede}</p>
             <nav className="beats" aria-label="Scenes">

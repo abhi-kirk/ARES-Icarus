@@ -7,6 +7,37 @@ const GRID = "#243038";
 const MUTED = "#8b9690";
 const PANEL = "rgba(12, 16, 20, 0.94)";
 
+/** Data traces on #000: hues spaced so neighbors are never two warm tones. */
+export const STAGE_DATA_COLORS = ["#e2a43a", "#5eead4", "#c084fc", "#86efac", "#f472b6", "#d7ded8"] as const;
+
+const MUTED_COLUMNS = new Set<Column>(["reference", "truth", "command"]);
+
+const DATA_LINE_WIDTH = 3;
+const MUTED_LINE_WIDTH = 2;
+
+type LineKind = "solid" | "dashed";
+
+function dataColorIndex(columns: Column[], index: number): number {
+  let slot = 0;
+  for (let i = 0; i < index; i++) {
+    if (!MUTED_COLUMNS.has(columns[i])) slot += 1;
+  }
+  return slot;
+}
+
+function seriesLook(columns: Column[], index: number): { color: string; width: number; kind: LineKind } {
+  const column = columns[index];
+  if (MUTED_COLUMNS.has(column)) {
+    return { color: MUTED, width: MUTED_LINE_WIDTH, kind: "dashed" };
+  }
+  const slot = dataColorIndex(columns, index);
+  return {
+    color: STAGE_DATA_COLORS[slot % STAGE_DATA_COLORS.length],
+    width: DATA_LINE_WIDTH,
+    kind: "solid",
+  };
+}
+
 function formatAxisValue(value: number): string {
   const abs = Math.abs(value);
   if (abs >= 100) return value.toFixed(0);
@@ -54,9 +85,9 @@ function option(
         fontSize: 11,
         fontWeight: 700,
       },
-      itemWidth: 20,
-      itemHeight: 3,
-      itemGap: 16,
+      itemWidth: 26,
+      itemHeight: 5,
+      itemGap: 18,
     },
     grid: { left: 52, right: hasSecond ? 52 : 16, top: 48, bottom: 32 },
     tooltip: {
@@ -138,13 +169,18 @@ function option(
         splitLine: { show: false },
       },
     ],
-    series: series.map((item, index) => ({
+    color: [...STAGE_DATA_COLORS],
+    series: series.map((item, index) => {
+      const look = seriesLook(columns, index);
+      return {
       name: item.name,
       type: "line" as const,
       yAxisIndex: item.axis,
       showSymbol: false,
       data: item.points,
-      lineStyle: { color: item.gold ? GOLD : INK, width: item.gold ? 2 : 1.5 },
+      color: look.color,
+      itemStyle: { color: look.color },
+      lineStyle: { color: look.color, width: look.width, type: look.kind },
       markLine:
         index === 0
           ? {
@@ -155,6 +191,7 @@ function option(
               data: [{ xAxis: mark }],
             }
           : undefined,
-    })),
+    };
+    }),
   };
 }

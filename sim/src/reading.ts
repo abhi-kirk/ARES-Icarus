@@ -104,6 +104,115 @@ export const READING: Record<SceneId, Reading> = {
       },
     ],
   },
+  loopOpen: {
+    blocks: [
+      {
+        id: "open",
+        title: "No feedback",
+        notes: [
+          {
+            tex: String.raw`F = F_0 + \Delta F`,
+            text: "Thrust is a schedule you pick. After one second an extra $\\Delta F$ is added and held. Height is not fed back into $F$.",
+            tip: String.raw`$F_0$ is hover thrust, about $m g$. $\Delta F$ is the Extra knob. The chart compares reference height to actual height.`,
+          },
+          {
+            tex: String.raw`\dot v = F/m - g \qquad \dot x = v`,
+            text: "The state is still height and rate. Open loop only means the command does not look at that state.",
+          },
+        ],
+      },
+    ],
+  },
+  loopError: {
+    blocks: [
+      {
+        id: "pid",
+        title: "Three reactions",
+        notes: [
+          {
+            tex: String.raw`e = x_{\mathrm{ref}} - x`,
+            text: "Error is the gap between the target height and where you are. At two seconds the target steps up by two meters.",
+          },
+          {
+            tex: String.raw`F = F_0 + K_p e \;\|\; F_0 + K_i\!\int\! e\,dt \;\|\; F_0 - K_d v`,
+            text: "Each run keeps one term: proportional to error, integral of error, or derivative through the rate. The chart overlays the three height responses.",
+          },
+        ],
+      },
+    ],
+  },
+  loopEquil: {
+    blocks: [
+      {
+        id: "lin",
+        title: "Linearization",
+        notes: [
+          {
+            tex: String.raw`\ddot x \approx -\frac{K_p}{m}(x - x_{\mathrm{eq}})`,
+            text: "Near hover, a closed-loop law looks like a spring on small offsets. The linear trace uses that approximation with no thrust limits.",
+          },
+          {
+            tex: String.raw`\ddot x = F(x)/m - g`,
+            text: "The nonlinear trace uses the full thrust law, including saturation. For a small starting offset the two curves lie on top of each other.",
+          },
+        ],
+      },
+    ],
+  },
+  loopHover: {
+    blocks: [
+      {
+        id: "unstable",
+        title: "Unstable hover",
+        notes: [
+          {
+            tex: String.raw`\ddot x = \mu^2 x`,
+            text: "Open loop, a wrong-sign term makes height run away from the hover point. That is an unstable equilibrium in plain sight.",
+          },
+          {
+            tex: String.raw`\ddot x = \mu^2 x + \frac{K_p}{m}(x_{\mathrm{ref}} - x)`,
+            text: "Feedback on height can still drive a landing profile: the reference moves toward the pad while the loop fights the instability.",
+          },
+        ],
+      },
+    ],
+  },
+  loopMode: {
+    blocks: [
+      {
+        id: "hidden",
+        title: "Hidden mode",
+        notes: [
+          {
+            tex: String.raw`\ddot q = \lambda^2 q`,
+            text: "An internal mode can grow on its own even when you only measure height. It is not on the sensor, but it still pushes on motion.",
+          },
+          {
+            tex: String.raw`\ddot x = F/m - g + \epsilon q`,
+            text: "Coupling $\\epsilon$ lets the hidden mode bend the trajectory. The loop only closes on $x$, so the chart shows what you miss if you watch height alone.",
+          },
+        ],
+      },
+    ],
+  },
+  loopSample: {
+    blocks: [
+      {
+        id: "digital",
+        title: "Sample and delay",
+        notes: [
+          {
+            tex: String.raw`F = F_0 + K_p e + K_i\!\int\! e\,dt`,
+            text: "Continuous feedback updates the thrust every instant. That is the smooth height trace on the chart.",
+          },
+          {
+            tex: String.raw`e_k = x_{\mathrm{ref}}(t) - x(t-\tau)`,
+            text: "Discrete feedback holds thrust between samples and can use a delayed height reading. Sample time and delay are on the sliders; lag also moves with a drag on the rocket.",
+          },
+        ],
+      },
+    ],
+  },
   engine: {
     blocks: [
       {

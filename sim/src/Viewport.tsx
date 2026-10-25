@@ -51,6 +51,12 @@ function dragValue(dy: number, scene: SceneId): void {
   if (scene === "step") setKnob("dt", clampKnob("step", knobs.dt + dy * 0.004));
   if (scene === "mass") setKnob("thrust", clampKnob("mass", knobs.thrust + dy * 0.15));
   if (scene === "engine") setKnob("tau", clampKnob("engine", knobs.tau + dy * 0.004));
+  if (scene === "loopOpen") setKnob("extraThrust", clampKnob("loopOpen", knobs.extraThrust + dy * 0.12));
+  if (scene === "loopError") setKnob("kp", clampKnob("loopError", knobs.kp + dy * 0.08));
+  if (scene === "loopEquil") setKnob("perturb", clampKnob("loopEquil", knobs.perturb + dy * 0.002));
+  if (scene === "loopHover") setKnob("unstable", clampKnob("loopHover", knobs.unstable + dy * 0.015));
+  if (scene === "loopMode") setKnob("coupling", clampKnob("loopMode", knobs.coupling + dy * 0.003));
+  if (scene === "loopSample") setKnob("tau", clampKnob("loopSample", knobs.tau + dy * 0.004));
 }
 
 // Coil from the mount down to the mass. The ends pull in to the center line

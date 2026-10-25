@@ -224,6 +224,32 @@ body {
   scrollbar-color: rgba(245, 245, 245, 0.35) transparent;
 }
 
+.chapter-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
+  margin: 0.55rem 0 0;
+}
+
+.chapter-link {
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.chapter-link:hover,
+.chapter-link:focus-visible {
+  color: var(--ink);
+}
+
+.chapter-link.is-current {
+  color: var(--ink);
+  box-shadow: inset 0 -1px 0 var(--ink);
+}
+
 .meta {
   margin: 0.55rem 0 0;
   font-family: "Fragment Mono", ui-monospace, monospace;
