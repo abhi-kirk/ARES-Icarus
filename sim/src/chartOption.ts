@@ -5,6 +5,15 @@ const GOLD = "#e2a43a";
 const INK = "#d7ded8";
 const GRID = "#243038";
 const MUTED = "#8b9690";
+const PANEL = "rgba(12, 16, 20, 0.94)";
+
+function formatAxisValue(value: number): string {
+  const abs = Math.abs(value);
+  if (abs >= 100) return value.toFixed(0);
+  if (abs >= 10) return value.toFixed(1);
+  if (abs >= 1) return value.toFixed(2);
+  return value.toFixed(3);
+}
 
 export function liveOption(scene: SceneId, knobs: Knobs, time: number): EChartsOption {
   const spec = sceneById(scene);
@@ -37,14 +46,64 @@ function option(
       textStyle: { color: INK, fontSize: 13, fontWeight: 500, fontFamily: "Barlow, Helvetica Neue, sans-serif" },
     },
     legend: {
-      top: 6,
-      right: hasSecond ? 72 : 12,
-      textStyle: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 10 },
-      itemWidth: 14,
-      itemHeight: 2,
+      left: 8,
+      top: 26,
+      textStyle: {
+        color: INK,
+        fontFamily: "Fragment Mono, monospace",
+        fontSize: 11,
+        fontWeight: 700,
+      },
+      itemWidth: 20,
+      itemHeight: 3,
+      itemGap: 16,
     },
-    grid: { left: 52, right: hasSecond ? 52 : 16, top: 40, bottom: 32 },
-    tooltip: { show: false },
+    grid: { left: 52, right: hasSecond ? 52 : 16, top: 48, bottom: 32 },
+    tooltip: {
+      trigger: "axis",
+      confine: true,
+      backgroundColor: PANEL,
+      borderColor: GRID,
+      borderWidth: 1,
+      padding: [8, 10],
+      textStyle: { color: INK, fontFamily: "Fragment Mono, monospace", fontSize: 11 },
+      axisPointer: {
+        type: "line",
+        lineStyle: { color: GOLD, width: 1 },
+        label: {
+          show: true,
+          backgroundColor: PANEL,
+          borderColor: GRID,
+          borderWidth: 1,
+          color: INK,
+          fontFamily: "Fragment Mono, monospace",
+          fontSize: 10,
+          formatter: (params) => {
+            const value = typeof params.value === "number" ? params.value : Number(params.value);
+            return `t = ${formatAxisValue(value)} s`;
+          },
+        },
+      },
+      formatter: (raw) => {
+        const items = (Array.isArray(raw) ? raw : [raw]).filter(Boolean);
+        if (!items.length) return "";
+        const head = items[0];
+        const axisT = (head as { axisValue?: number }).axisValue;
+        const t =
+          typeof axisT === "number"
+            ? axisT
+            : Array.isArray(head.data)
+              ? (head.data as [number, number])[0]
+              : 0;
+        const lines = [`<span style="color:${MUTED}">t</span> = ${formatAxisValue(t)} s`];
+        for (const item of items) {
+          const pair = item.data as [number, number] | number;
+          const y = Array.isArray(pair) ? pair[1] : Number(pair);
+          lines.push(`${item.marker}<span style="color:${INK}">${item.seriesName}</span>: ${formatAxisValue(y)}`);
+        }
+        return lines.join("<br/>");
+      },
+    },
     xAxis: {
       type: "value",
       min: 0,

@@ -23,7 +23,7 @@ export function ChartView({ option, layoutKey }: { option: EChartsOption; layout
   }, []);
 
   useEffect(() => {
-    chart.current?.setOption(option, true);
+    chart.current?.setOption(option, { notMerge: false, lazyUpdate: true });
   }, [option]);
 
   useEffect(() => {
