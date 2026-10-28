@@ -13,9 +13,7 @@ export const DOORS = [
   {
     id: "simulator",
     name: "Simulator",
-    href: "",
-    blurb: `Experiment with sims for landing a rocket vertically.
-
-Coming Soon.`,
+    href: "/simulator",
+    blurb: `Experiment with sims for landing a rocket vertically.`,
   },
 ] as const;

@@ -31,7 +31,12 @@ export function App() {
 
   return (
     <div className={stage ? "site" : "site is-cover"}>
-      <TopBar dynamics={dynamics} asking={asking} onAsk={() => setAsking((open) => !open)} />
+      <TopBar
+        dynamics={dynamics}
+        current={simulator ? "simulator" : dynamics ? "dynamics" : ""}
+        asking={asking}
+        onAsk={() => setAsking((open) => !open)}
+      />
       {simulator ? <SimulatorPage /> : dynamics ? <DynamicsModel open={asking} onClose={() => setAsking(false)} /> : <Landing />}
     </div>
   );

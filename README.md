@@ -8,7 +8,7 @@ Icarus is a study of how a rocket comes down. The landing is the hard part: the 
 
 Three pieces of that study live here.
 
-**Icarus-S** ([sim/](sim/)) is the public site, at [icarus-arc.com](https://icarus-arc.com). The home page names two doors, Rocket Dynamics and Simulator. Rocket Dynamics is a picture you can move, a chart of the same numbers, and a conversation that can move the picture or ask for another series. The four scenes are the spring, the step, the burn, and the engine. Simulator says Coming Soon.
+**Icarus-S** ([sim/](sim/)) is the public site, at [icarus-arc.com](https://icarus-arc.com). The home page names two doors, Rocket Dynamics and Simulator. Rocket Dynamics is a picture you can move, a chart of the same numbers, and a conversation that can move the picture or ask for another series. The four scenes are the spring, the step, the burn, and the engine. Simulator is the vertical landing console.
 
 **Icarus-I** ([rockets/](rockets/)) is the first airframe, a LOC IV in build for a Level 1 flight. The number belongs to the rocket. A later flight of this one stays Icarus-I. The next rocket built is Icarus-II.
 

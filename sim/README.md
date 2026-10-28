@@ -20,7 +20,7 @@ Under the title, that column scrolls: the equations, then an Icarus Q&A card wit
 
 Play runs that clock in real time. The live chart draws only as far as the picture has gone. A chart the conversation asks for draws the whole run, with the same time marked.
 
-The home page is the name, the two doors, and a vertical takeoff and landing beside them. The booster leaves the top of the screen and comes back to the pad. Simulator says Coming Soon. The chapters after this page, the loop, the turn, the vehicle, and the descent, stay out of the nav until they are drawn.
+The home page is the name, the two doors, and a vertical takeoff and landing beside them. The booster leaves the top of the screen and comes back to the pad. Both doors open: Rocket Dynamics, and the Simulator. The chapters after this page, the loop, the turn, the vehicle, and the descent, stay out of the nav until they are drawn.
 
 The questions and Ask call the Worker. The Grok key is the secret `GROK_API_KEY`. The page takes a one-hour cookie from `GET /api/session`, signed with `ICARUS_SESSION_SECRET`, and `/api/tutor` and `/api/chat` refuse a call that does not carry it. There is no login.
 

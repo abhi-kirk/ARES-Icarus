@@ -4,10 +4,12 @@ import { follow } from "./route";
 
 export function TopBar({
   dynamics,
+  current,
   asking,
   onAsk,
 }: {
   dynamics: boolean;
+  current: string;
   asking: boolean;
   onAsk: () => void;
 }) {
@@ -24,7 +26,7 @@ export function TopBar({
             door.href ? (
               <a
                 key={door.id}
-                className={dynamics && door.id === "dynamics" ? "nav-link is-current" : "nav-link"}
+                className={door.id === current ? "nav-link is-current" : "nav-link"}
                 href={door.href}
                 onClick={(event) => {
                   setNote("");
