@@ -60,4 +60,8 @@ struct Config {
 
 bool load_config(const std::string& filepath, Config& config);
 
+// Same fields as load_config, read from a JSON string. Writes nothing on success,
+// so a caller can keep stdout for flight samples.
+bool load_config_text(const std::string& text, Config& config);
+
 }  // namespace icarus

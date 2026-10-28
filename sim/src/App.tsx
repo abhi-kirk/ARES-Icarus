@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Landing } from "./Landing";
 import { DynamicsModel } from "./pages/DynamicsModel";
+import { SimulatorPage } from "./pages/Simulator";
 import { TopBar } from "./TopBar";
 import { isDynamicsPath, redirectForPath, sceneFromPath } from "./paths";
 import { usePath, visit } from "./route";
@@ -8,7 +9,8 @@ import { setScene } from "./sceneStore";
 
 export function App() {
   const path = usePath();
-  const dynamics = isDynamicsPath(path) || redirectForPath(path) !== null;
+  const simulator = path === "/simulator";
+  const dynamics = !simulator && (isDynamicsPath(path) || redirectForPath(path) !== null);
   const [asking, setAsking] = useState(false);
 
   useEffect(() => {
@@ -22,13 +24,15 @@ export function App() {
   }, [path]);
 
   useEffect(() => {
-    document.title = dynamics ? "Icarus · Rocket Dynamics" : "Icarus";
-  }, [dynamics]);
+    document.title = simulator ? "Icarus · Simulator" : dynamics ? "Icarus · Rocket Dynamics" : "Icarus";
+  }, [dynamics, simulator]);
+
+  const stage = dynamics || simulator;
 
   return (
-    <div className={dynamics ? "site" : "site is-cover"}>
+    <div className={stage ? "site" : "site is-cover"}>
       <TopBar dynamics={dynamics} asking={asking} onAsk={() => setAsking((open) => !open)} />
-      {dynamics ? <DynamicsModel open={asking} onClose={() => setAsking(false)} /> : <Landing />}
+      {simulator ? <SimulatorPage /> : dynamics ? <DynamicsModel open={asking} onClose={() => setAsking(false)} /> : <Landing />}
     </div>
   );
 }

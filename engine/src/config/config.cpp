@@ -10,16 +10,7 @@ using json = nlohmann::json;
 
 namespace icarus {
 
-bool load_config(const std::string& filepath, Config& config) {
-    try {
-        std::ifstream file(filepath);
-        if (!file.is_open()) {
-            std::cerr << "Error: Could not open config file: " << filepath << std::endl;
-            return false;
-        }
-
-        json j = json::parse(file);
-
+bool apply_config(const json& j, Config& config) {
         config.pid.kp_v_vel = j["inner_pid_vertical_velocity"]["gains"]["kp"];
         config.pid.kd_v_vel = j["inner_pid_vertical_velocity"]["gains"]["kd"];
         config.pid.ki_v_vel = j["inner_pid_vertical_velocity"]["gains"]["ki"];
@@ -66,9 +57,34 @@ bool load_config(const std::string& filepath, Config& config) {
         config.simulation.use_rerun          = j["simulation"].value("use_rerun", false);
         config.simulation.rerun_spawn_viewer = j["simulation"].value("rerun_spawn_viewer", true);
         config.simulation.rerun_save_rrd     = j["simulation"].value("rerun_save_rrd", true);
+        return true;
+}
 
+bool load_config(const std::string& filepath, Config& config) {
+    try {
+        std::ifstream file(filepath);
+        if (!file.is_open()) {
+            std::cerr << "Error: Could not open config file: " << filepath << std::endl;
+            return false;
+        }
+
+        json j = json::parse(file);
+        if (!apply_config(j, config)) return false;
         std::cout << "Config loaded from: " << filepath << std::endl;
         return true;
+    } catch (const json::exception& e) {
+        std::cerr << "JSON parsing error: " << e.what() << std::endl;
+        return false;
+    } catch (const std::exception& e) {
+        std::cerr << "Error loading config: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool load_config_text(const std::string& text, Config& config) {
+    try {
+        json j = json::parse(text);
+        return apply_config(j, config);
     } catch (const json::exception& e) {
         std::cerr << "JSON parsing error: " << e.what() << std::endl;
         return false;

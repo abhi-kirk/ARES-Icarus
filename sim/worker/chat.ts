@@ -37,6 +37,11 @@ app.post("/api/chat", async (c) => {
   return handleChat(c.req.raw, c.env.GROK_API_KEY);
 });
 
+// The flight program is a separate process. This host serves the page and the chat.
+app.post("/api/flight", () => {
+  return Response.json({ error: "The flight program is not on this host." }, { status: 404 });
+});
+
 app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
 
 async function refuseWithoutSession(request: Request, secret: string | undefined): Promise<Response | null> {

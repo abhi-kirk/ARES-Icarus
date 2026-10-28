@@ -7,8 +7,44 @@
 
 namespace icarus {
 
+namespace {
+
+FlightSample sample_from(
+    double t,
+    const State& state,
+    double fx,
+    double fy,
+    double fz,
+    double pad_x,
+    double pad_y
+) {
+    FlightSample sample;
+    sample.t = t;
+    sample.x = state[POS_X];
+    sample.y = state[POS_Y];
+    sample.z = state[POS_Z];
+    sample.vx = state[VEL_X];
+    sample.vy = state[VEL_Y];
+    sample.vz = state[VEL_Z];
+    sample.fuel = state[FUEL];
+    sample.fx = fx;
+    sample.fy = fy;
+    sample.fz = fz;
+    sample.pad_x = pad_x;
+    sample.pad_y = pad_y;
+    return sample;
+}
+
+bool should_stop(double t, double time_limit, const std::atomic<bool>* stop) {
+    if (stop != nullptr && stop->load()) return true;
+    if (time_limit > 0.0 && t >= time_limit) return true;
+    return false;
+}
+
+}  // namespace
+
 void Simulator::run(
-    State& state, 
+    State& state,
     double t_start,
     const SimConfig& cfg,
     CascadeGuidance& guidance,
@@ -19,7 +55,10 @@ void Simulator::run(
     const DynamicsFunction& dynamics,
     const WindModel& wind_model,
     const LandingPad& landing_pad,
-    Logger& logger
+    Logger* logger,
+    const std::atomic<bool>* stop,
+    const SampleEmit* emit,
+    double time_limit
 ) {
     double t  = t_start;
     double dt_inner_v = cfg.timestep_inner;
@@ -34,7 +73,13 @@ void Simulator::run(
     double Fx = vel_ctrl_h_x.compute(state[VEL_X], 0.0);
     double Fy = vel_ctrl_h_y.compute(state[VEL_Y], 0.0);
 
-    while (state[POS_Z] > 0.0) {
+    // The picture needs the rocket where it starts, before the first step.
+    if (emit != nullptr) {
+        Eigen::Vector2d pad0 = landing_pad.pad_position(t);
+        (*emit)(sample_from(t, state, 0.0, 0.0, 0.0, pad0[0], pad0[1]));
+    }
+
+    while (state[POS_Z] > 0.0 && !should_stop(t, time_limit, stop)) {
         const State  prev_state = state;
         const double prev_t     = t;
         ++sim_counter;
@@ -97,7 +142,13 @@ void Simulator::run(
 
         state[FUEL] = std::max(0.0, state[FUEL]);
 
-        logger.log(t, state, Fx, Fy, Fz, pad_pos[0], pad_pos[1], ref_vel_z, guidance.ref_vel_target());
+        if (logger != nullptr) {
+            logger->log(t, state, Fx, Fy, Fz, pad_pos[0], pad_pos[1], ref_vel_z, guidance.ref_vel_target());
+        }
+        if (emit != nullptr) {
+            Eigen::Vector2d pad_now = landing_pad.pad_position(t);
+            (*emit)(sample_from(t, state, Fx, Fy, Fz, pad_now[0], pad_now[1]));
+        }
     }
 }
 

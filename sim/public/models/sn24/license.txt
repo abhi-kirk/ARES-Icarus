@@ -1,0 +1,11 @@
+Model Information:
+* title:	SpaceX Starship SN24 Superheavy BN7
+* source:	https://sketchfab.com/3d-models/spacex-starship-sn24-superheavy-bn7-cb1b096d64b443ef9f87dd0cf960cf47
+* author:	clarence365 (https://sketchfab.com/clarence365)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "SpaceX Starship SN24 Superheavy BN7" (https://sketchfab.com/3d-models/spacex-starship-sn24-superheavy-bn7-cb1b096d64b443ef9f87dd0cf960cf47) by clarence365 (https://sketchfab.com/clarence365) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

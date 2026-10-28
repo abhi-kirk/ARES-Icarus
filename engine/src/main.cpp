@@ -88,7 +88,10 @@ int main() {
         rocket_dynamics_3dof,
         wind_model,
         landing_pad,
-        logger
+        &logger,
+        nullptr,
+        nullptr,
+        0.0
     );
 
     std::cout << "Landed at velocity: " << state[VEL_Z] << " m/s\n";

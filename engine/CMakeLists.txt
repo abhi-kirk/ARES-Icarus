@@ -40,3 +40,8 @@ add_subdirectory(src/sim)
 add_executable(Icarus src/main.cpp)
 target_link_libraries(Icarus PRIVATE icarus_sim)
 target_include_directories(Icarus PRIVATE src)
+
+# Case on stdin, one sample per line on stdout. No log file and no Rerun.
+add_executable(IcarusStream src/stream_main.cpp)
+target_link_libraries(IcarusStream PRIVATE icarus_sim icarus_config)
+target_include_directories(IcarusStream PRIVATE src)
