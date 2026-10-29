@@ -293,6 +293,8 @@ export function SimulatorPage() {
 
     let response: Response;
     try {
+      const session = await fetch("/api/session", { signal: controller.signal });
+      if (!session.ok) throw new Error("session");
       response = await fetch("/api/flight", {
         method: "POST",
         headers: { "content-type": "application/json" },
