@@ -1,4 +1,7 @@
 #include "sim/simulator.h"
+#ifndef ICARUS_NO_RERUN
+#include "sim/logger.h"
+#endif
 #include "dynamics/constants.h"
 #include "dynamics/state_indices.h"
 
@@ -142,9 +145,13 @@ void Simulator::run(
 
         state[FUEL] = std::max(0.0, state[FUEL]);
 
+#ifndef ICARUS_NO_RERUN
         if (logger != nullptr) {
             logger->log(t, state, Fx, Fy, Fz, pad_pos[0], pad_pos[1], ref_vel_z, guidance.ref_vel_target());
         }
+#else
+        (void)logger;
+#endif
         if (emit != nullptr) {
             Eigen::Vector2d pad_now = landing_pad.pad_position(t);
             (*emit)(sample_from(t, state, Fx, Fy, Fz, pad_now[0], pad_now[1]));

@@ -51,6 +51,8 @@ stc/icarus_plotting.egg-info/
 # Plots and local engine output
 engine/src/results/*
 engine/build/
+engine/build-stream/
+engine/listen/.flight-token
 engine/**/*.egg-info/
 
 # Icarus-S

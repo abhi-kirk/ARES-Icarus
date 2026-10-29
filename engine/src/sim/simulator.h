@@ -10,9 +10,10 @@
 #include "environment/wind_model.h"
 #include "environment/landing_pad.h"
 #include "integrator.h"
-#include "sim/logger.h"
 
 namespace icarus {
+
+class Logger;
 
 // f(t, state, control inputs, external disturbances) -> state_dot
 using DynamicsFunction = std::function<State(double, const State&, const ControlInput&, const Disturbance&)>;
