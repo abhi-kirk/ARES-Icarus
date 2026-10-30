@@ -1,6 +1,6 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Line } from "@react-three/drei";
-import { useEffect, useMemo, useRef } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { AdditiveBlending, BackSide, DoubleSide, Quaternion, ShaderMaterial, Spherical, Vector3 } from "three";
 import type { Group } from "three";
 import { Ship } from "./flight/Ship";
@@ -437,7 +437,9 @@ function Scene({ sample, samples, time }: { sample: Sample | null; samples: Samp
         </mesh>
       ) : null}
       <group ref={ship}>
-        <Ship flameRef={flame} sheathMat={sheathMat} coreMat={coreMat} />
+        <Suspense fallback={null}>
+          <Ship flameRef={flame} sheathMat={sheathMat} coreMat={coreMat} />
+        </Suspense>
       </group>
     </>
   );

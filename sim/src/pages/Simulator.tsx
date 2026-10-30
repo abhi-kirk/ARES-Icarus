@@ -213,9 +213,12 @@ export function SimulatorPage() {
   const abortRef = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const requested = useRef(false);
+  const timeRef = useRef(0);
+  const scrubbing = useRef(false);
 
   playingRef.current = playing;
   doneRef.current = done;
+  timeRef.current = time;
 
   function keep(next: Sample[]) {
     samplesRef.current = next;
@@ -233,6 +236,7 @@ export function SimulatorPage() {
         if (stored.length === 0) return;
         keep(stored);
         setDone(true);
+        timeRef.current = 0;
         setTime(0);
         setPlaying(true);
       })
@@ -250,20 +254,18 @@ export function SimulatorPage() {
     const tick = (now: number) => {
       const elapsed = Math.min(0.05, (now - last) / 1000);
       last = now;
-      if (playingRef.current) {
+      if (playingRef.current && !scrubbing.current) {
         const list = samplesRef.current;
         const end = endTime(list);
-        setTime((current) => {
-          if (list.length === 0) return 0;
-          const next = current + elapsed;
-          if (next < end) return next;
-          if (doneRef.current) {
+        if (list.length > 0) {
+          const next = Math.min(timeRef.current + elapsed, end);
+          timeRef.current = next;
+          if (next >= end && doneRef.current) {
             playingRef.current = false;
             setPlaying(false);
-            return end;
           }
-          return end;
-        });
+          setTime(next);
+        }
       }
       frame = requestAnimationFrame(tick);
     };
@@ -284,6 +286,7 @@ export function SimulatorPage() {
     generation.current = ticket;
     flownRef.current = next;
     keep([]);
+    timeRef.current = 0;
     setTime(0);
     setDone(false);
     setPlaying(true);
@@ -373,9 +376,23 @@ export function SimulatorPage() {
   const altitude = flightTrace(samples, time, "height");
   const rate = flightTrace(samples, time, "rate");
 
+  function beginScrub() {
+    scrubbing.current = true;
+    playingRef.current = false;
+    setPlaying(false);
+  }
+
+  function endScrub() {
+    scrubbing.current = false;
+  }
+
+  // The slider also emits a change when its range grows, as the saved landing
+  // arrives. That is not a drag. Only a pointer or a key should move the clock.
   function scrub(next: number) {
+    if (!scrubbing.current) return;
     const end = endTime(samplesRef.current);
     const placed = Math.min(Math.max(0, next), end);
+    timeRef.current = placed;
     playingRef.current = false;
     setPlaying(false);
     setTime(placed);
@@ -484,6 +501,7 @@ export function SimulatorPage() {
                 aria-pressed={playing}
                 onClick={() => {
                   if (!playing && time >= endTime(samples) - 1e-3 && done) {
+                    timeRef.current = 0;
                     setTime(0);
                     setPlaying(true);
                     playingRef.current = true;
@@ -506,6 +524,15 @@ export function SimulatorPage() {
                 max={duration}
                 step={0.01}
                 value={Math.min(time, duration)}
+                onPointerDown={beginScrub}
+                onPointerUp={endScrub}
+                onPointerCancel={endScrub}
+                onKeyDown={(event) => {
+                  if (event.key.startsWith("Arrow")) beginScrub();
+                }}
+                onKeyUp={(event) => {
+                  if (event.key.startsWith("Arrow")) endScrub();
+                }}
                 onChange={(event) => scrub(Number(event.target.value))}
               />
             </div>

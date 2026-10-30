@@ -425,6 +425,7 @@ body {
   inset: 0;
   min-width: 0;
   min-height: 0;
+  background: #8eacb8;
 }
 
 .sim-view canvas {
