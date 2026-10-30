@@ -16,4 +16,4 @@ Phase 2, from 300 m. The outer loops command a reference velocity. The inner loo
 
 The writeups are in [docs/](docs/): stability, mechanics, and the build.
 
-Scenes on [icarus-arc.com](https://icarus-arc.com) keep their own clock in the browser, so the picture and the chart are the same buffer. This tree is the finished landing.
+Rocket Dynamics scenes on [icarus-arc.com](https://icarus-arc.com) keep their own clock in the browser, so the picture and the chart are the same buffer. The Simulator streams this landing. The page sends a case, and `IcarusStream` writes each sample as the flight runs. `engine/listen/` is the HTTP listener in front of that binary. The public machine is the Fly app `icarus-arc-flight` in Dallas. It stops a few minutes after the last connection and starts on the next request. `make run` is still the Rerun landing on this computer. The flight image builds with Rerun off.
