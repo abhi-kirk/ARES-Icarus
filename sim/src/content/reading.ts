@@ -466,6 +466,191 @@ export const READING: ReadingMap = {
       },
     ],
   },
+  turnFrames: {
+    threads: [
+      {
+        id: "frames",
+        title: "One arrow, two descriptions",
+        focus: ["A body axis is fixed on the rocket", "Its world components change with yaw"],
+        segments: [
+          { kind: "look", text: "The gold arrow is painted on the rocket. Yaw turns the rocket, and that arrow turns with it." },
+          { kind: "look", text: "The pale arrow is the world's side axis. It stays put while the rocket yaws." },
+          {
+            kind: "relation",
+            tex: String.raw`\mathbf{r}_{\mathrm{world}} = R(\psi)\,\mathbf{r}_{\mathrm{body}}`,
+            stake: "The arrow itself is unchanged. The rotation is what makes its world components move.",
+          },
+          {
+            kind: "trace",
+            text: "World X and world Z are the two numbers that describe that one body arrow after the yaw. When the yaw is zero they are 1 and 0.",
+          },
+        ],
+      },
+    ],
+  },
+  turnLock: {
+    threads: [
+      {
+        id: "lock",
+        title: "Two axes become one",
+        focus: ["Pitch carries the nose up from the horizon", "At 90 degrees roll and yaw share an axis"],
+        segments: [
+          { kind: "look", text: "The pale arrow is vertical. That is yaw. The gold arrow is the nose. That is roll." },
+          { kind: "look", text: "Pitch is the angle that lifts the nose off the horizon toward the vertical arrow." },
+          {
+            kind: "relation",
+            tex: String.raw`\gamma = 90^\circ - \theta`,
+            stake: "The gap between the nose and the vertical axis shrinks one degree for every degree of pitch.",
+          },
+          {
+            kind: "trace",
+            text: "At 90 degrees of pitch the gap is zero. A roll about the nose and a yaw about vertical are the same turn, so those two commands no longer do different work.",
+          },
+        ],
+      },
+    ],
+  },
+  turnQuat: {
+    threads: [
+      {
+        id: "quaternion",
+        title: "The same pitch, without a lost axis",
+        focus: ["A pitch is half-angle cosine and sine", "The numbers stay finite through vertical"],
+        segments: [
+          { kind: "look", text: "The nose takes the same path as in the lock scene, and it is allowed to keep going past vertical." },
+          {
+            kind: "relation",
+            tex: String.raw`q = \cos(\theta/2) + \sin(\theta/2)\,\mathbf{k}`,
+            stake: "One pitch about a fixed axis is two numbers. They are the cosine and sine of half the pitch.",
+          },
+          {
+            kind: "contrast",
+            tex: String.raw`\theta = 90^\circ`,
+            stake: "Euler yaw and roll become the same command here. The quaternion components do not swap roles or go to infinity.",
+          },
+          {
+            kind: "trace",
+            text: "Watch quat w fall and quat z rise as the nose passes vertical. The body still has a direction on the other side.",
+          },
+        ],
+      },
+    ],
+  },
+  turnSpin: {
+    threads: [
+      {
+        id: "spin",
+        title: "A rate that does not change",
+        focus: ["No torque leaves the spin rate constant", "Angle is rate times time"],
+        segments: [
+          { kind: "look", text: "The stripe walks around the body at one pace. Nothing is pushing the spin faster or slower." },
+          {
+            kind: "relation",
+            tex: String.raw`\theta = \omega t`,
+            stake: "A constant rate draws a straight ramp in angle. The slope of that ramp is the spin.",
+          },
+          {
+            kind: "trace",
+            text: "Drag the rocket and the ramp gets steeper. The spin trace stays flat, at a new height.",
+          },
+        ],
+      },
+    ],
+  },
+  turnInertia: {
+    threads: [
+      {
+        id: "inertia",
+        title: "The same torque, a different inertia",
+        focus: ["Torque equals inertia times angular acceleration", "More inertia climbs more slowly"],
+        segments: [
+          { kind: "look", text: "The torque stays at 2 N·m. The rocket speeds up, and how quickly it speeds up is the inertia." },
+          {
+            kind: "relation",
+            tex: String.raw`\tau = I \alpha`,
+            stake: "Angular acceleration is the torque divided by the inertia. The spin rate is that acceleration times time.",
+          },
+          {
+            kind: "trace",
+            text: "A larger inertia makes the spin trace shallower and the angle arrive later. The torque did not change.",
+          },
+        ],
+      },
+    ],
+  },
+  turnGimbal: {
+    threads: [
+      {
+        id: "gimbal",
+        title: "One angle, two effects",
+        focus: ["A tilted nozzle makes side force", "The same tilt makes a moment about the center of mass"],
+        segments: [
+          { kind: "look", text: "The gold arrow leaves the nozzle off the centerline. That tilt is the only command." },
+          {
+            kind: "relation",
+            tex: String.raw`F_y = T\sin\delta`,
+            stake: "Side force is the part of the thrust that is no longer along the body.",
+          },
+          {
+            kind: "contrast",
+            tex: String.raw`M = \ell T\sin\delta`,
+            stake: "The moment is that same side force times the distance from the nozzle to the center of mass. One sine sets both.",
+          },
+          {
+            kind: "trace",
+            text: "The two traces rise together and then hold. There is no second actuator here that could cancel the moment and keep the side force.",
+          },
+        ],
+      },
+    ],
+  },
+  turnAir: {
+    threads: [
+      {
+        id: "pressure",
+        title: "Where the air pushes",
+        focus: ["Aerodynamic force acts at the center of pressure", "The moment restores when that point is behind the mass"],
+        segments: [
+          { kind: "look", text: "The gold mark is the center of mass. The pale mark is the center of pressure. The rocket's lean is the angle of attack." },
+          {
+            kind: "relation",
+            tex: String.raw`M = -q S d\, C_{N\alpha}\, \alpha\, \sigma`,
+            stake: "Margin $\\sigma$ positive means the center of pressure is behind the center of mass, so the moment opposes the angle.",
+          },
+          {
+            kind: "contrast",
+            tex: String.raw`\sigma < 0`,
+            stake: "Move the center of pressure ahead of the mass and the moment has the same sign as the angle. The lean grows.",
+          },
+          {
+            kind: "trace",
+            text: "With a positive margin the angle of attack swings back through zero. With a negative margin it leaves and does not return.",
+          },
+        ],
+      },
+    ],
+  },
+  turnSlosh: {
+    threads: [
+      {
+        id: "slosh",
+        title: "Fuel that is still free to move",
+        focus: ["The tank drains from the bottom", "The fuel that remains can swing and shift the center of mass"],
+        segments: [
+          { kind: "look", text: "The gold slug is the fuel that has not burned. It swings in the tank, and it rides higher as the tank empties." },
+          {
+            kind: "relation",
+            tex: String.raw`x_{\mathrm{cm}} = \frac{m_{\mathrm{fuel}}}{m}\, x_{\mathrm{slug}}`,
+            stake: "The vehicle center of mass moves sideways only by the fuel's share of the mass.",
+          },
+          {
+            kind: "trace",
+            text: "The fuel trace falls as the burn goes on. The offset trace keeps the swing, and its size shrinks because there is less fuel left to move.",
+          },
+        ],
+      },
+    ],
+  },
 };
 
 export function readingFor(id: SceneId) {

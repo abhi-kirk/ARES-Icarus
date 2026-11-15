@@ -6,6 +6,7 @@ import {
   CatmullRomCurve3,
   ExtrudeGeometry,
   Path,
+  Quaternion,
   ShaderMaterial,
   Shape,
   TubeGeometry,
@@ -14,12 +15,13 @@ import {
 import type { Group, Mesh } from "three";
 import type { OrbitControls as OrbitRig } from "three-stdlib";
 import { NOZZLE_Y, Rocket } from "./Rocket";
-import { bodyAt, clampKnob, viewSpan, type SceneId, type Knobs } from "./scenes";
+import { bodyAt, clampKnob, isTurnScene, viewSpan, type SceneId, type Knobs } from "./scenes";
 import { getKnobs, getScene, getTime, setKnob, setTime, useKnobs, useScene } from "./sceneStore";
 import { unlock } from "./sound";
 
 const NIGHT = "#000000";
 const GOLD = "#f0c15a";
+const PALE = "#d7ded8";
 const METAL = "#d7dfda";
 const SLEEVE = "#8b9690";
 
@@ -81,6 +83,14 @@ function dragValue(dy: number, scene: SceneId): void {
   if (scene === "loopHover") setKnob("unstable", clampKnob("loopHover", knobs.unstable + dy * 0.015));
   if (scene === "loopMode") setKnob("coupling", clampKnob("loopMode", knobs.coupling + dy * 0.003));
   if (scene === "loopSample") setKnob("tau", clampKnob("loopSample", knobs.tau + dy * 0.004));
+  if (scene === "turnFrames") setKnob("yaw", clampKnob(scene, knobs.yaw + dy * 0.35));
+  if (scene === "turnLock") setKnob("pitch", clampKnob(scene, knobs.pitch + dy * 0.25));
+  if (scene === "turnQuat") setKnob("tumble", clampKnob(scene, knobs.tumble + dy * 0.35));
+  if (scene === "turnSpin") setKnob("rate", clampKnob(scene, knobs.rate + dy * 0.25));
+  if (scene === "turnInertia") setKnob("inertia", clampKnob(scene, knobs.inertia + dy * 0.01));
+  if (scene === "turnGimbal") setKnob("gimbal", clampKnob(scene, knobs.gimbal + dy * 0.04));
+  if (scene === "turnAir") setKnob("margin", clampKnob(scene, knobs.margin + dy * 0.004));
+  if (scene === "turnSlosh") setKnob("slosh", clampKnob(scene, knobs.slosh + dy * 0.08));
 }
 
 // Coil from the mount down to the mass. The ends pull in to the center line
@@ -232,9 +242,16 @@ function Picture({ orbit, onBodyDrag }: { orbit: RefObject<OrbitRig | null>; onB
     }
 
     if (rocket.current) {
+      const turn = isTurnScene(scene);
       rocket.current.visible = !showRig;
-      rocket.current.position.y = y + NOZZLE_LIFT;
       rocket.current.scale.setScalar(ROCKET_SCALE);
+      if (turn) {
+        rocket.current.position.y = viewY(0, scene, knobs) + 0.55;
+        rocket.current.rotation.set(0, body.yaw, body.tilt);
+      } else {
+        rocket.current.position.y = y + NOZZLE_LIFT;
+        rocket.current.rotation.set(0, 0, 0);
+      }
     }
     if (flame.current) {
       const burning = !showRig && body.flame > 0.02;
@@ -341,7 +358,9 @@ function Picture({ orbit, onBodyDrag }: { orbit: RefObject<OrbitRig | null>; onB
         }}
       >
         <Rocket flameRef={flame} flameMat={flameMat} />
+        <TurnBodyMarks />
       </group>
+      <TurnWorldMarks />
 
       <group ref={ground} visible={false}>
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
@@ -352,6 +371,140 @@ function Picture({ orbit, onBodyDrag }: { orbit: RefObject<OrbitRig | null>; onB
           <ringGeometry args={[0.42, 0.62, 48]} />
           <meshBasicMaterial color="#6d7c76" />
         </mesh>
+      </group>
+    </group>
+  );
+}
+
+const AIM_UP = new Vector3(0, 1, 0);
+const AIM_DIR = new Vector3();
+const AIM_QUAT = new Quaternion();
+
+function aimArrow(group: Group | null, x: number, y: number, z: number, length: number): void {
+  if (!group) return;
+  AIM_DIR.set(x, y, z);
+  if (AIM_DIR.lengthSq() < 1e-8) AIM_DIR.set(0, 1, 0);
+  AIM_DIR.normalize();
+  AIM_QUAT.setFromUnitVectors(AIM_UP, AIM_DIR);
+  group.quaternion.copy(AIM_QUAT);
+  group.scale.set(1, length, 1);
+}
+
+function ArrowMesh({ color }: { color: string }) {
+  return (
+    <group>
+      <mesh position={[0, 0.5, 0]}>
+        <cylinderGeometry args={[0.035, 0.035, 1, 10]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <mesh position={[0, 1.08, 0]}>
+        <coneGeometry args={[0.08, 0.18, 10]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+    </group>
+  );
+}
+
+function TurnBodyMarks() {
+  const side = useRef<Group>(null);
+  const nose = useRef<Group>(null);
+  const thrust = useRef<Group>(null);
+  const cg = useRef<Mesh>(null);
+  const cp = useRef<Mesh>(null);
+  const tank = useRef<Mesh>(null);
+  const slug = useRef<Mesh>(null);
+
+  useFrame(() => {
+    const id = getScene();
+    const turn = isTurnScene(id);
+    const pose = turn ? bodyAt(id, getTime(), getKnobs()) : null;
+    if (side.current) side.current.visible = id === "turnFrames";
+    if (nose.current) nose.current.visible = id === "turnLock" || id === "turnQuat";
+    if (thrust.current) thrust.current.visible = id === "turnGimbal";
+    if (cg.current) cg.current.visible = id === "turnAir";
+    if (cp.current) cp.current.visible = id === "turnAir";
+    if (tank.current) tank.current.visible = id === "turnSlosh";
+    if (slug.current) slug.current.visible = id === "turnSlosh";
+    if (!pose) return;
+    if (id === "turnFrames") {
+      aimArrow(side.current, 1, 0, 0, 1.35);
+      if (side.current) side.current.position.set(0, 0.15, 0);
+    }
+    if (id === "turnLock" || id === "turnQuat") {
+      aimArrow(nose.current, 0, 1, 0, 1.45);
+      if (nose.current) nose.current.position.set(0, 0.1, 0);
+    }
+    if (id === "turnGimbal") {
+      aimArrow(thrust.current, -Math.sin(pose.gimbal), -Math.cos(pose.gimbal), 0, 1.2);
+      if (thrust.current) thrust.current.position.set(0, -1.2, 0);
+    }
+    if (id === "turnAir" && cg.current && cp.current) {
+      cg.current.position.set(0, 0.05, 0);
+      cp.current.position.set(0, -0.2 - pose.cp * 0.4, 0);
+    }
+    if (id === "turnSlosh" && slug.current && tank.current) {
+      tank.current.position.set(0, 0.05, 0);
+      slug.current.position.set(Math.sin(pose.slosh) * 0.32, -0.25 + (1 - pose.fill) * 0.55, 0);
+    }
+  });
+
+  return (
+    <group>
+      <group ref={side} visible={false}>
+        <ArrowMesh color={GOLD} />
+      </group>
+      <group ref={nose} visible={false}>
+        <ArrowMesh color={GOLD} />
+      </group>
+      <group ref={thrust} visible={false}>
+        <ArrowMesh color={GOLD} />
+      </group>
+      <mesh ref={cg} visible={false}>
+        <sphereGeometry args={[0.07, 16, 12]} />
+        <meshBasicMaterial color={GOLD} />
+      </mesh>
+      <mesh ref={cp} visible={false}>
+        <sphereGeometry args={[0.055, 16, 12]} />
+        <meshBasicMaterial color={PALE} />
+      </mesh>
+      <mesh ref={tank} visible={false}>
+        <cylinderGeometry args={[0.1, 0.1, 0.85, 18, 1, true]} />
+        <meshBasicMaterial color={PALE} wireframe />
+      </mesh>
+      <mesh ref={slug} visible={false}>
+        <sphereGeometry args={[0.08, 16, 12]} />
+        <meshBasicMaterial color={GOLD} />
+      </mesh>
+    </group>
+  );
+}
+
+function TurnWorldMarks() {
+  const root = useRef<Group>(null);
+  const axis = useRef<Group>(null);
+
+  useFrame(() => {
+    const id = getScene();
+    const on = id === "turnFrames" || id === "turnLock" || id === "turnQuat";
+    if (root.current) {
+      root.current.visible = on;
+      root.current.position.y = viewY(0, id, getKnobs()) + 0.55;
+      root.current.scale.setScalar(ROCKET_SCALE);
+    }
+    if (!on) return;
+    if (id === "turnFrames") {
+      aimArrow(axis.current, 1, 0, 0, 1.35);
+      if (axis.current) axis.current.position.set(0, 0.15, 0);
+    } else {
+      aimArrow(axis.current, 0, 1, 0, 1.45);
+      if (axis.current) axis.current.position.set(0, 0.1, 0);
+    }
+  });
+
+  return (
+    <group ref={root} visible={false}>
+      <group ref={axis}>
+        <ArrowMesh color={PALE} />
       </group>
     </group>
   );
@@ -371,12 +524,14 @@ function StageGuide() {
   useFrame(() => {
     if (!now.current) return;
     const current = getScene();
-    const show = current !== "state" && current !== "step";
+    const show = current !== "state" && current !== "step" && !isTurnScene(current);
     now.current.visible = show;
     if (!show) return;
     const height = bodyAt(current, getTime(), getKnobs()).height;
     now.current.position.y = viewY(height, current, getKnobs());
   });
+
+  if (isTurnScene(scene)) return null;
 
   if (rig) {
     return (

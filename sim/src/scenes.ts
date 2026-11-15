@@ -1,6 +1,7 @@
 // Rocket Dynamics. One clock per scene. Each scene has a claim, a knob you can drag, and chart columns.
 
 import { loopRowAt, loopRowsFor, LOOP_LIMIT, LOOP_M, LOOP_T0 } from "./loopPlant";
+import { turnAt, turnBrief, turnDuration, turnRows, type TurnId, type TurnSample } from "./turnPlant";
 
 
 export type SceneId =
@@ -13,7 +14,15 @@ export type SceneId =
   | "loopEquil"
   | "loopHover"
   | "loopMode"
-  | "loopSample";
+  | "loopSample"
+  | "turnFrames"
+  | "turnLock"
+  | "turnQuat"
+  | "turnSpin"
+  | "turnInertia"
+  | "turnGimbal"
+  | "turnAir"
+  | "turnSlosh";
 
 export type Column =
   | "height"
@@ -36,7 +45,20 @@ export type Column =
   | "hiddenMode"
   | "continuous"
   | "discrete"
-  | "thrust";
+  | "thrust"
+  | "worldX"
+  | "worldZ"
+  | "pitch"
+  | "axisGap"
+  | "quatW"
+  | "quatZ"
+  | "angle"
+  | "spin"
+  | "side"
+  | "moment"
+  | "attack"
+  | "fill"
+  | "offset";
 
 export type Row = {
   t: number;
@@ -61,6 +83,19 @@ export type Row = {
   continuous: number;
   discrete: number;
   thrust: number;
+  worldX: number;
+  worldZ: number;
+  pitch: number;
+  axisGap: number;
+  quatW: number;
+  quatZ: number;
+  angle: number;
+  spin: number;
+  side: number;
+  moment: number;
+  attack: number;
+  fill: number;
+  offset: number;
 };
 
 export type Knobs = {
@@ -75,6 +110,14 @@ export type Knobs = {
   unstable: number;
   coupling: number;
   extraThrust: number;
+  yaw: number;
+  pitch: number;
+  tumble: number;
+  rate: number;
+  inertia: number;
+  gimbal: number;
+  margin: number;
+  slosh: number;
 };
 
 export const KNOBS: Knobs = {
@@ -89,6 +132,14 @@ export const KNOBS: Knobs = {
   perturb: 0.35,
   unstable: 4,
   coupling: 0.35,
+  yaw: 90,
+  pitch: 90,
+  tumble: 180,
+  rate: 45,
+  inertia: 1,
+  gimbal: 8,
+  margin: 0.6,
+  slosh: 16,
 };
 
 // Undamped spring. Mass 1 kg, stiffness 1 N/m, so one swing takes 2π seconds.
@@ -114,7 +165,15 @@ export type KnobKey =
   | "perturb"
   | "unstable"
   | "coupling"
-  | "extraThrust";
+  | "extraThrust"
+  | "yaw"
+  | "pitch"
+  | "tumble"
+  | "rate"
+  | "inertia"
+  | "gimbal"
+  | "margin"
+  | "slosh";
 
 const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   dt: { min: 0.05, max: 0.5 },
@@ -128,6 +187,14 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   perturb: { min: 0.08, max: 0.8 },
   unstable: { min: 2, max: 7 },
   coupling: { min: 0.1, max: 0.7 },
+  yaw: { min: 30, max: 180 },
+  pitch: { min: 30, max: 90 },
+  tumble: { min: 90, max: 180 },
+  rate: { min: 15, max: 120 },
+  inertia: { min: 0.4, max: 4 },
+  gimbal: { min: 0, max: 15 },
+  margin: { min: -1, max: 1.5 },
+  slosh: { min: 4, max: 35 },
 };
 
 export function clampNamed(key: KnobKey, value: number): number {
@@ -256,6 +323,94 @@ export const SCENES: {
     chartTitle: "Continuous and discrete",
     visual: "The continuous trace updates every instant. The discrete trace holds thrust between samples and may act on delayed height.",
   },
+  {
+    id: "turnFrames",
+    name: "Frames",
+    title: "Frames",
+    lede: "The gold arrow is fixed to the rocket. The pale arrow is the same direction drawn in the world, and its two components change as the rocket yaws.",
+    opener: "The body arrow does not change on the rocket. worldX and worldZ are that arrow in the world. Drag the rocket to change how far it yaws.",
+    live: ["worldX", "worldZ"],
+    askable: ["worldX", "worldZ"],
+    chartTitle: "World components",
+    visual: "The gold arrow stays on the body. The pale arrow stays on the world axis. Yaw turns one relative to the other.",
+  },
+  {
+    id: "turnLock",
+    name: "Gimbal lock",
+    title: "Gimbal lock",
+    lede: "Pitch tips the nose up from the horizon. At 90 degrees the nose lies on the vertical yaw axis, so a roll about the nose is the same turn as a yaw.",
+    opener: "Pitch is how far the nose has risen. The gap is the angle left between the nose and the vertical axis. Drag the rocket to change the final pitch.",
+    live: ["pitch", "axisGap"],
+    askable: ["pitch", "axisGap"],
+    chartTitle: "Pitch and axis gap",
+    visual: "The pale arrow is the vertical yaw axis. The gold arrow is the nose. They meet when pitch reaches 90 degrees.",
+  },
+  {
+    id: "turnQuat",
+    name: "Quaternions",
+    title: "Quaternions",
+    lede: "The same pitch, carried past vertical, stays a smooth pair of numbers. The cosine and sine of half the angle do not trade places or blow up when the nose crosses the yaw axis.",
+    opener: "quatW and quatZ are one rotation about the pitch axis. Drag the rocket to change how far past vertical the nose goes.",
+    live: ["quatW", "quatZ"],
+    askable: ["quatW", "quatZ", "pitch"],
+    chartTitle: "Quaternion components",
+    visual: "The nose keeps a direction through and past the vertical. The chart holds the four-number rotation as two components of a unit quaternion.",
+  },
+  {
+    id: "turnSpin",
+    name: "Spin",
+    title: "Spin",
+    lede: "With no torque the spin rate stays put, and the angle is that rate times time. The stripe on the body walks around at a steady pace.",
+    opener: "Spin is the rate. Angle is how far that rate has carried the body. Drag the rocket to change the rate.",
+    live: ["angle", "spin"],
+    askable: ["angle", "spin"],
+    chartTitle: "Angle and spin",
+    visual: "The rocket yaws at a constant rate. The angle on the chart is a straight ramp.",
+  },
+  {
+    id: "turnInertia",
+    name: "Inertia and torque",
+    title: "Inertia and torque",
+    lede: "A steady torque makes the spin rate climb in a straight line. More inertia, same torque, and the line is shallower.",
+    opener: "The torque is fixed at 2 N·m. Drag the rocket to change the inertia.",
+    live: ["angle", "spin"],
+    askable: ["angle", "spin", "moment"],
+    chartTitle: "Angle and spin",
+    visual: "The rocket speeds up as it turns. A larger inertia reaches the same angle later.",
+  },
+  {
+    id: "turnGimbal",
+    name: "Gimbal and allocation",
+    title: "Gimbal and allocation",
+    lede: "One nozzle angle sets both the side force and the moment about the center of mass. You do not get to ask for one without the other.",
+    opener: "Side force and moment rise together because both are thrust times the sine of the gimbal angle. Drag the rocket to change that angle.",
+    live: ["side", "moment"],
+    askable: ["side", "moment", "pitch"],
+    chartTitle: "Side force and moment",
+    visual: "The gold arrow is the thrust, tilted off the centerline. The moment arm runs from that line to the center of mass.",
+  },
+  {
+    id: "turnAir",
+    name: "Air and center of pressure",
+    title: "Air and center of pressure",
+    lede: "Air pushes at the center of pressure. When that point sits behind the center of mass, the moment turns the nose back toward the wind.",
+    opener: "Positive margin means the center of pressure is behind the center of mass. Drag the rocket to move that margin.",
+    live: ["attack", "moment"],
+    askable: ["attack", "moment"],
+    chartTitle: "Angle and moment",
+    visual: "The gold mark is the center of mass. The pale mark is the center of pressure. The rocket's tilt is the angle of attack.",
+  },
+  {
+    id: "turnSlosh",
+    name: "Tank that drains and sloshes",
+    title: "Tank that drains and sloshes",
+    lede: "The tank empties from the bottom while the fuel still in it swings. That swing shifts the center of mass sideways, and the shift shrinks as the fuel runs out.",
+    opener: "Fill is the fuel still aboard. Offset is how far the swinging fuel has moved the center of mass. Drag the rocket to change the swing.",
+    live: ["fill", "offset"],
+    askable: ["fill", "offset"],
+    chartTitle: "Fuel and offset",
+    visual: "The gold slug is the fuel that is still free to swing. It rides up the tank as the propellant burns, and its sideways travel moves the center of mass.",
+  },
 ];
 
 export function sceneById(id: SceneId) {
@@ -274,11 +429,16 @@ export function durationOf(id: SceneId): number {
   if (id === "loopHover") return 14;
   if (id === "loopMode") return 12;
   if (id === "loopSample") return 12;
+  if (isTurnScene(id)) return turnDuration(id);
   return 5;
 }
 
 export function isLoopScene(id: SceneId): boolean {
   return id.startsWith("loop");
+}
+
+export function isTurnScene(id: SceneId): id is TurnId {
+  return id.startsWith("turn");
 }
 
 export function clampKnob(id: SceneId, value: number): number {
@@ -291,6 +451,14 @@ export function clampKnob(id: SceneId, value: number): number {
   if (id === "loopEquil") return clampNamed("perturb", value);
   if (id === "loopHover") return clampNamed("unstable", value);
   if (id === "loopMode") return clampNamed("coupling", value);
+  if (id === "turnFrames") return clampNamed("yaw", value);
+  if (id === "turnLock") return clampNamed("pitch", value);
+  if (id === "turnQuat") return clampNamed("tumble", value);
+  if (id === "turnSpin") return clampNamed("rate", value);
+  if (id === "turnInertia") return clampNamed("inertia", value);
+  if (id === "turnGimbal") return clampNamed("gimbal", value);
+  if (id === "turnAir") return clampNamed("margin", value);
+  if (id === "turnSlosh") return clampNamed("slosh", value);
   return value;
 }
 
@@ -322,6 +490,19 @@ function blank(t: number): Row {
     continuous: 0,
     discrete: 0,
     thrust: 0,
+    worldX: 0,
+    worldZ: 0,
+    pitch: 0,
+    axisGap: 0,
+    quatW: 0,
+    quatZ: 0,
+    angle: 0,
+    spin: 0,
+    side: 0,
+    moment: 0,
+    attack: 0,
+    fill: 0,
+    offset: 0,
   };
 }
 
@@ -452,40 +633,54 @@ function engineRows(tau: number, ask: number): Row[] {
 let rowCache: { key: string; rows: Row[] } | null = null;
 
 function fromLoopRow(row: ReturnType<typeof loopRowAt>): Row {
-  return {
-    t: row.t,
-    height: row.height,
-    rate: row.rate,
-    stepped: 0,
-    truth: 0,
-    accel: 0,
-    mass: 0,
-    command: row.command,
-    actual: row.actual,
-    reference: row.reference,
-    pHeight: row.pHeight,
-    iHeight: row.iHeight,
-    dHeight: row.dHeight,
-    nonlinear: row.nonlinear,
-    linear: row.linear,
-    openHeight: row.openHeight,
-    closedHeight: row.closedHeight,
-    measured: row.measured,
-    hiddenMode: row.hiddenMode,
-    continuous: row.continuous,
-    discrete: row.discrete,
-    thrust: row.thrust,
-  };
+  const next = blank(row.t);
+  next.height = row.height;
+  next.rate = row.rate;
+  next.command = row.command;
+  next.actual = row.actual;
+  next.reference = row.reference;
+  next.pHeight = row.pHeight;
+  next.iHeight = row.iHeight;
+  next.dHeight = row.dHeight;
+  next.nonlinear = row.nonlinear;
+  next.linear = row.linear;
+  next.openHeight = row.openHeight;
+  next.closedHeight = row.closedHeight;
+  next.measured = row.measured;
+  next.hiddenMode = row.hiddenMode;
+  next.continuous = row.continuous;
+  next.discrete = row.discrete;
+  next.thrust = row.thrust;
+  return next;
+}
+
+function fromTurnSample(row: TurnSample): Row {
+  const next = blank(row.t);
+  next.worldX = row.worldX;
+  next.worldZ = row.worldZ;
+  next.pitch = row.pitch;
+  next.axisGap = row.axisGap;
+  next.quatW = row.quatW;
+  next.quatZ = row.quatZ;
+  next.angle = row.angle;
+  next.spin = row.spin;
+  next.side = row.side;
+  next.moment = row.moment;
+  next.attack = row.attack;
+  next.fill = row.fill;
+  next.offset = row.offset;
+  return next;
 }
 
 export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
-  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}`;
+  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}`;
   if (rowCache && rowCache.key === key) return rowCache.rows;
 
   let rows: Row[];
   if (id === "state" || id === "step") rows = springRows();
   else if (id === "mass") rows = massRows(knobs.thrust);
   else if (id === "engine") rows = engineRows(knobs.tau, knobs.ask);
+  else if (isTurnScene(id)) rows = turnRows(id, knobs).map(fromTurnSample);
   else rows = loopRowsFor(id, knobs).map(fromLoopRow);
 
   rowCache = { key, rows };
@@ -501,24 +696,54 @@ export function rowAt(rows: Row[], t: number): Row {
   return chosen;
 }
 
-export function bodyAt(id: SceneId, t: number, knobs: Knobs): { height: number; truth: number; flame: number } {
+export type BodyDraw = {
+  height: number;
+  truth: number;
+  flame: number;
+  yaw: number;
+  tilt: number;
+  gimbal: number;
+  slosh: number;
+  cp: number;
+  fill: number;
+};
+
+function still(height: number, truth: number, flame: number): BodyDraw {
+  return { height, truth, flame, yaw: 0, tilt: 0, gimbal: 0, slosh: 0, cp: 0, fill: 1 };
+}
+
+export function bodyAt(id: SceneId, t: number, knobs: Knobs): BodyDraw {
   if (id === "state") {
     const height = springHeight(t);
-    return { height, truth: height, flame: 0 };
+    return still(height, height, 0);
   }
   if (id === "step") {
-    return { height: steppedHeight(t, knobs.dt), truth: springHeight(t), flame: 0 };
+    return still(steppedHeight(t, knobs.dt), springHeight(t), 0);
+  }
+  if (isTurnScene(id)) {
+    const sample = turnAt(id, t, knobs);
+    return {
+      height: 0,
+      truth: 0,
+      flame: sample.flame,
+      yaw: sample.yaw,
+      tilt: sample.tilt,
+      gimbal: sample.gimbal,
+      slosh: sample.slosh,
+      cp: sample.cp,
+      fill: id === "turnSlosh" ? sample.fill / 1.5 : 1,
+    };
   }
   const row = rowAt(rowsFor(id, knobs), t);
   if (id === "mass") {
     const burning = t < BURN && knobs.thrust > 0;
-    return { height: row.height, truth: row.height, flame: burning ? knobs.thrust / LIMITS.thrust.max : 0 };
+    return still(row.height, row.height, burning ? knobs.thrust / LIMITS.thrust.max : 0);
   }
   if (isLoopScene(id)) {
     const thrust = row.actual || row.thrust || LOOP_T0;
-    return { height: row.height, truth: row.height, flame: Math.min(1, Math.max(0, (thrust - LOOP_T0 * 0.85) / (LOOP_LIMIT - LOOP_T0 * 0.85))) };
+    return still(row.height, row.height, Math.min(1, Math.max(0, (thrust - LOOP_T0 * 0.85) / (LOOP_LIMIT - LOOP_T0 * 0.85))));
   }
-  return { height: row.height, truth: row.height, flame: row.actual / LIMIT };
+  return still(row.height, row.height, row.actual / LIMIT);
 }
 
 export type PlotSeries = {
@@ -529,7 +754,7 @@ export type PlotSeries = {
   axis: 0 | 1;
 };
 
-export type ColumnUnit = "m" | "m/s" | "m/s2" | "kg" | "N" | "unitless";
+export type ColumnUnit = "m" | "m/s" | "m/s2" | "kg" | "N" | "Nm" | "deg" | "deg/s" | "unitless";
 
 export const COLUMNS: Record<Column, { name: string; label: string; unit: ColumnUnit; words: string[] }> = {
   height: { name: "Height", label: "Height (m)", unit: "m", words: ["height", "state", "position"] },
@@ -553,6 +778,19 @@ export const COLUMNS: Record<Column, { name: string; label: string; unit: Column
   continuous: { name: "Continuous", label: "Continuous (m)", unit: "m", words: ["continuous", "analog"] },
   discrete: { name: "Discrete", label: "Discrete (m)", unit: "m", words: ["discrete", "sample", "digital"] },
   thrust: { name: "Thrust", label: "Thrust (N)", unit: "N", words: ["thrust", "force"] },
+  worldX: { name: "World X", label: "World X", unit: "unitless", words: ["world", "x", "component"] },
+  worldZ: { name: "World Z", label: "World Z", unit: "unitless", words: ["world", "z", "component"] },
+  pitch: { name: "Pitch", label: "Pitch (deg)", unit: "deg", words: ["pitch", "tip"] },
+  axisGap: { name: "Axis gap", label: "Axis gap (deg)", unit: "deg", words: ["gap", "lock", "axis"] },
+  quatW: { name: "quat w", label: "quat w", unit: "unitless", words: ["quaternion", "w"] },
+  quatZ: { name: "quat z", label: "quat z", unit: "unitless", words: ["quaternion", "z"] },
+  angle: { name: "Angle", label: "Angle (deg)", unit: "deg", words: ["angle", "theta"] },
+  spin: { name: "Spin", label: "Spin (deg/s)", unit: "deg/s", words: ["spin", "rate", "omega"] },
+  side: { name: "Side force", label: "Side force (N)", unit: "N", words: ["side", "force"] },
+  moment: { name: "Moment", label: "Moment (N·m)", unit: "Nm", words: ["moment", "torque"] },
+  attack: { name: "Attack", label: "Attack (deg)", unit: "deg", words: ["attack", "alpha", "aoa"] },
+  fill: { name: "Fuel", label: "Fuel (kg)", unit: "kg", words: ["fuel", "fill", "propellant"] },
+  offset: { name: "Offset", label: "Offset (m)", unit: "m", words: ["offset", "slosh", "cg"] },
 };
 
 export function columnName(column: Column): string {
@@ -659,6 +897,14 @@ function nice(lo: number, hi: number): [number, number] {
   return [Math.round(start * 1000) / 1000, Math.round(end * 1000) / 1000];
 }
 
+function formatReadout(value: number, column: Column): string {
+  const unit = COLUMNS[column].unit;
+  const suffix =
+    unit === "deg" ? "°" : unit === "deg/s" ? "°/s" : unit === "Nm" ? " N·m" : unit === "unitless" ? "" : ` ${unit.replace("m/s2", "m/s²")}`;
+  const digits = Math.abs(value) >= 100 ? 0 : Math.abs(value) >= 10 ? 1 : 2;
+  return `${value.toFixed(digits)}${suffix}`;
+}
+
 export type ReadoutLine = { name: string; text: string; column?: Column };
 
 export function readout(id: SceneId, t: number, knobs: Knobs): ReadoutLine[] {
@@ -682,6 +928,14 @@ export function readout(id: SceneId, t: number, knobs: Knobs): ReadoutLine[] {
       { name: "Time", text: `${t.toFixed(2)} s` },
       { name: "Height", text: `${row.height.toFixed(1)} m`, column: "height" },
       { name: "Rate", text: `${row.rate.toFixed(1)} m/s`, column: "rate" },
+    ];
+  }
+  if (isTurnScene(id)) {
+    const live = sceneById(id).live;
+    return [
+      { name: "Time", text: `${t.toFixed(2)} s` },
+      { name: columnName(live[0]), text: formatReadout(row[live[0]], live[0]), column: live[0] },
+      { name: columnName(live[1]), text: formatReadout(row[live[1]], live[1]), column: live[1] },
     ];
   }
   if (isLoopScene(id)) {
@@ -768,6 +1022,14 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
       knob("tau", "Delay", knobs.tau, LIMITS.tau.min, LIMITS.tau.max, 0.01, `${knobs.tau.toFixed(2)} s`),
     ];
   }
+  if (id === "turnFrames") return [knob("yaw", "Yaw", knobs.yaw, LIMITS.yaw.min, LIMITS.yaw.max, 1, `${knobs.yaw.toFixed(0)}°`)];
+  if (id === "turnLock") return [knob("pitch", "Pitch", knobs.pitch, LIMITS.pitch.min, LIMITS.pitch.max, 1, `${knobs.pitch.toFixed(0)}°`)];
+  if (id === "turnQuat") return [knob("tumble", "Pitch", knobs.tumble, LIMITS.tumble.min, LIMITS.tumble.max, 1, `${knobs.tumble.toFixed(0)}°`)];
+  if (id === "turnSpin") return [knob("rate", "Spin", knobs.rate, LIMITS.rate.min, LIMITS.rate.max, 1, `${knobs.rate.toFixed(0)}°/s`)];
+  if (id === "turnInertia") return [knob("inertia", "Inertia", knobs.inertia, LIMITS.inertia.min, LIMITS.inertia.max, 0.1, `${knobs.inertia.toFixed(1)} kg·m²`)];
+  if (id === "turnGimbal") return [knob("gimbal", "Gimbal", knobs.gimbal, LIMITS.gimbal.min, LIMITS.gimbal.max, 0.5, `${knobs.gimbal.toFixed(1)}°`)];
+  if (id === "turnAir") return [knob("margin", "Margin", knobs.margin, LIMITS.margin.min, LIMITS.margin.max, 0.1, `${knobs.margin.toFixed(1)} cal`)];
+  if (id === "turnSlosh") return [knob("slosh", "Swing", knobs.slosh, LIMITS.slosh.min, LIMITS.slosh.max, 1, `${knobs.slosh.toFixed(0)}°`)];
   return [];
 }
 
@@ -787,6 +1049,7 @@ export function viewSpan(id: SceneId, knobs: Knobs): { min: number; max: number 
     }
     return { min, max };
   }
+  if (isTurnScene(id)) return { min: -1, max: 1 };
   const rows = rowsFor(id, knobs);
   let min = 0;
   let max = 0;
@@ -806,6 +1069,9 @@ export function chartMarkers(id: SceneId, knobs: Knobs): ChartMarker[] {
   if (id === "loopOpen") return [{ t: 1, label: "extra thrust" }];
   if (id === "loopError") return [{ t: 2, label: "target step" }];
   if (id === "loopMode") return [{ t: 1.5, label: "target step" }];
+  if (id === "turnGimbal") return [{ t: 1.5, label: "gimbal holds" }];
+  if (id === "turnLock" && knobs.pitch >= 90) return [{ t: durationOf(id), label: "nose vertical" }];
+  if (id === "turnQuat") return [{ t: durationOf(id) * (90 / knobs.tumble), label: "nose vertical" }];
   if (id === "loopSample") {
     const markers: ChartMarker[] = [{ t: 1, label: "target step" }];
     for (let t = knobs.dt; t < durationOf(id) - 1e-9; t += knobs.dt) {
@@ -846,5 +1112,9 @@ export function chatBrief(id: SceneId, knobs: Knobs): string {
   if (id === "loopMode") {
     return `${scene.title}. Coupling ${knobs.coupling.toFixed(2)} from hidden mode into height. Allowed chart columns: ${allowedList(id)}.`;
   }
-  return `${scene.title}. Sample time ${knobs.dt.toFixed(2)} s and measurement delay ${knobs.tau.toFixed(2)} s versus continuous control. Allowed chart columns: ${allowedList(id)}.`;
+  if (id === "loopSample") {
+    return `${scene.title}. Sample time ${knobs.dt.toFixed(2)} s and measurement delay ${knobs.tau.toFixed(2)} s versus continuous control. Allowed chart columns: ${allowedList(id)}.`;
+  }
+  if (isTurnScene(id)) return turnBrief(id, knobs);
+  return `${scene.title}. Allowed chart columns: ${allowedList(id)}.`;
 }

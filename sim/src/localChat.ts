@@ -135,6 +135,12 @@ function explain(scene: SceneId, time: number, knobs: Knobs): string {
     return `The step is $${knobs.dt.toFixed(2)}\\,\\mathrm{s}$. At $t = ${time.toFixed(2)}\\,\\mathrm{s}$, the gold mass is the stepped height and the wire box is the true height.`;
   }
   const row = rowAt(rowsFor(scene, knobs), time);
+  if (scene.startsWith("turn")) {
+    const live = sceneById(scene).live;
+    const first = live[0];
+    const second = live[1];
+    return `At $t = ${time.toFixed(2)}\\,\\mathrm{s}$, ${columnName(first)} is ${row[first].toFixed(2)} and ${columnName(second)} is ${row[second].toFixed(2)}.`;
+  }
   if (scene === "mass") {
     return `Thrust input is $${knobs.thrust.toFixed(0)}\\,\\mathrm{N}$ while the tank has fuel. At $t = ${time.toFixed(2)}\\,\\mathrm{s}$, height is $${row.height.toFixed(2)}\\,\\mathrm{m}$ and rate is $${row.rate.toFixed(2)}\\,\\mathrm{m/s}$. Mass is $m = ${row.mass.toFixed(2)}\\,\\mathrm{kg}$.`;
   }
