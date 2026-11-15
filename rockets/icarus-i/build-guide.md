@@ -15,22 +15,22 @@ Where the video and the sheet disagree, the reason is given. Follow the video fo
 
 ## Where the build stands
 
-**As of 2026-10-18.** Sessions 1 through 5 are done. All three fins are tacked with wood glue. The interior epoxy fillets are in and curing. The AFT ring is still off. The cut ends of the booster, payload bay, and coupler are sealed with thin CA. The motor tube is not. The name on the paint will be **Icarus I**, in vinyl.
+**As of 2026-11-14.** Sessions 1 through 8 are done. The first filler-primer coat is on the booster, the payload bay, and the fins, and it is dry. Rail-button holes are drilled and the screws were dry-fitted. Epoxy in those holes waits until after paint. The exterior fillets are sanded. The coupler is riveted into the payload tube. The bulkhead is epoxied into the booster end of the coupler. The name on the paint will be **Icarus I**, in vinyl.
 
-**Next:** leave those fillets overnight. Session 6 is the AFT ring.
+**Next:** sand that primer with 220. A second coat only if a fingernail still catches the spiral groove.
 
-**On the bench:** thin CA, medium or gel CA, nitrile gloves, electrical tape, plastic bonding primer, a respirator with organic-vapor cartridges, and nylon push rivets, 5 mm by 6.5 mm. Nose cone flash is trimmed and the cone is sanded. Primer waits for the colour coat.
+**On the bench:** thin CA, medium or gel CA, nitrile gloves, electrical tape, plastic bonding primer, and nylon push rivets, 5 mm by 6.5 mm. Nose cone flash is trimmed and the cone is sanded. Primer waits for the colour coat. The mesh dust mask is for sanding only. There is no organic-vapor respirator.
 
-**Still open, and not blocking Session 6:**
+**Still open, and not blocking the rail buttons:**
 
 | Decision | Holds | Decide by |
 |---|---|---|
 | Buy gloss white. Tubes are fluorescent over that white. Fins and nose cone are gloss black, already bought. | Session 10 | Before spraying |
-| Pad confirmation | Session 9 | The Nov 18 LUNAR meeting |
+| How long is the high-power rail at Snow Ranch? | Rail exit speed, Session 11 | The Nov 18 LUNAR meeting. Size is settled: 1010. |
 
-The Sept 16 meeting was cancelled. The membership meeting is now **Nov 18**. The buttons on hand are 1010, and that size stays. Nov 18 confirms that Snow Ranch has a 1010 rail, and whether an 8 ft rail is available. Do not drill the button holes until that night, because paint locks them in. Sessions 4 through 8 do not wait on the meeting.
+The Sept 16 meeting was cancelled. The membership meeting is now **Nov 18**. The buttons on hand are 1010, and that size stays. LUNAR's field procedures list 48 inch 1010 rails on the mid-power pads, Black Sky style rails on the high-power pads, and heavy 1010 and 1515 rails on the away pad. Black Sky style rails take 1010 buttons. An H flight uses the high-power racks, not the away pad. Nov 18 is still the place to ask how long that high-power rail is, and to join NAR. Do not spray paint before the button holes are drilled.
 
-Fin edges were rounded on 2026-10-11. OpenRocket has not been started. The Dec 5 flight is the maiden, so the Session 11 weigh-and-sim is the only check on the delay.
+Fin edges were rounded on 2026-10-11. OpenRocket has not been started. The Dec 12 flight is the maiden, so the Session 11 weigh-and-sim is the only check on the delay.
 
 ---
 
@@ -44,11 +44,11 @@ flowchart TD
     S2 --> S3["3 · Done<br/>FWD + MID on the motor tube"]
     S3 --> S4["4 · Done<br/>Motor mount in the booster"]
     S4 -. overnight .-> S5["5 · Done<br/>Fins tacked,<br/>interior fillets"]
-    S5 -. overnight .-> S6["6 · Next<br/>AFT ring last"]
-    S6 -. overnight .-> S7["7 · Exterior<br/>fin fillets"]
-    S8["8 · Bulkhead, coupler<br/>and payload bay"] -.-> S9
-    S7 -. overnight .-> S9["9 · Rail buttons<br/>after Nov 18"]
-    S9 --> S10["10 · Finish and paint"]
+    S5 -. overnight .-> S6["6 · Done<br/>AFT ring on"]
+    S6 -. overnight .-> S7["7 · Done<br/>Exterior<br/>fin fillets"]
+    S8["8 · Done<br/>Coupler riveted<br/>into the payload"] -.-> S9
+    S7 -. overnight .-> S9["9 · Holes drilled<br/>epoxy after paint"]
+    S9 --> S10["10 · Next<br/>sand primer, then paint"]
     S10 --> S11["11 · Recovery harness<br/>then weigh and sim"]
 
     style S1 fill:#4b5563,color:#fff
@@ -56,7 +56,11 @@ flowchart TD
     style S3 fill:#4b5563,color:#fff
     style S4 fill:#4b5563,color:#fff
     style S5 fill:#4b5563,color:#fff
-    style S6 fill:#2d6a4f,color:#fff
+    style S6 fill:#4b5563,color:#fff
+    style S7 fill:#4b5563,color:#fff
+    style S8 fill:#4b5563,color:#fff
+    style S9 fill:#4b5563,color:#fff
+    style S10 fill:#2d6a4f,color:#fff
     style S11 fill:#7f1d1d,color:#fff
 ```
 
@@ -78,10 +82,10 @@ On the bench as of 2026-10-18.
 | **Nitrile gloves** | On hand | The polyethylene gloves tear and let epoxy through. |
 | **Plastic bonding primer** | On hand | The nose cone is polypropylene. Nothing else holds a topcoat. P1 @03:16. |
 | **Electrical tape** | On hand | Locks the parachute shroud-line gather. P3 @30:53. |
-| **OV respirator** | On hand | Spraying. The mesh dust mask only covers sanding. |
-| **Nylon push rivets, 5 mm by 6.5 mm** | On hand. 50-pack, bought 2026-10-18. | Three hold the coupler in the payload tube. Session 8. |
+| **OV respirator** | Not bought | Spraying. The mesh dust mask only covers sanding. |
+| **Nylon push rivets, 5 mm by 6.5 mm** | Installed 2026-11-08. Holes opened to 3/16. | Three hold the coupler in the payload tube. |
 
-The bulkhead gets epoxied into the coupler. The coupler is held in the payload tube with three of these rivets, so it can come out later for an avionics bay. See [Session 8](#session-8-payload-bay). They do not block the AFT ring.
+The bulkhead is epoxied into the coupler. Three of these rivets hold the coupler in the payload tube, so it can come out later for an avionics bay. See [Session 8](#session-8-payload-bay).
 
 ---
 
@@ -290,7 +294,7 @@ The bead goes on in one pass, deep inside the tube, because the gap between the 
 ## Session 5: Fins, then interior fillets
 
 > [!note] Done as of 2026-10-18
-> All three fins are tacked with wood glue on the tab, where it meets the motor tube. The interior fillets are in: fin tab to motor tube, fin tab to the inside wall of the booster, and the aft face of the MID ring. The AFT ring is still off. Leave the fillets overnight before Session 6.
+> All three fins are tacked with wood glue on the tab, where it meets the motor tube. The interior fillets are in: fin tab to motor tube, fin tab to the inside wall of the booster, and the aft face of the MID ring.
 
 ### 5a. Tack the fins
 
@@ -314,6 +318,9 @@ Keep epoxy off the aft 1/8" of motor tube and the tube's inner edge, because the
 
 ## Session 6: AFT ring goes on last
 
+> [!note] Done as of 2026-10-24
+> The AFT ring is on.
+
 Bead epoxy round the motor tube, seat the ring, fillet the outside face, smooth with the alcohol-and-glove trick.
 
 **Clock it so the retainer screw is not directly over a fin** (P2 @31:54), or you cannot get a screwdriver on it.
@@ -321,6 +328,9 @@ Bead epoxy round the motor tube, seat the ring, fillet the outside face, smooth 
 ---
 
 ## Session 7: Exterior fin fillets
+
+> [!note] Done as of 2026-11-08
+> All three exterior fillets are in, hard, and sanded.
 
 Use **five-minute epoxy in small batches**, one fillet at a time, so it cannot run (P3 @13:13). Both sides of one fin, then move on.
 
@@ -335,6 +345,9 @@ Two ways to shape them:
 
 ## Session 8: Payload bay
 
+> [!note] Done as of 2026-11-08
+> The coupler is marked at 4". The bulkhead is epoxied into the booster end, recessed about 1/8", eyebolt facing the booster. The exposed face has a skim coat. Three nylon rivets hold the coupler in the payload tube. The holes are 3/16. The booster end was dry-fitted on 2026-11-08 and slides freely. It stays a friction fit.
+
 Fits into any cure wait.
 
 **Mark the coupler at 4"**, its halfway point. Sand and lightly bevel the bulkhead edge until it drops into the coupler cleanly (P2 @36:43), then epoxy it in **recessed about 1/8"** from the coupler edge so there is room for a fillet. Give the exposed face a skim coat of 30-minute epoxy, since it takes the brunt of the ejection charge (P2 @43:43).
@@ -344,7 +357,9 @@ The coupler is not glued into the payload tube. Three reusable plastic rivets ho
 > [!note] Decided 2026-10-18: rivet the coupler, glue the bulkhead
 > The rivets are on the bench: nylon push rivets, 5 mm by 6.5 mm, bought 2026-10-18. Three go through the payload tube and the coupler, about 3 cm up from the payload's edge, equally spaced. The nose cone does not get rivets. Tape holds the nose for the cert flight.
 >
-> The bulkhead is still epoxied into the coupler. The rivets do not replace that glue. The eyebolt is already in the bulkhead.
+> The split piece goes in the hole first, slots inward, until its own flange sits flat on the outside of the payload. Then the pin is pushed into that split piece until the big head sits on the flange. An 11/64 hole is too small for the 5 mm body. Open the hole to 3/16, and only go larger if the split piece still will not sit flat. Thin CA goes on the cardboard rim of the hole only, after a dry test, and never inside the rivet. If the hole squeezes the split piece, the pin will not enter.
+>
+> The bulkhead is epoxied into the coupler. The rivets do not replace that glue. The eyebolt is already in the bulkhead.
 
 ### Nose cone prep, any time
 
@@ -354,12 +369,14 @@ Flash is trimmed and the cone is sanded, as of 2026-10-11. Before the colour coa
 
 ## Session 9: Rail buttons
 
-> [!warning] Do not drill these until Nov 18
-> The Sept 16 meeting was cancelled. Nov 18 confirms that Snow Ranch has a 1010 rail, and whether an 8 ft rail is available. The buttons on hand are 1010, and that size stays. Paint locks the holes, so the drill waits on the meeting. Sessions 4 through 8 do not.
+> [!note] Holes drilled 2026-11-14
+> The 1010 holes are drilled and the screws were dry-fitted. Epoxy waits until the buttons go on after paint. LUNAR's field procedures list 1010 rails, including Black Sky style rails on the high-power pads. The away pad also has 1515 rails, for the really big rockets. An H flight does not use that pad. Nov 18 is still the time to ask how long the high-power rail is. The only published length is 48 inches, on the mid-power pads.
 
 Two buttons, on the reference line from Session 1, **before paint**.
 
 The sheet's method: drill a small hole at the **FWD and AFT centering ring** positions, drop epoxy in the hole, drive the screw. Both are known structure, so no backer is needed. Trim the mould flash off the buttons first (P3 @17:29).
+
+The holes were drilled and the screws dry-fitted on 2026-11-14. Leave the epoxy out until the buttons go on after paint. A cured screw will not come back out for the paint, and the buttons have to be off while you spray (P3 @25:04). When that day comes, the 10 ml syringes have no needle and the tip is wider than a 3/32 hole. 30-minute epoxy is too thick to drop through it. Dip a toothpick or the point of a stir stick, poke a small bead into the hole, drive the screw, and wipe the squeeze-out with alcohol.
 
 ```
    nose ──────────────────────────────────────────────── tail
@@ -385,7 +402,7 @@ Take the buttons off before painting and refit afterward (P3 @25:04).
 ## Session 10: Finish
 
 1. **Done 2026-10-11.** Cut ends of the booster, payload bay, and coupler are sealed with thin CA. Leave the motor tube bare: the aft ring still has to slide on, the motor has to slide in, and epoxy has to stick to that cardboard.
-2. Filler primer on the booster, the payload bay, and the fins. Sand back. Repeat until the spirals and the wood grain are gone. Keep it off the nose cone and off the outside of the coupler.
+2. Filler primer on the booster, the payload bay, and the fins. Sand back. Repeat until the spirals and the wood grain are gone. At about 70°F this can is ready to dry-sand in 2 to 4 hours. Cooler air needs longer. It is ready when a fresh 220 sheet makes fine grey dust. If the primer rolls into balls and sticks to the paper, stop and wait. A clogged sheet will not sand. Spray in lengthwise passes about 12 inches away, rotate the tube a quarter turn, and overlap the last pass. Hold the tube from the inside so the hand is not blocking a stripe. A missed stripe sands through to white cardboard. Spray the booster and the payload bay as two separate pieces. Do not push them together first. With the payload by itself, half the coupler hangs out of it. Tape that hanging half, and keep primer off it. Also keep primer out of the top few inches inside the booster, where that coupler slides in. Primer on either surface makes the friction fit too tight. Keep it off the nose cone. The nose cone gets plastic bonding primer later. Tape the two rail-button holes so they stay clear.
 3. Plastic bonding primer on the nose cone, then Stops Rust gloss black. Same black on the fins, over the filler primer.
 4. On the booster and payload bay: gloss white, then the fluorescent orange already on hand. The fluorescent has to sit on white, not on the grey primer.
 5. Clear coat over the decal.

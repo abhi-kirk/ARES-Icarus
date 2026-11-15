@@ -67,7 +67,7 @@ kit, 54 sheets, grits 80–800 (`13`). Denatured alcohol, better than isopropyl 
 **Tools:** drill and bits, digital calipers, gram scale, machinist square, steel ruler, utility
 knife. Complete.
 
-**Bought since the August inspection:** thin CA, medium or gel CA, nitrile gloves, plastic bonding primer, electrical tape, a respirator with organic-vapor cartridges, and nylon push rivets, 5 mm by 6.5 mm (50-pack, bought 2026-10-18). Three of those rivets hold the coupler in the payload tube. Titebond II still does not substitute for the thin CA. The polyethylene gloves (`20`) stay in the box.
+**Bought since the August inspection:** thin CA, medium or gel CA, nitrile gloves, plastic bonding primer, electrical tape, and nylon push rivets, 5 mm by 6.5 mm (50-pack, bought 2026-10-18). Three of those rivets hold the coupler in the payload tube. Titebond II still does not substitute for the thin CA. The polyethylene gloves (`20`) stay in the box. There is no organic-vapor respirator.
 
 The micro sander kit covers all the sanding, just slower on long flat runs than a full-size
 block would be.
@@ -93,16 +93,13 @@ build.
 
 It does not cover **spraying**. Its activated carbon is an odour-reduction pad, not an
 organic-vapour bed, so it weakens the smell of solvent without removing much of it and deletes
-the only warning cue. An organic-vapor respirator is now on hand for spraying. Keep using the mesh mask for sanding.
+the only warning cue. No organic-vapor respirator was bought. Keep the mesh mask for sanding only, and do not wear it while spraying.
 
-A short beard breaks the face seal on any tight-fitting respirator, so all spraying happens
-outdoors regardless. A partial seal over a real OV cartridge still beats a perfect seal over a
-carbon pad. Store it in a sealed ziplock; OV media absorbs solvent from ambient air on the
-shelf.
+A short beard breaks the face seal on any tight-fitting respirator, so all spraying happens outdoors regardless.
 
 ### Markings
 
-The rocket is named **Icarus I**. The Roman numeral marks it as the first of the series. It carries no LOC branding, so the kit decals stay in the box. The name goes on as cut vinyl over the colour coat, then clear coat on top. Order from [lettering.com](https://lettering.com/products/custom-vinyl-lettering/), outdoor vinyl, black, about 1.5 to 2 inches tall. Black works on either orange. Production is about a day, shipping about a week, so order in October. Letter colour does not need to wait on the final paint can. **Do not etch or engrave the airframe**, which removes material from a structural cardboard tube for decoration.
+The rocket is named **Icarus I**. The Roman numeral marks it as the first of the series. It carries no LOC branding, so the kit decals stay in the box. The name is black gloss cut vinyl from [lettering.com](https://lettering.com/products/custom-vinyl-lettering/), Premium Cast, ordered 2026-11-14 with their felt squeegee. "Icarus" is a slanted bold sans, 2.50 inch capital height, 10.24 inches wide. The Roman numeral is a separate serif I, same 2.50 inch capital height, 1.42 inches wide. Together, with the gap, the line is 12.6 inches wide and 2.46 inches tall. It goes on the booster after the colour coat, then clear coat on top. Cast vinyl is the film that stays stuck on a 4 inch tube. A second colour, including a blue numeral, turns the order into a printed sticker with a clear laminate rectangle, so the whole name stays black. **Do not etch or engrave the airframe**, which removes material from a structural cardboard tube for decoration.
 
 Put a name and phone number on the airframe for recovery.
 
@@ -110,11 +107,10 @@ Put a name and phone number on the airframe for recovery.
 
 ## Outstanding
 
-Build status as of 2026-10-18: Sessions 1 through 5 are done. All three fins are tacked with wood glue. The interior epoxy fillets are in and curing. The AFT ring is still off. Fin edges are rounded. Nose cone flash is trimmed and the cone is sanded. The cut ends of the booster, payload bay, and coupler are sealed with thin CA.
+Build status as of 2026-11-14: Sessions 1 through 8 are done. The first filler-primer coat is on the booster, the payload bay, and the fins, and it is dry. Rail-button holes are drilled and the screws were dry-fitted. Epoxy in those holes waits until after paint. The exterior fillets are sanded. The coupler is riveted into the payload tube. The bulkhead is epoxied into the booster end of the coupler. The AFT ring is on. Fin edges are rounded. Nose cone flash is trimmed and the cone is sanded. The cut ends of the booster, payload bay, and coupler are sealed with thin CA.
 
 | Item | Blocks | When |
 |---|---|---|
-| Confirm Snow Ranch has a 1010 rail, and whether an 8 ft rail is available | Session 9, before drilling buttons | Nov 18 meeting. Sept 16 was cancelled. |
+| Confirm how long Snow Ranch's high-power rail is. 1010 buttons are settled. | Rail exit speed | Nov 18 meeting. The field procedures only publish a 48 inch 1010 rail, on the mid-power pads. |
 | Buy a can of gloss white spray | Fluorescent top coat on the tubes | Before Session 10. Grey primer, then white, then the fluorescent already on hand. |
-| Order vinyl for **Icarus I** | Clear coat. Letter colour waits on the paint. | After the colour coat, before the clear coat |
 | Weigh the finished airframe, find CG, re-sim | Delay drilling | Session 11 |
