@@ -579,7 +579,6 @@ body {
 
 .lede {
   margin: 1.2rem 0 0;
-  max-width: 36rem;
   font-size: 1.15rem;
   line-height: 1.5;
 }
@@ -628,7 +627,6 @@ body {
 
 .scene-thread-look,
 .scene-thread-trace {
-  max-width: 36rem;
   line-height: 1.55;
 }
 
@@ -751,7 +749,6 @@ body {
 
 .essay figcaption {
   margin: 0.15rem 0 0.35rem;
-  max-width: 36rem;
   line-height: 1.55;
 }
 
@@ -764,7 +761,6 @@ body {
 
 .qa {
   margin-top: 1.4rem;
-  max-width: 40rem;
   padding: 0.85rem 1rem 1rem;
   border: 1px solid var(--hairline);
   background: transparent;
@@ -824,7 +820,6 @@ body {
 
 .qa .prompt {
   margin: 0;
-  max-width: 36rem;
   font-weight: 600;
 }
 
@@ -867,7 +862,6 @@ body {
 
 .verdict {
   margin: 0.85rem 0 0;
-  max-width: 36rem;
   line-height: 1.45;
 }
 
