@@ -682,7 +682,8 @@ body {
 
 .tip {
   z-index: 30;
-  max-width: 18rem;
+  width: max-content;
+  max-width: calc(100vw - 1.5rem);
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--hairline);
   border-radius: 0.45rem;
@@ -693,7 +694,15 @@ body {
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
 }
 
+.tip-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
 .tip p { margin: 0; }
+
+.tip-lines p { white-space: nowrap; }
 
 .door-tip {
   max-width: 22rem;
@@ -773,6 +782,10 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+}
+
+.qa-refresh {
+  margin-left: auto;
 }
 
 .qa-trigger,

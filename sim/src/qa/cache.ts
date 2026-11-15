@@ -1,5 +1,6 @@
-// Questions stay in the browser for an hour. A page reload reads them back.
-// The refresh button writes over the one it replaces.
+// A refreshed question stays in the browser for an hour. A page reload reads it
+// back and shows it ahead of the seed in questions.json. The seed returns when
+// that hour is over. A later database will keep generated questions per user.
 
 import type { LevelId } from "../tutor/levels";
 

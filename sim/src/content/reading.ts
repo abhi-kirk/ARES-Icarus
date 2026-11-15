@@ -1,11 +1,30 @@
 import type { SceneId } from "../scenes";
-import type { ReadingMap } from "./types";
+import type { ReadingMap, Thread } from "./types";
 
-// Public left-side copy. Tutor-only focus strings travel with each thread, but
-// the reader sees a single scene thread instead of objectives or lesson steps.
+// Public left-side copy. Tutor-only focus strings travel with each thread.
+// The first block of a scene is the plain fundamental. The blocks under it carry the equations.
+
+function plain(title: string, focus: string[], paragraphs: string[]): Thread {
+  return {
+    id: "eli5",
+    title,
+    focus,
+    levels: ["beginner"],
+    segments: paragraphs.map((text) => ({ kind: "look", text })),
+  };
+}
+
 export const READING: ReadingMap = {
   state: {
     threads: [
+      plain(
+        "A pull toward rest",
+        ["The spring pulls back toward the hanging point", "Height and rate together tell the next moment"],
+        [
+          "A spring pulls a mass back toward the place it hangs at rest, and the pull is stronger the farther the mass sits from that place. Let go from above, and the mass falls through the rest point and keeps going, because it still has speed at the moment the pull passes through zero.",
+          "Height says where the mass is. Rate says how fast that height is changing. Those two numbers are enough to know what the mass does next: the same height with an upward rate climbs, and the same height with a downward rate falls.",
+        ],
+      ),
       {
         id: "force",
         title: "The spring pulls home",
@@ -22,13 +41,15 @@ export const READING: ReadingMap = {
           {
             kind: "relation",
             tex: String.raw`m\ddot{x} = -kx`,
-            stake: "Displacement creates a restoring force. With the damper open, the force depends on displacement alone.",
-            gloss: String.raw`$m$ is the mass. $k$ is the spring stiffness. $x$ is height from the rest point.`,
+            stake: "The left side is mass times acceleration. The right side is a force proportional to height, and the minus sign points that force back toward the rest point. With the damper open, the force depends on the height alone.",
+            gloss: String.raw`$m$ is the mass.
+$k$ is the spring stiffness.
+$x$ is height from the rest point.`,
           },
           {
             kind: "contrast",
             tex: String.raw`\ddot{x} = -x`,
-            stake: "Here the constants are both one, so the sign is the thing to watch. Positive height gives negative acceleration, and negative height gives positive acceleration.",
+            stake: "In this scene the mass and the stiffness are both one, so acceleration equals the height with the sign flipped. Positive height gives negative acceleration. Negative height gives positive acceleration.",
           },
           {
             kind: "trace",
@@ -57,7 +78,9 @@ export const READING: ReadingMap = {
             kind: "relation",
             tex: String.raw`x = \cos t \qquad v = -\sin t`,
             stake: "The clock chooses both numbers at once. If you know only height, you can miss whether the mass is climbing or falling.",
-            gloss: String.raw`$x$ is height from rest. $v$ is rate in meters per second. $t$ is the slider time.`,
+            gloss: String.raw`$x$ is height from rest.
+$v$ is rate in meters per second.
+$t$ is the slider time.`,
           },
           {
             kind: "trace",
@@ -73,6 +96,14 @@ export const READING: ReadingMap = {
   },
   step: {
     threads: [
+      plain(
+        "A short promise, then a jump",
+        ["A step holds the current height and rate", "A longer step trusts a stale rate for longer"],
+        [
+          "A computer follows a smooth swing by making a short promise. It takes the height and the speed it has right now, holds them for a moment, and jumps to a new height. The true spring keeps curving during that moment.",
+          "A short moment stays close to the true swing, because the speed is still the speed of that moment. A long moment keeps a stale speed, and the computed mass walks away from the real one. The step length is the knob that sets how long each promise lasts.",
+        ],
+      ),
       {
         id: "step",
         title: "The computed mass waits",
@@ -89,17 +120,20 @@ export const READING: ReadingMap = {
           {
             kind: "relation",
             tex: String.raw`v_{n+1} = v_n - \Delta t\,x_n`,
-            stake: "The update uses the height at the start of the step.",
-            gloss: String.raw`$n$ is the current step. $\Delta t$ is the step length. $x_n$ and $v_n$ are the state at the start.`,
+            stake: "The new rate is the old rate plus acceleration times the step. For this spring the acceleration is the negative of the height, so the update subtracts $\\Delta t$ times the height it had at the start.",
+            gloss: String.raw`$n$ is the current step.
+$\Delta t$ is the step length.
+$x_n$ is height at the start of the step.
+$v_n$ is rate at the start of the step.`,
           },
           {
             kind: "relation",
             tex: String.raw`x_{n+1} = x_n + \Delta t\,v_n`,
-            stake: "The height update also trusts the old rate. When $\\Delta t$ grows, that trust lasts longer, and the gold trace drifts away from the truth.",
+            stake: "The new height trusts the old rate for the whole step. A larger $\\Delta t$ makes that trust last longer, and the gold mass drifts from the wire box, which keeps the true spring.",
           },
           {
             kind: "trace",
-            text: "The stepped trace goes wrong when the held value has left the motion it is approximating.",
+            text: "The stepped trace leaves the true spring when the held value has left the motion it is approximating.",
           },
           {
             kind: "trace",
@@ -111,6 +145,14 @@ export const READING: ReadingMap = {
   },
   mass: {
     threads: [
+      plain(
+        "The same push, a lighter rocket",
+        ["Burning fuel makes the vehicle lighter", "Height is speed accumulated over time"],
+        [
+          "A rocket gets lighter while it burns, because the fuel it pushes with is leaving. The same thrust on a lighter vehicle speeds it up more. When the tank is empty the thrust stops, and gravity is the force that remains.",
+          "Height is that speed, added up over the seconds the vehicle has been moving. The path remembers every earlier push, so the climb can still be rising after the acceleration has already turned over.",
+        ],
+      ),
       {
         id: "tank",
         title: "The same thrust changes its mind",
@@ -128,13 +170,15 @@ export const READING: ReadingMap = {
             kind: "relation",
             tex: String.raw`m(t) = 1.5 + 1.5\,\max(0,\,1 - t/4)`,
             stake: "The dry vehicle is always there. The fuel disappears over four seconds, and after that the thrust is gone too.",
-            gloss: String.raw`Mass is in kilograms. The fuel term reaches zero at $4\,\mathrm{s}$.`,
+            gloss: String.raw`Mass is in kilograms.
+The fuel term reaches zero at $4\,\mathrm{s}$.`,
           },
           {
             kind: "relation",
             tex: String.raw`a = F/m - g`,
             stake: "Thrust is the input. Acceleration is what the vehicle feels. The same $F$ produces less acceleration when $m$ is large.",
-            gloss: String.raw`$F$ is thrust in newtons. $g$ is $9.81\,\mathrm{m/s^2}$.`,
+            gloss: String.raw`$F$ is thrust in newtons.
+$g$ is $9.81\,\mathrm{m/s^2}$.`,
           },
           {
             kind: "trace",
@@ -163,7 +207,8 @@ export const READING: ReadingMap = {
             kind: "relation",
             tex: String.raw`\dot v = a \qquad \dot x = v`,
             stake: "Acceleration bends the rate first. Height follows only after rate has had time to accumulate.",
-            gloss: String.raw`$x$ is height from the pad. $v$ is vertical rate.`,
+            gloss: String.raw`$x$ is height from the pad.
+$v$ is vertical rate.`,
           },
           {
             kind: "trace",
@@ -179,6 +224,14 @@ export const READING: ReadingMap = {
   },
   engine: {
     threads: [
+      plain(
+        "The ask and the thrust",
+        ["A command can jump", "The vehicle feels the thrust the engine has made"],
+        [
+          "You can ask an engine for a new thrust in an instant. The engine reaches that thrust on its own time, closing the gap faster when it is farther behind, and slower when its lag is longer. It also has a limit, so a request past that limit stays at the limit.",
+          "The vehicle feels the thrust the engine has already made. Height and speed follow that thrust, so the climb starts when the engine arrives.",
+        ],
+      ),
       {
         id: "lag",
         title: "The engine has to catch up",
@@ -196,7 +249,9 @@ export const READING: ReadingMap = {
             kind: "relation",
             tex: String.raw`\dot{F} = (u - F)/\tau`,
             stake: "The farther actual thrust is from the command, the faster it tries to close the gap. A larger $\\tau$ makes that catch-up slower.",
-            gloss: String.raw`$u$ is the command. $F$ is actual thrust. $\tau$ is the lag time.`,
+            gloss: String.raw`$u$ is the command.
+$F$ is actual thrust.
+$\tau$ is the lag time.`,
           },
           {
             kind: "contrast",
@@ -245,6 +300,14 @@ export const READING: ReadingMap = {
   },
   loopOpen: {
     threads: [
+      plain(
+        "A plan that keeps going",
+        ["Open loop flies a thrust chosen ahead of time", "A leftover push becomes a growing height error"],
+        [
+          "Open loop is a thrust chosen ahead of time. The rocket flies that plan from the thrust alone, at whatever height it has reached.",
+          "A little extra push, held for the rest of the run, keeps adding speed. Speed kept for longer becomes a taller miss. The extra-thrust knob is how large that leftover push is.",
+        ],
+      ),
       {
         id: "open",
         title: "A plan with a fixed thrust",
@@ -256,13 +319,14 @@ export const READING: ReadingMap = {
           },
           {
             kind: "look",
-            text: "The plan holds while the world matches it. A disturbance, a modeling error, or a changing vehicle turns the planned thrust into the wrong thrust.",
+            text: "The plan holds while the world matches it. A disturbance, a modeling error, or a changing vehicle makes that same thrust a poor match for the height.",
           },
           {
             kind: "relation",
             tex: String.raw`F = F_0 + \Delta F`,
             stake: "After one second, the extra thrust is held for the rest of the run.",
-            gloss: String.raw`$F_0$ is hover thrust. $\Delta F$ is the extra thrust knob.`,
+            gloss: String.raw`$F_0$ is hover thrust.
+$\Delta F$ is the extra thrust knob.`,
           },
           {
             kind: "relation",
@@ -271,7 +335,7 @@ export const READING: ReadingMap = {
           },
           {
             kind: "trace",
-            text: "The reference can stay flat while the vehicle walks away from it. The gap is the missing feedback made visible.",
+            text: "The reference stays flat while the height walks away. That gap is the open-loop plan.",
           },
           {
             kind: "trace",
@@ -283,6 +347,14 @@ export const READING: ReadingMap = {
   },
   loopError: {
     threads: [
+      plain(
+        "Three ways to answer a miss",
+        ["Error is the gap from the target height", "Each term listens to a different part of that gap"],
+        [
+          "Error is how far the height sits from the target, and which way. Three controllers see that same miss and answer it from three different facts.",
+          "One pushes in proportion to the gap right now. One pushes for the gap that has been sitting there, so a small miss that lasts can still grow into a real push. One pushes against the speed, so it can start easing off while the height is still on the way. The gain knob scales the first of those.",
+        ],
+      ),
       {
         id: "pid",
         title: "Three ways to answer an error",
@@ -294,7 +366,7 @@ export const READING: ReadingMap = {
           },
           {
             kind: "look",
-            text: "Each term notices something useful and misses something else.",
+            text: "Each term listens to a different part of the error.",
           },
           {
             kind: "relation",
@@ -320,6 +392,14 @@ export const READING: ReadingMap = {
   },
   loopEquil: {
     threads: [
+      plain(
+        "A straight law, close to balance",
+        ["Hover balances thrust and weight", "The straight stand-in agrees only near that balance"],
+        [
+          "Hover is a balance: thrust equal to weight, height holding still. Close to that balance, the way the height springs back looks like a straight law, the same shape as a spring pulling toward one point.",
+          "Far from the balance the real thrust law bends, and it can run into a limit. The straight stand-in keeps the slope from the balance point. The offset knob is how far from hover you ask the two to start.",
+        ],
+      ),
       {
         id: "lin",
         title: "Near hover, the curve looks straight",
@@ -357,6 +437,14 @@ export const READING: ReadingMap = {
   },
   loopHover: {
     threads: [
+      plain(
+        "Balanced, and still restless",
+        ["A hover can accelerate away from itself", "Feedback can hold a restless plant onto a landing"],
+        [
+          "A hover can be perfectly balanced and still be unsafe. Balance means the forces cancel at that one height. Stability means a small mistake brings the vehicle back. Here a small rise makes the acceleration point farther up, so waiting makes the miss larger.",
+          "Feedback watches the gap to a reference and pushes back. The reference can walk down toward the pad while that push keeps collecting the vehicle. The open-loop knob sets how hard the restless plant runs away on its own.",
+        ],
+      ),
       {
         id: "unstable",
         title: "An equilibrium that runs away",
@@ -394,6 +482,14 @@ export const READING: ReadingMap = {
   },
   loopMode: {
     threads: [
+      plain(
+        "A motion the height sensor skips",
+        ["Measured height is one part of the vehicle", "A hidden motion can still shove that height"],
+        [
+          "A height sensor reports one number, and the controller reacts to that number, or to an estimate built from it. The vehicle can also be bending or ringing in a motion of its own.",
+          "That hidden motion has its own growth. Coupling is the path by which it shoves the height anyway, so a calm sensor can sit on a vehicle that is already being pushed. The coupling knob sets how strong that shove is.",
+        ],
+      ),
       {
         id: "hidden",
         title: "The motion beside the height sensor",
@@ -419,11 +515,11 @@ export const READING: ReadingMap = {
           },
           {
             kind: "trace",
-            text: "The hidden-mode trace is for you, so the missing state has somewhere to show itself.",
+            text: "The hidden-mode trace draws that internal motion beside the measured height.",
           },
           {
             kind: "trace",
-            text: "Coupling is the warning sign. Once hidden motion pushes on measured height, an invisible problem becomes a visible trajectory change.",
+            text: "Once the hidden motion pushes on measured height, the height trace bends with it.",
           },
         ],
       },
@@ -431,6 +527,14 @@ export const READING: ReadingMap = {
   },
   loopSample: {
     threads: [
+      plain(
+        "Look, decide, hold",
+        ["A digital controller holds its thrust between samples", "A delayed sample decides about a vehicle that has moved"],
+        [
+          "A controller that updates all the time changes the thrust as the error changes. A digital one looks, decides, and holds that decision until the next look. Between looks the vehicle keeps moving under a thrust that has stopped listening.",
+          "If the look itself is old, the decision is about a height the vehicle has already left. A short sample and a short delay stay close to the always-updating loop. A long one spends more of the flight acting on a stale fact. Drag sets the delay. The sample knob sets how long each hold lasts.",
+        ],
+      ),
       {
         id: "digital",
         title: "The correction arrives in pieces",
@@ -452,7 +556,7 @@ export const READING: ReadingMap = {
           {
             kind: "contrast",
             tex: String.raw`e_k = x_{\mathrm{ref}}(t) - x(t-\tau)`,
-            stake: "The sampled controller can act on old height. A correction that would be right now can be wrong by the time it arrives.",
+            stake: "The sampled controller can act on old height. A correction sized for the height now meets a vehicle that has already moved.",
           },
           {
             kind: "trace",
@@ -468,9 +572,17 @@ export const READING: ReadingMap = {
   },
   turnFrames: {
     threads: [
+      plain(
+        "One arrow, two descriptions",
+        ["A body direction is fixed on the rocket", "Yaw changes the world numbers that describe it"],
+        [
+          "A direction painted on the rocket is one arrow, and it turns when the rocket yaws because it is part of the rocket. The world describes that same arrow with two numbers, how much of it points to the side and how much of it points forward.",
+          "Yaw changes those two numbers and leaves the arrow on the body the same length. At zero yaw the arrow is entirely the world's forward axis. The yaw knob is how far the body has turned.",
+        ],
+      ),
       {
         id: "frames",
-        title: "One arrow, two descriptions",
+        title: "Yaw changes the world numbers",
         focus: ["A body axis is fixed on the rocket", "Its world components change with yaw"],
         segments: [
           { kind: "look", text: "The gold arrow is painted on the rocket. Yaw turns the rocket, and that arrow turns with it." },
@@ -490,6 +602,14 @@ export const READING: ReadingMap = {
   },
   turnLock: {
     threads: [
+      plain(
+        "Two hinges become one",
+        ["Pitch lifts the nose toward straight up", "At straight up, roll and yaw are the same turn"],
+        [
+          "Pitch, yaw, and roll are three hinges. Pitch lifts the nose up from the horizon toward straight up. Yaw spins the vehicle about the vertical. Roll spins it about the nose.",
+          "While the nose is out on the horizon, those last two hinges point different ways, and a roll is a different turn from a yaw. When the nose reaches straight up, the nose and the vertical are the same line, so a roll and a yaw have become the same command. The pitch knob carries the nose along that rise.",
+        ],
+      ),
       {
         id: "lock",
         title: "Two axes become one",
@@ -512,6 +632,14 @@ export const READING: ReadingMap = {
   },
   turnQuat: {
     threads: [
+      plain(
+        "A pitch that stays finite past vertical",
+        ["Half the angle sets a cosine and a sine", "Those numbers stay ordinary through straight up"],
+        [
+          "The nose can take the same rise as in the lock scene and keep going past straight up. Stored as three hinges, that passage is the moment two hinges become one and a small extra pitch is hard to name.",
+          "Stored as the cosine and the sine of half the pitch, the same passage is two ordinary numbers that trade off smoothly. The body still has a direction on the other side of vertical. The pitch knob sets how far past that point the nose goes.",
+        ],
+      ),
       {
         id: "quaternion",
         title: "The same pitch, past vertical",
@@ -538,6 +666,14 @@ export const READING: ReadingMap = {
   },
   turnSpin: {
     threads: [
+      plain(
+        "A spin that nobody is changing",
+        ["Zero torque leaves the spin rate constant", "Angle is that rate times time"],
+        [
+          "Torque is zero, so the rocket keeps the spin it already has. The stripe walks around the body at that one pace, and the pace itself stays put.",
+          "The angle is the pace times how long the rocket has been turning. A faster spin draws a steeper climb in angle and leaves the spin as a flat line at a new height. The spin knob is that pace.",
+        ],
+      ),
       {
         id: "spin",
         title: "A rate that stays put",
@@ -559,6 +695,14 @@ export const READING: ReadingMap = {
   },
   turnInertia: {
     threads: [
+      plain(
+        "The same twist, a heavier reluctance",
+        ["Torque changes the spin", "Inertia is how hard that change is"],
+        [
+          "Torque is a twist. It changes how fast the rocket is spinning. Inertia is the rocket's reluctance to that change: the same twist produces a smaller change in spin when the inertia is larger.",
+          "Here the twist stays at a steady 2 newton-meters, so the spin climbs in a straight line and the slope of that line is the twist divided by the inertia. A larger inertia reaches the same angle later. The inertia knob is that reluctance.",
+        ],
+      ),
       {
         id: "inertia",
         title: "The same torque, a different inertia",
@@ -580,6 +724,14 @@ export const READING: ReadingMap = {
   },
   turnGimbal: {
     threads: [
+      plain(
+        "One tilt, a shove and a twist",
+        ["A tilted nozzle gives the thrust a sideways part", "That sideways part also makes a moment"],
+        [
+          "Point the nozzle straight along the body and the thrust pushes along the body. Tilt it, and part of that push points sideways. The sideways part shoves the rocket off to the side.",
+          "The nozzle sits below the center of mass, so the same sideways push also twists the rocket. One tilt sets both the shove and the twist, and a larger tilt sets both larger, until the nozzle holds. The gimbal knob is that tilt.",
+        ],
+      ),
       {
         id: "gimbal",
         title: "One angle, two effects",
@@ -589,12 +741,16 @@ export const READING: ReadingMap = {
           {
             kind: "relation",
             tex: String.raw`F_y = T\sin\delta`,
-            stake: "Side force is the thrust across the body.",
+            stake: "Side force is the thrust times the sine of the gimbal angle. At zero tilt the sine is zero and the shove vanishes. A larger tilt raises the sine, and both traces rise, until the angle holds.",
+            gloss: String.raw`$T$ is thrust.
+$\delta$ is the gimbal angle.`,
           },
           {
             kind: "contrast",
             tex: String.raw`M = \ell T\sin\delta`,
-            stake: "The moment is that same side force times the distance from the nozzle to the center of mass. One sine sets both.",
+            stake: "The moment is that same side force times $\\ell$, the distance from the nozzle up to the center of mass. One sine sets the shove and the twist, and the lever arm turns the shove into the twist.",
+            gloss: String.raw`$\ell$ is the moment arm.
+$M$ is the moment about the center of mass.`,
           },
           {
             kind: "trace",
@@ -606,16 +762,26 @@ export const READING: ReadingMap = {
   },
   turnAir: {
     threads: [
+      plain(
+        "Where the air pushes",
+        ["Aerodynamic force acts at the center of pressure", "The moment restores when that point is behind the mass"],
+        [
+          "Air pushes on the rocket at the center of pressure, which is its own point, separate from the center of mass. The rocket's lean against the air is the angle of attack.",
+          "If the center of pressure sits behind the center of mass, that push twists the nose back toward the wind, and the lean swings back through zero. If the center of pressure sits ahead of the mass, the same push twists the nose farther out, and the lean grows. The margin knob moves the center of pressure from one side of the mass to the other.",
+        ],
+      ),
       {
         id: "pressure",
-        title: "Where the air pushes",
+        title: "The moment and the margin",
         focus: ["Aerodynamic force acts at the center of pressure", "The moment restores when that point is behind the mass"],
         segments: [
           { kind: "look", text: "The gold mark is the center of mass. The pale blue mark is the center of pressure. The rocket's lean is the angle of attack." },
           {
             kind: "relation",
             tex: String.raw`M = -q S d\, C_{N\alpha}\, \alpha\, \sigma`,
-            stake: "Margin $\\sigma$ positive means the center of pressure is behind the center of mass, so the moment opposes the angle.",
+            stake: "The moment is proportional to the angle of attack $\\alpha$. Dynamic pressure $q$ grows with speed squared, $S$ is a reference area, and $d$ is a length, so together they scale how hard the air pushes. $C_{N\\alpha}$ is how steeply that push grows with angle. The minus sign and a positive margin $\\sigma$ make the moment oppose the lean.",
+            gloss: String.raw`$\sigma$ is the margin.
+Positive $\sigma$ puts the center of pressure behind the center of mass.`,
           },
           {
             kind: "contrast",
@@ -632,6 +798,14 @@ export const READING: ReadingMap = {
   },
   turnSlosh: {
     threads: [
+      plain(
+        "Fuel that can still move",
+        ["The tank drains from the bottom", "The fuel that remains shifts the center of mass"],
+        [
+          "Fuel in a tank is free to swing. The vehicle's center of mass moves sideways with that swing, by the fuel's share of the whole mass. A full tank can shift the vehicle more than a nearly empty one.",
+          "The tank drains from the bottom, so the fuel that remains rides higher as the burn goes on, and there is less of it. The swing can stay large while the shift of the center of mass shrinks. The swing knob is how far that remaining fuel rocks.",
+        ],
+      ),
       {
         id: "slosh",
         title: "Fuel that is still free to move",
@@ -641,7 +815,7 @@ export const READING: ReadingMap = {
           {
             kind: "relation",
             tex: String.raw`x_{\mathrm{cm}} = \frac{m_{\mathrm{fuel}}}{m}\, x_{\mathrm{slug}}`,
-            stake: "The vehicle center of mass moves sideways only by the fuel's share of the mass.",
+            stake: "The vehicle center of mass moves sideways by the fuel's share of the mass.",
           },
           {
             kind: "trace",
@@ -653,21 +827,39 @@ export const READING: ReadingMap = {
   },
   vehAscent: {
     threads: [
+      plain(
+        "Push against weight",
+        ["Thrust above weight speeds the vehicle upward", "Height is that speed accumulated"],
+        [
+          "Thrust is a push along the climb. Weight is gravity pulling the vehicle down. When the push per kilogram is stronger than gravity, the vehicle speeds upward. When they match, the speed holds. When the push is weaker, the vehicle slows.",
+          "The mass stays fixed in this climb, so a steady thrust makes a steady acceleration. Speed then climbs in a straight line, and height is that speed added up, which is why the height bends upward: later seconds add a speed the vehicle has already gained. The thrust knob is the push.",
+        ],
+      ),
       {
         id: "ascent",
         title: "Off the pad",
-        focus: ["Thrust above weight makes an upward acceleration", "Height is accumulated rate"],
+        focus: ["Thrust per mass minus gravity is the acceleration", "Height is half of acceleration times time squared"],
         segments: [
-          { kind: "look", text: "The flame stays on and the rocket leaves the pad. This climb is the vehicle the later scenes ride on." },
+          { kind: "look", text: "The flame stays on and the rocket leaves the pad. The mass stays at 2 kg, so the thrust knob is the only thing that changes the acceleration." },
           {
             kind: "relation",
             tex: String.raw`a = T/m - g`,
-            stake: "Acceleration is thrust per mass, with gravity taken off. The mass stays fixed in this scene.",
-            gloss: String.raw`$T$ is thrust. $m$ is $2\,\mathrm{kg}$. $g$ is $9.81\,\mathrm{m/s^2}$.`,
+            stake: "$T/m$ is the push per kilogram. Subtracting $g$ takes the weight off that push. What remains is a constant acceleration for as long as the thrust holds.",
+            gloss: String.raw`$T$ is thrust.
+$m$ is $2\,\mathrm{kg}$.
+$g$ is $9.81\,\mathrm{m/s^2}$.`,
+          },
+          {
+            kind: "contrast",
+            tex: String.raw`v = at \qquad h = \tfrac{1}{2}at^{2}`,
+            stake: "Speed is that acceleration times time, so the rate trace is a straight line whose slope is $a$. Height adds the speed up, which for a constant acceleration is half of $a$ times time squared, and that is the upward bend.",
+            gloss: String.raw`$v$ is the climb rate.
+$h$ is height.
+$t$ is the clock.`,
           },
           {
             kind: "trace",
-            text: "Rate climbs in a straight line. Height bends upward because it keeps the rate it has already gained.",
+            text: "Raise the thrust and both the slope of the rate and the bend of the height get steeper. Lower it toward the weight and the climb flattens.",
           },
         ],
       },
@@ -675,25 +867,37 @@ export const READING: ReadingMap = {
   },
   vehNose: {
     threads: [
+      plain(
+        "The push follows the nose",
+        ["Thrust points along the body", "Tilt splits it into lift and downrange"],
+        [
+          "A rocket pushes along its nose. Point the nose straight up and the whole push fights weight. Lean the nose and the push splits: the part along the vertical still fights weight, and the part across the vertical starts the vehicle moving downrange.",
+          "One angle sets both parts. A small lean keeps most of the push in the climb. A steeper lean spends more of it downrange and leaves less to fight weight, so the climb gives some of itself up. The tilt knob is that angle. The thrust stays fixed, and the flame leans with the nose.",
+        ],
+      ),
       {
         id: "nose",
-        title: "The push follows the nose",
+        title: "Cosine lifts, sine goes downrange",
         focus: ["Thrust is along the body axis", "Tilt splits it into lift and downrange"],
         segments: [
-          { kind: "look", text: "The rocket leans, and the flame leans with it. The pad stays behind as the path moves sideways." },
+          { kind: "look", text: "The rocket leans, and the flame leans with it. The pad stays behind as the path moves sideways. Thrust is 50 N on the same 2 kg vehicle, and the tilt knob spends that push between the two directions." },
           {
             kind: "relation",
             tex: String.raw`a_y = (T/m)\cos\theta - g`,
-            stake: "The vertical part is the thrust along the nose, times the cosine of the tilt, with gravity taken off.",
+            stake: "Cosine is the share of the nose that still points up. At zero tilt it is 1, so the whole push fights gravity. As the tilt grows, cosine shrinks, less acceleration remains in the climb, and gravity takes a larger share of what is left.",
+            gloss: String.raw`$T$ is thrust.
+$m$ is mass.
+$\theta$ is the tilt from vertical.
+$g$ is gravity.`,
           },
           {
             kind: "contrast",
             tex: String.raw`a_x = (T/m)\sin\theta`,
-            stake: "The sideways part is the same thrust times the sine of the tilt. One angle sets both.",
+            stake: "Sine is the share that points sideways. It is zero when the nose is vertical, and it grows as the nose leans, so downrange acceleration appears as climb acceleration gives way.",
           },
           {
             kind: "trace",
-            text: "Height and downrange both grow. A steeper tilt trades climb for downrange.",
+            text: "Height and downrange both grow as the square of time, each with its own acceleration. A steeper tilt raises the downrange trace and softens the height trace.",
           },
         ],
       },
@@ -701,6 +905,14 @@ export const READING: ReadingMap = {
   },
   vehWind: {
     threads: [
+      plain(
+        "The angle the air arrives at",
+        ["Attack is the angle between the nose and the oncoming air", "The same crosswind is a smaller angle on a faster climb"],
+        [
+          "Angle of attack is the angle between where the nose points and where the air is coming from. Here the nose stays vertical and the wind comes from the side, so the air meets the nose at an angle.",
+          "The climb also makes its own wind, straight down the path, and that part grows as the vehicle goes faster. The sideways wind stays the size you set. A faster climb makes the sideways wind a smaller share of the air the nose meets, so the angle shrinks. The wind knob is that sideways speed.",
+        ],
+      ),
       {
         id: "wind",
         title: "Air across the nose",
@@ -710,12 +922,14 @@ export const READING: ReadingMap = {
           {
             kind: "relation",
             tex: String.raw`\alpha = \arctan(W / v)`,
-            stake: "Attack is the angle whose tangent is wind speed over climb speed. A faster climb makes that angle smaller.",
-            gloss: String.raw`$W$ is the wind. $v$ is the climb rate.`,
+            stake: "The tangent of the attack angle is the sideways wind divided by the climb speed. Arctangent turns that ratio back into an angle. A larger $W$ raises the angle. A larger $v$ lowers it, because the same sideways wind is a smaller share of a faster climb.",
+            gloss: String.raw`$W$ is the wind.
+$v$ is the climb rate.
+$\alpha$ is the angle of attack.`,
           },
           {
             kind: "trace",
-            text: "The rate trace climbs. The attack trace falls, because the same wind is a smaller share of a faster vehicle.",
+            text: "The climb uses 45 N on 2 kg, so the rate trace is a straight rise. The attack trace starts wide, while the climb is slow, and falls as that rate grows. Raise the wind and the whole attack trace lifts.",
           },
         ],
       },
@@ -723,25 +937,44 @@ export const READING: ReadingMap = {
   },
   vehEstimate: {
     threads: [
+      plain(
+        "Predict, then pull toward the sensor",
+        ["The prediction uses the thrust", "The correction moves the estimate toward the sensor"],
+        [
+          "A sensor reports a height, and the report carries a wave, so the number jitters around the true climb. You can also predict the next height from the thrust, using the speed you already believe and the acceleration that thrust should produce.",
+          "The estimate starts from that prediction. It then moves partway toward the sensor, and the gain is how hard that pull is. A gentle pull stays near the smooth climb. A hard pull follows the wave. The gain knob is that pull. The pale mark beside the rocket is the estimate, and the rocket is the true height.",
+        ],
+      ),
       {
         id: "estimate",
         title: "Predict, then correct",
         focus: ["The predictor uses the thrust model", "The corrector pulls toward the sensor"],
         segments: [
-          { kind: "look", text: "The rocket is the true height. The pale mark is the estimate, and it rides beside the body." },
+          { kind: "look", text: "The rocket is the true height. The pale mark is the estimate, and it rides beside the body. Truth is the 45 N climb. The sensor is that height plus a 4 m wave." },
           {
             kind: "relation",
-            tex: String.raw`\hat{x}^{-} = \hat{x} + \hat{v}\,\Delta t + \tfrac{1}{2}a\Delta t^{2}`,
-            stake: "The prediction carries the last estimate forward with the thrust model.",
+            tex: String.raw`z = h + 4\sin(2.2\,t)`,
+            stake: "The sensor reports the true height $h$ with a wave on it. The wave is what a hard correction will start to follow.",
+            gloss: String.raw`$z$ is the sensor.
+$h$ is the true height.
+$t$ is the clock.`,
           },
           {
             kind: "contrast",
-            tex: String.raw`\hat{x} = \hat{x}^{-} + K(z - \hat{x}^{-})`,
-            stake: "The correction adds a fraction of the gap between the sensor and that prediction. $z$ is the sensor.",
+            tex: String.raw`\hat{x}^{-} = \hat{x} + \hat{v}\,\Delta t + \tfrac{1}{2}a\Delta t^{2}`,
+            stake: "The prediction carries the last estimate forward by its believed speed, and adds the acceleration from the thrust model over the step. $a$ is that thrust per mass, with gravity taken off.",
+            gloss: String.raw`$\hat{x}$ is the estimate.
+$\hat{v}$ is the estimated rate.
+$\Delta t$ is the step.`,
+          },
+          {
+            kind: "relation",
+            tex: String.raw`\hat{x} = \hat{x}^{-} + K(z-\hat{x}^{-})\Delta t`,
+            stake: "The gap is the sensor minus the prediction. The gain $K$ pulls the estimate across a fraction of that gap on this step. The rate is pulled by half of the same correction, so the speed belief moves with the height belief.",
           },
           {
             kind: "trace",
-            text: "The truth is smooth. The estimate stays near it. A larger gain follows the sensor's wave more closely.",
+            text: "The truth is a smooth bend. The estimate stays near it. Raise the gain and the estimate hugs the sensor's wave. Lower it and the estimate trusts the thrust prediction and lets the wave go by.",
           },
         ],
       },
@@ -749,6 +982,14 @@ export const READING: ReadingMap = {
   },
   vehGuide: {
     threads: [
+      plain(
+        "A direction, then a body that follows",
+        ["Guidance names the pitch the nose should hold", "The body closes the gap over a short time"],
+        [
+          "Guidance is the direction you want the nose to point. For the first two seconds that direction is straight up. Then the command tips over toward a kick angle, taking a second to finish the tip.",
+          "The body arrives over a short time. It turns toward the command, faster while the gap is larger, with a time scale of about seven tenths of a second. Thrust stays on the nose, so once the nose tips, part of the push goes downrange and the path bends with it. The kick knob is the angle the command settles on.",
+        ],
+      ),
       {
         id: "guide",
         title: "A direction to hold",
@@ -758,11 +999,19 @@ export const READING: ReadingMap = {
           {
             kind: "relation",
             tex: String.raw`\dot\theta = (\theta_{\mathrm{cmd}} - \theta)/\tau`,
-            stake: "The nose closes the gap to the command at a rate set by that gap. $\\tau$ is $0.7\\,\\mathrm{s}$.",
+            stake: "The rate of pitch is the miss divided by $\\tau$. A larger miss turns the nose faster. $\\tau$ is $0.7\\,\\mathrm{s}$, so a miss that stayed constant would take about that long to close. The command itself is zero until 2 s, then slews to the kick angle over the next second.",
+            gloss: String.raw`$\theta$ is the nose pitch.
+$\theta_{\mathrm{cmd}}$ is the command.
+$\tau$ is the follow time.`,
+          },
+          {
+            kind: "contrast",
+            tex: String.raw`a_x = (T/m)\sin\theta`,
+            stake: "Thrust stays on the nose, so the sideways acceleration is the thrust per mass times the sine of the pitch the body has actually reached. Downrange grows after the nose tips, on the body's angle, which lags the command.",
           },
           {
             kind: "trace",
-            text: "The command stays at zero, then steps into the kickover. The pitch trace follows it, and the path bends with the nose.",
+            text: "The aim trace steps into the kickover at 2 s. The pitch trace follows it and meets it. A larger kick lifts both, and the downrange bend gets deeper because the sine of a larger pitch is larger.",
           },
         ],
       },
@@ -770,20 +1019,47 @@ export const READING: ReadingMap = {
   },
   vehAuto: {
     threads: [
+      plain(
+        "One gain, a vehicle that is changing",
+        ["The gain twists the nose toward the command", "Mass falls and the air pushes the nose back"],
+        [
+          "The autopilot is one gain. It twists the nose toward a commanded angle, harder when the miss is larger. After four tenths of a second the command is twelve degrees, and it stays there.",
+          "While that happens the vehicle burns fuel. It gets lighter, so the same gain is a quicker twist, and it goes faster, so the air pushes harder. That air push grows with the square of the speed and eases the nose back toward straight up. The gain and the air are both acting on the same angle. The gain knob is how hard the autopilot twists.",
+        ],
+      ),
       {
         id: "auto",
         title: "The same gain, a changing vehicle",
         focus: ["Gain pitches the nose toward the command", "Mass falls and the air moment grows"],
         segments: [
-          { kind: "look", text: "The nose tips toward a fixed command. The tank is emptying while it does." },
+          { kind: "look", text: "The nose tips toward a 12° command that arrives at 0.4 s. The tank is emptying the whole time, from 3 kg down to 1.4 kg, and the climb uses 40 N." },
           {
             kind: "relation",
-            tex: String.raw`I\dot\omega = K(\theta_{\mathrm{cmd}} - \theta) - b\omega - qc\,\theta`,
-            stake: "The gain $K$ pulls toward the command. The middle term damps the rate. The last term grows with speed squared and eases the nose back.",
+            tex: String.raw`m = 3 - 1.6\,t/8`,
+            stake: "Mass falls in a straight line over the eight seconds. Inertia is a quarter of the mass, so the vehicle gets easier to twist as it lightens, and the same gain produces a quicker angular acceleration.",
+            gloss: String.raw`$m$ is mass in kilograms.
+$t$ is the clock in seconds.`,
+          },
+          {
+            kind: "contrast",
+            tex: String.raw`I\dot\omega = K(\theta_{\mathrm{cmd}} - \theta) - b\omega - q\theta`,
+            stake: "The first term is the gain times the miss, and it twists the nose toward the command. The middle term damps the pitch rate so the nose settles on the way there. The last term is the air, and it opposes the pitch itself.",
+            gloss: String.raw`$I$ is inertia.
+$K$ is the gain.
+$\omega$ is pitch rate.
+$b$ damps that rate.
+$q$ scales the air.`,
+          },
+          {
+            kind: "relation",
+            tex: String.raw`q = c\,v^{2}`,
+            stake: "The air coefficient grows with speed squared. Early in the burn the gain sets the pitch. Later, with the vehicle fast and light, the air eases the nose back from the 12° command.",
+            gloss: String.raw`$v$ is speed.
+$c$ is the coefficient on that speed squared.`,
           },
           {
             kind: "trace",
-            text: "Mass falls in a straight line. Pitch rises to the command, then the growing air eases it back a little.",
+            text: "Mass falls in a straight line. Pitch rises toward the command and then sags a little as the air term grows. A higher gain makes the rise quicker, and the air is still there at the end.",
           },
         ],
       },

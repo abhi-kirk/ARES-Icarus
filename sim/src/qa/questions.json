@@ -1,0 +1,257 @@
+{
+  "state": {
+    "force": {
+      "beginner": "In $m\\ddot{x} = -kx$, what does $k$ name?",
+      "intermediate": "The mass is above the rest point. Which way does the acceleration point, and which chart trace shows that direction?",
+      "advanced": "At the moment the height is farthest above rest, what is the rate, and what does the height do next?"
+    },
+    "state": {
+      "beginner": "Which two numbers together are the state of the mass?",
+      "intermediate": "Two moments can share a height. What second number tells you whether the mass is climbing or falling?",
+      "advanced": "When the height trace crosses zero, where is the rate, and which way is the mass about to move?"
+    },
+    "eli5": {
+      "beginner": "When the mass is above the place it hangs at rest, which way does the spring pull, and why does the mass keep going past that place?"
+    }
+  },
+  "step": {
+    "step": {
+      "beginner": "In the height update, what is $\\Delta t$?",
+      "intermediate": "The update keeps the height and rate from the start of the step. Why does a longer step let the gold mass leave the wire box?",
+      "advanced": "If you lengthen the step, what happens to the gap between the stepped height and the true height?"
+    },
+    "eli5": {
+      "beginner": "Why does a longer pause between updates let the gold mass leave the true swing?"
+    }
+  },
+  "mass": {
+    "tank": {
+      "beginner": "What happens to the vehicle's mass over the first four seconds?",
+      "intermediate": "Thrust stays the same while the mass falls. What happens to the acceleration, and why?",
+      "advanced": "If you raise the thrust, what happens to the height after the tank is empty?"
+    },
+    "integrate": {
+      "beginner": "Which quantity changes the rate, and which quantity changes the height?",
+      "intermediate": "Acceleration bends the rate first, and height follows after the rate has had time to accumulate. Where does the chart show that order?",
+      "advanced": "The rate is still upward and the acceleration has already turned downward. What does the height do over the next moment?"
+    },
+    "eli5": {
+      "beginner": "The thrust stays the same while the rocket burns fuel. What happens to how strongly that thrust speeds the rocket up?"
+    }
+  },
+  "engine": {
+    "lag": {
+      "beginner": "Which symbol is the thrust the rocket actually feels, $u$ or $F$?",
+      "intermediate": "A larger $\\tau$ makes the engine slower to close the gap. How does that appear between the command trace and the actual trace?",
+      "advanced": "If the command asks for more than $50\\,\\mathrm{N}$, what thrust does the vehicle feel?"
+    },
+    "motion": {
+      "beginner": "Which thrust enters $\\dot{v} = F/m - g$?",
+      "intermediate": "Actual thrust lags the command. Why is the height late as well?",
+      "advanced": "If you increase the lag, what happens to the moment when the height starts to answer the new command?"
+    },
+    "eli5": {
+      "beginner": "The command can jump immediately. What does the rocket feel while the engine is still catching up?"
+    }
+  },
+  "loopOpen": {
+    "open": {
+      "beginner": "After the first second, what does the extra thrust do for the rest of the run?",
+      "intermediate": "The reference can stay flat while the height walks away. What does the thrust law keep holding that lets the gap grow?",
+      "advanced": "If you increase the extra thrust, what happens to the height error as time goes on?"
+    },
+    "eli5": {
+      "beginner": "The thrust stays on the plan after the rocket has left the target height. What happens to the gap as time goes on?"
+    }
+  },
+  "loopError": {
+    "pid": {
+      "beginner": "In $e = x_{\\mathrm{ref}} - x$, what is $x$?",
+      "intermediate": "Proportional reacts to the gap now, integral reacts to error that has lingered, and derivative pushes against the rate. Which of those is $F_0 - K_d v$?",
+      "advanced": "If you raise $K_p$, what happens to how quickly the height leaves for the new target?"
+    },
+    "eli5": {
+      "beginner": "Three controllers see the same miss. What is different about the fact each one reacts to?"
+    }
+  },
+  "loopEquil": {
+    "lin": {
+      "beginner": "What does the offset knob change?",
+      "intermediate": "Near hover the linear height and the full height lie together. What does the local model keep from the thrust law?",
+      "advanced": "If you move the offset far from hover, what happens between the linear trace and the nonlinear trace?"
+    },
+    "eli5": {
+      "beginner": "Close to hover, the full vehicle and the straight stand-in agree. What happens to that agreement when the start is far from hover?"
+    }
+  },
+  "loopHover": {
+    "unstable": {
+      "beginner": "In $\\ddot{x} = \\mu^2 x$, what does a positive height do to the acceleration?",
+      "intermediate": "Hover can sit at equilibrium and still run away. What does the feedback term add to that acceleration?",
+      "advanced": "If you raise $\\mu$, what happens to the open-loop height?"
+    },
+    "eli5": {
+      "beginner": "A small rise makes this hover accelerate farther upward. What does feedback add so the vehicle can still come down to the pad?"
+    }
+  },
+  "loopMode": {
+    "hidden": {
+      "beginner": "What does $q$ name?",
+      "intermediate": "The measured height can look calm while $q$ grows. How can that hidden motion still change the height?",
+      "advanced": "If you raise the coupling, what happens to the measured height once the hidden mode has grown?"
+    },
+    "eli5": {
+      "beginner": "The height reading can look calm while the vehicle bends or rings on its own. How can that motion still change the height?"
+    }
+  },
+  "loopSample": {
+    "digital": {
+      "beginner": "Between samples, what does the discrete controller do with the thrust?",
+      "intermediate": "The sampled error uses the height from $t - \\tau$. Why can a correction that fits the vehicle now be wrong when it is applied?",
+      "advanced": "If you lengthen the sample time, what happens to the discrete height compared with the continuous height?"
+    },
+    "eli5": {
+      "beginner": "Between looks, what is the digital controller doing with the thrust, and why does an old look make that decision late?"
+    }
+  },
+  "turnFrames": {
+    "frames": {
+      "beginner": "Which arrow is fixed on the rocket, the gold one or the pale one?",
+      "intermediate": "The body arrow itself stays the same length. What does the yaw change in $\\mathbf{r}_{\\mathrm{world}} = R(\\psi)\\,\\mathbf{r}_{\\mathrm{body}}$?",
+      "advanced": "If you increase the yaw from zero, what happens to world X and world Z?"
+    },
+    "eli5": {
+      "beginner": "The gold arrow is painted on the rocket. When the rocket yaws, what changes: the arrow on the body, or the two world numbers that describe it?"
+    }
+  },
+  "turnLock": {
+    "lock": {
+      "beginner": "In $\\gamma = 90^\\circ - \\theta$, what is $\\gamma$?",
+      "intermediate": "Pitch lifts the nose toward the vertical axis. What has happened to roll and yaw when that gap reaches zero?",
+      "advanced": "If you set the pitch to $90^\\circ$, what does the axis gap read?"
+    },
+    "eli5": {
+      "beginner": "What has happened to roll and yaw when the nose points straight up?"
+    }
+  },
+  "turnQuat": {
+    "quaternion": {
+      "beginner": "The quaternion for this pitch uses the cosine and sine of which angle?",
+      "intermediate": "At $90^\\circ$ the Euler yaw and roll share an axis. What do quat $w$ and quat $z$ do through that same pitch?",
+      "advanced": "As the nose passes vertical, what happens to quat $w$ and quat $z$?"
+    },
+    "eli5": {
+      "beginner": "The nose pitches past straight up. What stays ordinary in the pair of numbers that store that pitch?"
+    }
+  },
+  "turnSpin": {
+    "spin": {
+      "beginner": "With no torque on the rocket, what does the spin rate do as time passes?",
+      "intermediate": "$\\theta = \\omega t$ makes the angle a straight ramp. What on the chart is the slope of that ramp?",
+      "advanced": "If you raise the spin rate, what happens to the angle at the same clock time, and what does the spin trace do?"
+    },
+    "eli5": {
+      "beginner": "Nothing is twisting the rocket. What does the spin do, and what does the angle do?"
+    }
+  },
+  "turnInertia": {
+    "inertia": {
+      "beginner": "In $\\tau = I\\alpha$, what does a larger inertia do to the angular acceleration for the same torque?",
+      "intermediate": "The torque stays at $2\\,\\mathrm{N\\cdot m}$. Why does a larger inertia make the angle arrive later?",
+      "advanced": "If you increase the inertia, what happens to the spin over the same few seconds?"
+    },
+    "eli5": {
+      "beginner": "The twist stays the same and the inertia gets larger. What happens to how fast the spin builds?"
+    }
+  },
+  "turnGimbal": {
+    "gimbal": {
+      "beginner": "What does $F_y = T\\sin\\delta$ give you?",
+      "intermediate": "Side force and moment share one sine. What extra factor turns that side force into the moment?",
+      "advanced": "If you increase the gimbal angle, what happens to the side force and the moment together?"
+    },
+    "eli5": {
+      "beginner": "Tilting the nozzle does two things at once. What are they?"
+    }
+  },
+  "turnAir": {
+    "pressure": {
+      "beginner": "Which mark is the center of pressure?",
+      "intermediate": "A positive margin puts the center of pressure behind the center of mass. What does the moment do to the angle of attack?",
+      "advanced": "If you move the margin negative, what does the angle of attack do as time goes on?"
+    },
+    "eli5": {
+      "beginner": "Air pushes at the center of pressure. What does that push do to the nose when the center of pressure is behind the center of mass, and what does it do when the center of pressure is ahead?"
+    }
+  },
+  "turnSlosh": {
+    "slosh": {
+      "beginner": "What does the gold slug in the tank represent?",
+      "intermediate": "The vehicle center of mass moves sideways only by the fuel's share of the mass. Why does that offset shrink as the tank drains?",
+      "advanced": "If you increase the swing while fuel remains, what happens to the offset?"
+    },
+    "eli5": {
+      "beginner": "Fuel is swinging in the tank. Why does the sideways shift of the center of mass get smaller as the tank empties?"
+    }
+  },
+  "vehAscent": {
+    "ascent": {
+      "beginner": "In $a = T/m - g$, what has to be true of $T/m$ for the vehicle to speed upward?",
+      "intermediate": "The rate climbs in a straight line and the height bends upward. Why does the height bend?",
+      "advanced": "If you raise the thrust, what happens to the rate at the same time?"
+    },
+    "eli5": {
+      "beginner": "What has to be true of the thrust, compared with the weight, for the vehicle to speed upward? What does the height do with that speed?"
+    }
+  },
+  "vehNose": {
+    "nose": {
+      "beginner": "Which way does the thrust point when the nose tilts?",
+      "intermediate": "One tilt sets the vertical acceleration through $\\cos\\theta$ and the sideways acceleration through $\\sin\\theta$. What does a steeper tilt trade?",
+      "advanced": "If you increase the tilt, what happens to the downrange compared with the height?"
+    },
+    "eli5": {
+      "beginner": "The thrust stays along the nose. What does leaning the nose do to the climb, and what does it do to the downrange travel?"
+    }
+  },
+  "vehWind": {
+    "wind": {
+      "beginner": "In $\\alpha = \\arctan(W/v)$, which symbol is the wind?",
+      "intermediate": "The nose stays vertical while the climb speeds up. Why does the attack angle fall?",
+      "advanced": "If you raise the wind speed and leave the climb rate alone, what happens to the attack angle?"
+    },
+    "eli5": {
+      "beginner": "A crosswind meets a nose that points straight up. Why does that angle get smaller as the climb gets faster?"
+    }
+  },
+  "vehEstimate": {
+    "estimate": {
+      "beginner": "In the correction, what is $z$?",
+      "intermediate": "The prediction carries the last estimate forward with the thrust model. What does the gain $K$ add after that prediction?",
+      "advanced": "If you raise the gain, what happens to how closely the estimate follows the wave in the sensor?"
+    },
+    "eli5": {
+      "beginner": "The sensor wiggles and the prediction uses the thrust. What does the estimate do with those two, and what does a harder gain do?"
+    }
+  },
+  "vehGuide": {
+    "guide": {
+      "beginner": "What does $\\theta_{\\mathrm{cmd}}$ name?",
+      "intermediate": "The nose closes on the command at a rate set by the gap. What does the pitch trace do after the command steps at two seconds?",
+      "advanced": "If you increase the kick angle, where do the aim and the pitch sit at the end of the run?"
+    },
+    "eli5": {
+      "beginner": "Guidance names a direction for the nose. What does the body do after that command changes, and why does the path bend?"
+    }
+  },
+  "vehAuto": {
+    "auto": {
+      "beginner": "What does the gain $K$ do to the nose?",
+      "intermediate": "Mass falls while the air term grows with speed squared. What does that air term do to the pitch after the nose has reached the command?",
+      "advanced": "If you raise the gain, what happens to how quickly the pitch approaches the command?"
+    },
+    "eli5": {
+      "beginner": "One gain pulls the nose toward the command while the vehicle burns fuel. What does the air do to that nose as the vehicle goes faster?"
+    }
+  }
+}

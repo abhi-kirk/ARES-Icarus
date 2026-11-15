@@ -29,6 +29,7 @@ export function Essay({
             <SegmentView segment={segment} key={`${thread.id}-${index}`} />
           ))}
           <QaCard
+            levels={thread.levels}
             cacheKey={`${scene}-${thread.id}-${threadCacheKey(thread)}-${lessonContext(scene, knobs, time, thread.id).model}`}
             context={lessonContext(scene, knobs, time, thread.id)}
             onPrompt={(prompt) => onPrompt(thread.id, prompt)}

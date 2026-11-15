@@ -1,4 +1,5 @@
 import type { SceneId } from "../scenes";
+import type { LevelId } from "../tutor/levels";
 
 export type LookSegment = {
   kind: "look";
@@ -23,6 +24,8 @@ export type Thread = {
   id: string;
   title: string;
   focus: string[];
+  /** Q&A tabs for this block. Omitted means beginner, intermediate, and advanced. */
+  levels?: LevelId[];
   segments: Segment[];
 };
 

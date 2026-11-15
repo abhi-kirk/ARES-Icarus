@@ -3,6 +3,7 @@ import { Check, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { MathText } from "../Formula";
 import { cachedPrompt, rememberPrompt } from "./cache";
+import { seedPrompt } from "./seeds";
 import { postJson } from "../tutor/client";
 import { LEVELS, type LevelId } from "../tutor/levels";
 import type { GradeResponse, QuestionResponse } from "../tutor/types";
@@ -21,21 +22,26 @@ const EMPTY: Slot = { prompt: "", draft: "", grade: null, error: "", busy: "" };
 export function QaCard({
   cacheKey,
   context,
+  levels,
   onPrompt,
 }: {
   cacheKey: string;
   context: LessonContext;
+  levels?: LevelId[];
   onPrompt: (prompt: string) => void;
 }) {
-  const [level, setLevel] = useState<LevelId>("beginner");
+  const offered = levels && levels.length > 0 ? levels : LEVELS.map((item) => item.id);
+  const shown = LEVELS.filter((item) => offered.includes(item.id));
+  const [level, setLevel] = useState<LevelId>(shown[0]?.id ?? "beginner");
   const [slots, setSlots] = useState<Record<LevelId, Slot>>(() => {
     const next = {
       beginner: { ...EMPTY },
       intermediate: { ...EMPTY },
       advanced: { ...EMPTY },
     };
-    for (const item of LEVELS) {
-      const prompt = cachedPrompt(cacheKey, item.id);
+    for (const item of shown) {
+      const stored = cachedPrompt(cacheKey, item.id);
+      const prompt = stored || seedPrompt(context.sceneId, context.block?.id, item.id);
       if (prompt) next[item.id] = { ...EMPTY, prompt };
     }
     return next;
@@ -56,8 +62,10 @@ export function QaCard({
   useEffect(() => {
     if (asked.current) return;
     asked.current = true;
-    for (const item of LEVELS) {
+    for (const item of shown) {
       if (cachedPrompt(cacheKey, item.id)) continue;
+      const seeded = seedPrompt(contextRef.current.sceneId, contextRef.current.block?.id, item.id);
+      if (seeded) continue;
       void load(item.id, "");
     }
     // All three questions load together. A tab only shows the one already stored.
@@ -115,13 +123,15 @@ export function QaCard({
       <p className="meta">Icarus Q&A</p>
       <Tabs.Root value={level} onValueChange={(value) => setLevel(value as LevelId)}>
         <div className="qa-bar">
-          <Tabs.List className="qa-tabs" aria-label="Difficulty">
-            {LEVELS.map((item) => (
-              <Tabs.Trigger className="qa-trigger" value={item.id} key={item.id}>
-                {item.label}
-              </Tabs.Trigger>
-            ))}
-          </Tabs.List>
+          {shown.length > 1 ? (
+            <Tabs.List className="qa-tabs" aria-label="Difficulty">
+              {shown.map((item) => (
+                <Tabs.Trigger className="qa-trigger" value={item.id} key={item.id}>
+                  {item.label}
+                </Tabs.Trigger>
+              ))}
+            </Tabs.List>
+          ) : null}
           <button
             type="button"
             className="qa-refresh"

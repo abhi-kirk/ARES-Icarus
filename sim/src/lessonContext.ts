@@ -25,6 +25,7 @@ export type LessonContext = {
     title: string;
     focus: string[];
     segments: string[];
+    plain: boolean;
   };
 };
 
@@ -39,11 +40,13 @@ function segmentLine(thread: Thread, index: number): string {
 
 function threadContext(thread: Thread | undefined): LessonContext["block"] {
   if (!thread) return undefined;
+  const plain = thread.levels?.length === 1 && thread.levels[0] === "beginner";
   return {
     id: thread.id,
     title: thread.title,
     focus: thread.focus,
     segments: thread.segments.map((_, index) => segmentLine(thread, index)),
+    plain,
   };
 }
 
@@ -82,6 +85,9 @@ export function renderLessonContext(context: LessonContext): string {
 
   if (context.block) {
     lines.push(`Thread: ${context.block.title}`);
+    if (context.block.plain) {
+      lines.push("This block is the plain fundamental of the scene. Ask in ordinary words, and leave equations out of the question.");
+    }
     if (context.block.focus.length) lines.push(`Tutor focus: ${context.block.focus.join(" | ")}`);
     for (const segment of context.block.segments) lines.push(segment);
   }

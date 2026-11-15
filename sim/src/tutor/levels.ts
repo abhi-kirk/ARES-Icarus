@@ -1,4 +1,5 @@
-// What each tab is for. The questions themselves come from Grok, not from this file.
+// What each tab is for. The first question for a block lives in qa/questions.json.
+// Refresh asks Grok for a new one.
 
 export const LEVELS = [
   {

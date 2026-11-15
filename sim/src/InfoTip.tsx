@@ -12,9 +12,13 @@ export function InfoTip({ text }: { text: string }) {
       </Tooltip.Trigger>
       <Tooltip.Portal>
         <Tooltip.Content className="tip" side="top" align="start" sideOffset={8}>
-          <p className="prose">
-            <MathText text={text} />
-          </p>
+          <div className="tip-lines">
+            {text.split("\n").map((line) => line.trim()).filter((line) => line.length > 0).map((line) => (
+              <p className="prose" key={line}>
+                <MathText text={line} />
+              </p>
+            ))}
+          </div>
         </Tooltip.Content>
       </Tooltip.Portal>
     </Tooltip.Root>
