@@ -29,13 +29,17 @@ export type LessonContext = {
   };
 };
 
+function readable(text: string): string {
+  return text.replace(/\[([^\]]+)\]\((https?:\/\/(?:[^()\s]|\([^()\s]*\))+)\)/g, "$1");
+}
+
 function segmentLine(thread: Thread, index: number): string {
   const segment = thread.segments[index];
-  if (segment.kind === "look") return `Look: ${segment.text}`;
-  if (segment.kind === "trace") return `Trace: ${segment.text}`;
+  if (segment.kind === "look") return `Look: ${readable(segment.text)}`;
+  if (segment.kind === "trace") return `Trace: ${readable(segment.text)}`;
   const label = segment.kind === "contrast" ? "Contrast" : "Relation";
   const gloss = segment.gloss ? ` Gloss: ${segment.gloss}` : "";
-  return `${label}: ${segment.tex}. Stake: ${segment.stake}${gloss}`;
+  return `${label}: ${segment.tex}. Stake: ${readable(segment.stake)}${gloss}`;
 }
 
 function threadContext(thread: Thread | undefined): LessonContext["block"] {

@@ -702,6 +702,29 @@ body {
 
 .tip-lines p { white-space: nowrap; }
 
+.prose a.source {
+  color: var(--muted);
+  display: inline-flex;
+  line-height: 0;
+  margin-left: 0.05em;
+  text-decoration: none;
+  vertical-align: super;
+}
+
+.prose a.source:hover,
+.prose a.source:focus-visible {
+  color: var(--ink);
+}
+
+.source-tip {
+  max-width: 22rem;
+  overflow-wrap: anywhere;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
 .door-tip {
   max-width: 22rem;
   text-align: left;
