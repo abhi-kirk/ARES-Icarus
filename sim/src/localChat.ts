@@ -135,7 +135,7 @@ function explain(scene: SceneId, time: number, knobs: Knobs): string {
     return `The step is $${knobs.dt.toFixed(2)}\\,\\mathrm{s}$. At $t = ${time.toFixed(2)}\\,\\mathrm{s}$, the gold mass is the stepped height and the wire box is the true height.`;
   }
   const row = rowAt(rowsFor(scene, knobs), time);
-  if (scene.startsWith("turn")) {
+  if (scene.startsWith("turn") || scene.startsWith("veh")) {
     const live = sceneById(scene).live;
     const first = live[0];
     const second = live[1];

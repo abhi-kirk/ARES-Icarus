@@ -651,6 +651,144 @@ export const READING: ReadingMap = {
       },
     ],
   },
+  vehAscent: {
+    threads: [
+      {
+        id: "ascent",
+        title: "Off the pad",
+        focus: ["Thrust above weight makes an upward acceleration", "Height is accumulated rate"],
+        segments: [
+          { kind: "look", text: "The flame stays on and the rocket leaves the pad. This climb is the vehicle the later scenes ride on." },
+          {
+            kind: "relation",
+            tex: String.raw`a = T/m - g`,
+            stake: "Acceleration is thrust per mass, with gravity taken off. The mass stays fixed in this scene.",
+            gloss: String.raw`$T$ is thrust. $m$ is $2\,\mathrm{kg}$. $g$ is $9.81\,\mathrm{m/s^2}$.`,
+          },
+          {
+            kind: "trace",
+            text: "Rate climbs in a straight line. Height bends upward because it keeps the rate it has already gained.",
+          },
+        ],
+      },
+    ],
+  },
+  vehNose: {
+    threads: [
+      {
+        id: "nose",
+        title: "The push follows the nose",
+        focus: ["Thrust is along the body axis", "Tilt splits it into lift and downrange"],
+        segments: [
+          { kind: "look", text: "The rocket leans, and the flame leans with it. The pad stays behind as the path moves sideways." },
+          {
+            kind: "relation",
+            tex: String.raw`a_y = (T/m)\cos\theta - g`,
+            stake: "The vertical part is the thrust along the nose, times the cosine of the tilt, with gravity taken off.",
+          },
+          {
+            kind: "contrast",
+            tex: String.raw`a_x = (T/m)\sin\theta`,
+            stake: "The sideways part is the same thrust times the sine of the tilt. One angle sets both.",
+          },
+          {
+            kind: "trace",
+            text: "Height and downrange both grow. A steeper tilt trades climb for downrange.",
+          },
+        ],
+      },
+    ],
+  },
+  vehWind: {
+    threads: [
+      {
+        id: "wind",
+        title: "Air across the nose",
+        focus: ["Wind is sideways air", "Attack falls as climb speed rises"],
+        segments: [
+          { kind: "look", text: "The pale arrow is the wind. The nose stays vertical, so the air meets it from the side." },
+          {
+            kind: "relation",
+            tex: String.raw`\alpha = \arctan(W / v)`,
+            stake: "Attack is the angle whose tangent is wind speed over climb speed. A faster climb makes that angle smaller.",
+            gloss: String.raw`$W$ is the wind. $v$ is the climb rate.`,
+          },
+          {
+            kind: "trace",
+            text: "The rate trace climbs. The attack trace falls, because the same wind is a smaller share of a faster vehicle.",
+          },
+        ],
+      },
+    ],
+  },
+  vehEstimate: {
+    threads: [
+      {
+        id: "estimate",
+        title: "Predict, then correct",
+        focus: ["The predictor uses the thrust model", "The corrector pulls toward the sensor"],
+        segments: [
+          { kind: "look", text: "The rocket is the true height. The pale mark is the estimate, and it rides beside the body." },
+          {
+            kind: "relation",
+            tex: String.raw`\hat{x}^{-} = \hat{x} + \hat{v}\,\Delta t + \tfrac{1}{2}a\Delta t^{2}`,
+            stake: "The prediction carries the last estimate forward with the thrust model.",
+          },
+          {
+            kind: "contrast",
+            tex: String.raw`\hat{x} = \hat{x}^{-} + K(z - \hat{x}^{-})`,
+            stake: "The correction adds a fraction of the gap between the sensor and that prediction. $z$ is the sensor.",
+          },
+          {
+            kind: "trace",
+            text: "The truth is smooth. The estimate stays near it. A larger gain follows the sensor's wave more closely.",
+          },
+        ],
+      },
+    ],
+  },
+  vehGuide: {
+    threads: [
+      {
+        id: "guide",
+        title: "A direction to hold",
+        focus: ["Guidance commands a pitch", "The body follows that command"],
+        segments: [
+          { kind: "look", text: "The pale arrow is the direction guidance wants. The nose starts vertical, then tips toward that arrow." },
+          {
+            kind: "relation",
+            tex: String.raw`\dot\theta = (\theta_{\mathrm{cmd}} - \theta)/\tau`,
+            stake: "The nose closes the gap to the command at a rate set by that gap. $\\tau$ is $0.7\\,\\mathrm{s}$.",
+          },
+          {
+            kind: "trace",
+            text: "The command stays at zero, then steps into the kickover. The pitch trace follows it, and the path bends with the nose.",
+          },
+        ],
+      },
+    ],
+  },
+  vehAuto: {
+    threads: [
+      {
+        id: "auto",
+        title: "The same gain, a changing vehicle",
+        focus: ["Gain pitches the nose toward the command", "Mass falls and the air moment grows"],
+        segments: [
+          { kind: "look", text: "The nose tips toward a fixed command. The tank is emptying while it does." },
+          {
+            kind: "relation",
+            tex: String.raw`I\dot\omega = K(\theta_{\mathrm{cmd}} - \theta) - b\omega - qc\,\theta`,
+            stake: "The gain $K$ pulls toward the command. The middle term damps the rate. The last term grows with speed squared and eases the nose back.",
+          },
+          {
+            kind: "trace",
+            text: "Mass falls in a straight line. Pitch rises to the command, then the growing air eases it back a little.",
+          },
+        ],
+      },
+    ],
+  },
 };
 
 export function readingFor(id: SceneId) {

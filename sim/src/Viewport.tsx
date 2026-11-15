@@ -15,7 +15,7 @@ import {
 import type { Group, Mesh } from "three";
 import type { OrbitControls as OrbitRig } from "three-stdlib";
 import { NOZZLE_Y, Rocket } from "./Rocket";
-import { bodyAt, clampKnob, isTurnScene, viewSpan, type SceneId, type Knobs } from "./scenes";
+import { bodyAt, clampKnob, isTurnScene, isVehicleScene, viewSpan, type SceneId, type Knobs } from "./scenes";
 import { getKnobs, getScene, getTime, setKnob, setTime, useKnobs, useScene } from "./sceneStore";
 import { unlock } from "./sound";
 
@@ -91,6 +91,12 @@ function dragValue(dy: number, scene: SceneId): void {
   if (scene === "turnGimbal") setKnob("gimbal", clampKnob(scene, knobs.gimbal + dy * 0.04));
   if (scene === "turnAir") setKnob("margin", clampKnob(scene, knobs.margin + dy * 0.004));
   if (scene === "turnSlosh") setKnob("slosh", clampKnob(scene, knobs.slosh + dy * 0.08));
+  if (scene === "vehAscent") setKnob("lift", clampKnob(scene, knobs.lift + dy * 0.12));
+  if (scene === "vehNose") setKnob("lean", clampKnob(scene, knobs.lean + dy * 0.1));
+  if (scene === "vehWind") setKnob("wind", clampKnob(scene, knobs.wind + dy * 0.06));
+  if (scene === "vehEstimate") setKnob("trust", clampKnob(scene, knobs.trust + dy * 0.012));
+  if (scene === "vehGuide") setKnob("kick", clampKnob(scene, knobs.kick + dy * 0.08));
+  if (scene === "vehAuto") setKnob("hold", clampKnob(scene, knobs.hold + dy * 0.03));
 }
 
 // Coil from the mount down to the mass. The ends pull in to the center line
@@ -243,13 +249,19 @@ function Picture({ orbit, onBodyDrag }: { orbit: RefObject<OrbitRig | null>; onB
 
     if (rocket.current) {
       const turn = isTurnScene(scene);
+      const vehicle = isVehicleScene(scene);
       rocket.current.visible = !showRig;
       rocket.current.scale.setScalar(ROCKET_SCALE);
       if (turn) {
-        rocket.current.position.y = viewY(0, scene, knobs) + 0.55;
+        rocket.current.position.set(0, viewY(0, scene, knobs) + 0.55, 0);
         rocket.current.rotation.set(0, body.yaw, body.tilt);
+      } else if (vehicle) {
+        const span = viewSpan(scene, knobs);
+        const reach = Math.max(span.max - span.min, 1);
+        rocket.current.position.set((body.drift / reach) * 1.1, y + NOZZLE_LIFT, 0);
+        rocket.current.rotation.set(0, 0, body.tilt);
       } else {
-        rocket.current.position.y = y + NOZZLE_LIFT;
+        rocket.current.position.set(0, y + NOZZLE_LIFT, 0);
         rocket.current.rotation.set(0, 0, 0);
       }
     }
@@ -361,6 +373,7 @@ function Picture({ orbit, onBodyDrag }: { orbit: RefObject<OrbitRig | null>; onB
         <TurnBodyMarks />
       </group>
       <TurnWorldMarks />
+      <VehicleWorldMarks />
 
       <group ref={ground} visible={false}>
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
@@ -505,6 +518,62 @@ function TurnWorldMarks() {
   return (
     <group ref={root} visible={false}>
       <group ref={axis}>
+        <ArrowMesh color={PALE} />
+      </group>
+    </group>
+  );
+}
+
+function VehicleWorldMarks() {
+  const wind = useRef<Group>(null);
+  const up = useRef<Group>(null);
+  const ghost = useRef<Mesh>(null);
+  const aim = useRef<Group>(null);
+
+  useFrame(() => {
+    const id = getScene();
+    const vehicle = isVehicleScene(id);
+    const knobs = getKnobs();
+    const pose = vehicle ? bodyAt(id, getTime(), knobs) : null;
+    if (wind.current) wind.current.visible = id === "vehWind";
+    if (up.current) up.current.visible = id === "vehNose";
+    if (ghost.current) ghost.current.visible = id === "vehEstimate";
+    if (aim.current) aim.current.visible = id === "vehGuide" || id === "vehAuto";
+    if (!pose || !vehicle) return;
+    const span = viewSpan(id, knobs);
+    const reach = Math.max(span.max - span.min, 1);
+    const x = (pose.drift / reach) * 1.1;
+    const y = viewY(pose.height, id, knobs) + NOZZLE_LIFT;
+    if (wind.current) {
+      wind.current.position.set(x + 0.42, y + 0.4, 0.2);
+      aimArrow(wind.current, 1, 0, 0, 0.45 + knobs.wind / 30);
+    }
+    if (up.current) {
+      up.current.position.set(x, y + 0.2, 0.15);
+      aimArrow(up.current, 0, 1, 0, 1.05);
+    }
+    if (ghost.current) {
+      ghost.current.position.set(x + 0.32, viewY(pose.estimate, id, knobs) + NOZZLE_LIFT, 0.16);
+    }
+    if (aim.current) {
+      aim.current.position.set(x, y + 0.25, 0.16);
+      aimArrow(aim.current, Math.sin(pose.aim), Math.cos(pose.aim), 0, 1.15);
+    }
+  });
+
+  return (
+    <group>
+      <group ref={wind} visible={false}>
+        <ArrowMesh color={PALE} />
+      </group>
+      <group ref={up} visible={false}>
+        <ArrowMesh color={PALE} />
+      </group>
+      <mesh ref={ghost} visible={false}>
+        <sphereGeometry args={[0.07, 16, 12]} />
+        <meshBasicMaterial color="#8ec8e8" />
+      </mesh>
+      <group ref={aim} visible={false}>
         <ArrowMesh color={PALE} />
       </group>
     </group>

@@ -2,6 +2,7 @@
 
 import { loopRowAt, loopRowsFor, LOOP_LIMIT, LOOP_M, LOOP_T0 } from "./loopPlant";
 import { turnAt, turnBrief, turnDuration, turnRows, type TurnId, type TurnSample } from "./turnPlant";
+import { vehicleAt, vehicleBrief, vehicleDuration, vehicleRows, type VehicleId, type VehicleSample } from "./vehiclePlant";
 
 
 export type SceneId =
@@ -22,7 +23,13 @@ export type SceneId =
   | "turnInertia"
   | "turnGimbal"
   | "turnAir"
-  | "turnSlosh";
+  | "turnSlosh"
+  | "vehAscent"
+  | "vehNose"
+  | "vehWind"
+  | "vehEstimate"
+  | "vehGuide"
+  | "vehAuto";
 
 export type Column =
   | "height"
@@ -58,7 +65,10 @@ export type Column =
   | "moment"
   | "attack"
   | "fill"
-  | "offset";
+  | "offset"
+  | "downrange"
+  | "estimate"
+  | "aim";
 
 export type Row = {
   t: number;
@@ -96,6 +106,9 @@ export type Row = {
   attack: number;
   fill: number;
   offset: number;
+  downrange: number;
+  estimate: number;
+  aim: number;
 };
 
 export type Knobs = {
@@ -118,6 +131,12 @@ export type Knobs = {
   gimbal: number;
   margin: number;
   slosh: number;
+  lift: number;
+  lean: number;
+  wind: number;
+  trust: number;
+  kick: number;
+  hold: number;
 };
 
 export const KNOBS: Knobs = {
@@ -140,6 +159,12 @@ export const KNOBS: Knobs = {
   gimbal: 8,
   margin: 0.6,
   slosh: 16,
+  lift: 40,
+  lean: 15,
+  wind: 8,
+  trust: 2,
+  kick: 18,
+  hold: 6,
 };
 
 // Undamped spring. Mass 1 kg, stiffness 1 N/m, so one swing takes 2π seconds.
@@ -173,7 +198,13 @@ export type KnobKey =
   | "inertia"
   | "gimbal"
   | "margin"
-  | "slosh";
+  | "slosh"
+  | "lift"
+  | "lean"
+  | "wind"
+  | "trust"
+  | "kick"
+  | "hold";
 
 const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   dt: { min: 0.05, max: 0.5 },
@@ -195,6 +226,12 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   gimbal: { min: 0, max: 15 },
   margin: { min: -1, max: 1.5 },
   slosh: { min: 4, max: 35 },
+  lift: { min: 25, max: 70 },
+  lean: { min: 0, max: 40 },
+  wind: { min: 0, max: 25 },
+  trust: { min: 0.4, max: 6 },
+  kick: { min: 5, max: 35 },
+  hold: { min: 2, max: 14 },
 };
 
 export function clampNamed(key: KnobKey, value: number): number {
@@ -411,6 +448,72 @@ export const SCENES: {
     chartTitle: "Fuel and offset",
     visual: "The gold slug is the fuel that is still free to swing. It rides up the tank as the propellant burns, and its sideways travel moves the center of mass.",
   },
+  {
+    id: "vehAscent",
+    name: "Ascent",
+    title: "Ascent",
+    lede: "Thrust above the vehicle's weight lifts it off the pad. Height is the rate, accumulated.",
+    opener: "Height and rate come from one thrust on a fixed mass. Drag the rocket to change the thrust.",
+    live: ["height", "rate"],
+    askable: ["height", "rate", "accel", "thrust"],
+    chartTitle: "Height and rate",
+    visual: "The rocket leaves the pad. The flame is the thrust, and the climb is the height.",
+  },
+  {
+    id: "vehNose",
+    name: "Thrust along the nose",
+    title: "Thrust along the nose",
+    lede: "Thrust points along the nose. Tilt the nose and part of that push lifts the vehicle while the rest carries it downrange.",
+    opener: "Height is the vertical part. Downrange is the sideways part. Drag the rocket to change the tilt.",
+    live: ["height", "downrange"],
+    askable: ["height", "downrange", "rate", "pitch"],
+    chartTitle: "Height and downrange",
+    visual: "The rocket leans by the tilt. Thrust stays on the nose, so the path leaves the vertical.",
+  },
+  {
+    id: "vehWind",
+    name: "Wind",
+    title: "Wind",
+    lede: "The path stays vertical while the air moves sideways. The angle between the nose and that air is the angle of attack, and it shrinks as the vehicle goes faster.",
+    opener: "Rate is the climb speed. Attack is the angle of the air relative to the nose. Drag the rocket to change the wind.",
+    live: ["rate", "attack"],
+    askable: ["rate", "attack", "height"],
+    chartTitle: "Speed and attack",
+    visual: "The pale arrow is the wind. The rocket climbs through it, nose up.",
+  },
+  {
+    id: "vehEstimate",
+    name: "Sensors and an estimate",
+    title: "Sensors and an estimate",
+    lede: "The sensor reports height with a wave on it. The estimate predicts the next height from thrust, then pulls that prediction toward the sensor.",
+    opener: "Height is the truth. Estimate is the corrected prediction. Drag the rocket to change how hard the sensor pulls.",
+    live: ["height", "estimate"],
+    askable: ["height", "estimate", "measured", "rate"],
+    chartTitle: "Truth and estimate",
+    visual: "The rocket is the true height. The pale mark is the estimate.",
+  },
+  {
+    id: "vehGuide",
+    name: "Guidance",
+    title: "Guidance",
+    lede: "Guidance names the direction the nose should point. The body takes that command a moment later, and the path follows the nose.",
+    opener: "Aim is the commanded pitch. Pitch is where the nose is. Drag the rocket to change the kickover.",
+    live: ["aim", "pitch"],
+    askable: ["aim", "pitch", "height", "downrange"],
+    chartTitle: "Command and pitch",
+    visual: "The pale arrow is the command. The rocket's nose follows it.",
+  },
+  {
+    id: "vehAuto",
+    name: "Autopilot as mass and air change",
+    title: "Autopilot as mass and air change",
+    lede: "One gain pitches the nose toward the command. As the speed builds, the air eases that nose back.",
+    opener: "Pitch is the nose. Mass is what is left in the vehicle. Drag the rocket to change the gain.",
+    live: ["pitch", "mass"],
+    askable: ["pitch", "mass", "aim", "height"],
+    chartTitle: "Pitch and mass",
+    visual: "The rocket pitches toward the command while the tank gets lighter.",
+  },
 ];
 
 export function sceneById(id: SceneId) {
@@ -430,6 +533,7 @@ export function durationOf(id: SceneId): number {
   if (id === "loopMode") return 12;
   if (id === "loopSample") return 12;
   if (isTurnScene(id)) return turnDuration(id);
+  if (isVehicleScene(id)) return vehicleDuration(id);
   return 5;
 }
 
@@ -439,6 +543,10 @@ export function isLoopScene(id: SceneId): boolean {
 
 export function isTurnScene(id: SceneId): id is TurnId {
   return id.startsWith("turn");
+}
+
+export function isVehicleScene(id: SceneId): id is VehicleId {
+  return id.startsWith("veh");
 }
 
 export function clampKnob(id: SceneId, value: number): number {
@@ -459,6 +567,12 @@ export function clampKnob(id: SceneId, value: number): number {
   if (id === "turnGimbal") return clampNamed("gimbal", value);
   if (id === "turnAir") return clampNamed("margin", value);
   if (id === "turnSlosh") return clampNamed("slosh", value);
+  if (id === "vehAscent") return clampNamed("lift", value);
+  if (id === "vehNose") return clampNamed("lean", value);
+  if (id === "vehWind") return clampNamed("wind", value);
+  if (id === "vehEstimate") return clampNamed("trust", value);
+  if (id === "vehGuide") return clampNamed("kick", value);
+  if (id === "vehAuto") return clampNamed("hold", value);
   return value;
 }
 
@@ -503,6 +617,9 @@ function blank(t: number): Row {
     attack: 0,
     fill: 0,
     offset: 0,
+    downrange: 0,
+    estimate: 0,
+    aim: 0,
   };
 }
 
@@ -672,8 +789,24 @@ function fromTurnSample(row: TurnSample): Row {
   return next;
 }
 
+function fromVehicleSample(row: VehicleSample): Row {
+  const next = blank(row.t);
+  next.height = row.height;
+  next.rate = row.rate;
+  next.downrange = row.downrange;
+  next.attack = row.attack;
+  next.estimate = row.estimate;
+  next.measured = row.measured;
+  next.pitch = row.pitch;
+  next.aim = row.aim;
+  next.mass = row.mass;
+  next.accel = row.accel;
+  next.thrust = row.thrust;
+  return next;
+}
+
 export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
-  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}`;
+  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}`;
   if (rowCache && rowCache.key === key) return rowCache.rows;
 
   let rows: Row[];
@@ -681,6 +814,7 @@ export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
   else if (id === "mass") rows = massRows(knobs.thrust);
   else if (id === "engine") rows = engineRows(knobs.tau, knobs.ask);
   else if (isTurnScene(id)) rows = turnRows(id, knobs).map(fromTurnSample);
+  else if (isVehicleScene(id)) rows = vehicleRows(id, knobs).map(fromVehicleSample);
   else rows = loopRowsFor(id, knobs).map(fromLoopRow);
 
   rowCache = { key, rows };
@@ -706,10 +840,13 @@ export type BodyDraw = {
   slosh: number;
   cp: number;
   fill: number;
+  drift: number;
+  aim: number;
+  estimate: number;
 };
 
 function still(height: number, truth: number, flame: number): BodyDraw {
-  return { height, truth, flame, yaw: 0, tilt: 0, gimbal: 0, slosh: 0, cp: 0, fill: 1 };
+  return { height, truth, flame, yaw: 0, tilt: 0, gimbal: 0, slosh: 0, cp: 0, fill: 1, drift: 0, aim: 0, estimate: height };
 }
 
 export function bodyAt(id: SceneId, t: number, knobs: Knobs): BodyDraw {
@@ -732,6 +869,26 @@ export function bodyAt(id: SceneId, t: number, knobs: Knobs): BodyDraw {
       slosh: sample.slosh,
       cp: sample.cp,
       fill: id === "turnSlosh" ? sample.fill / 1.5 : 1,
+      drift: 0,
+      aim: 0,
+      estimate: 0,
+    };
+  }
+  if (isVehicleScene(id)) {
+    const sample = vehicleAt(id, t, knobs);
+    return {
+      height: sample.height,
+      truth: sample.height,
+      flame: sample.flame,
+      yaw: 0,
+      tilt: sample.tilt,
+      gimbal: 0,
+      slosh: 0,
+      cp: 0,
+      fill: sample.mass > 0 ? sample.mass / 3 : 1,
+      drift: sample.drift,
+      aim: sample.aim / (180 / Math.PI),
+      estimate: sample.estimate,
     };
   }
   const row = rowAt(rowsFor(id, knobs), t);
@@ -791,6 +948,9 @@ export const COLUMNS: Record<Column, { name: string; label: string; unit: Column
   attack: { name: "Attack", label: "Attack (deg)", unit: "deg", words: ["attack", "alpha", "aoa"] },
   fill: { name: "Fuel", label: "Fuel (kg)", unit: "kg", words: ["fuel", "fill", "propellant"] },
   offset: { name: "Offset", label: "Offset (m)", unit: "m", words: ["offset", "slosh", "cg"] },
+  downrange: { name: "Downrange", label: "Downrange (m)", unit: "m", words: ["downrange", "range", "sideways"] },
+  estimate: { name: "Estimate", label: "Estimate (m)", unit: "m", words: ["estimate", "filter", "prediction"] },
+  aim: { name: "Aim", label: "Aim (deg)", unit: "deg", words: ["aim", "command", "guidance", "kick"] },
 };
 
 export function columnName(column: Column): string {
@@ -930,7 +1090,7 @@ export function readout(id: SceneId, t: number, knobs: Knobs): ReadoutLine[] {
       { name: "Rate", text: `${row.rate.toFixed(1)} m/s`, column: "rate" },
     ];
   }
-  if (isTurnScene(id)) {
+  if (isTurnScene(id) || isVehicleScene(id)) {
     const live = sceneById(id).live;
     return [
       { name: "Time", text: `${t.toFixed(2)} s` },
@@ -1030,6 +1190,12 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
   if (id === "turnGimbal") return [knob("gimbal", "Gimbal", knobs.gimbal, LIMITS.gimbal.min, LIMITS.gimbal.max, 0.5, `${knobs.gimbal.toFixed(1)}°`)];
   if (id === "turnAir") return [knob("margin", "Margin", knobs.margin, LIMITS.margin.min, LIMITS.margin.max, 0.1, `${knobs.margin.toFixed(1)} cal`)];
   if (id === "turnSlosh") return [knob("slosh", "Swing", knobs.slosh, LIMITS.slosh.min, LIMITS.slosh.max, 1, `${knobs.slosh.toFixed(0)}°`)];
+  if (id === "vehAscent") return [knob("lift", "Thrust", knobs.lift, LIMITS.lift.min, LIMITS.lift.max, 1, `${knobs.lift.toFixed(0)} N`)];
+  if (id === "vehNose") return [knob("lean", "Tilt", knobs.lean, LIMITS.lean.min, LIMITS.lean.max, 1, `${knobs.lean.toFixed(0)}°`)];
+  if (id === "vehWind") return [knob("wind", "Wind", knobs.wind, LIMITS.wind.min, LIMITS.wind.max, 1, `${knobs.wind.toFixed(0)} m/s`)];
+  if (id === "vehEstimate") return [knob("trust", "Gain", knobs.trust, LIMITS.trust.min, LIMITS.trust.max, 0.1, knobs.trust.toFixed(1))];
+  if (id === "vehGuide") return [knob("kick", "Kick", knobs.kick, LIMITS.kick.min, LIMITS.kick.max, 1, `${knobs.kick.toFixed(0)}°`)];
+  if (id === "vehAuto") return [knob("hold", "Gain", knobs.hold, LIMITS.hold.min, LIMITS.hold.max, 0.5, knobs.hold.toFixed(1))];
   return [];
 }
 
@@ -1072,6 +1238,8 @@ export function chartMarkers(id: SceneId, knobs: Knobs): ChartMarker[] {
   if (id === "turnGimbal") return [{ t: 1.5, label: "gimbal holds" }];
   if (id === "turnLock" && knobs.pitch >= 90) return [{ t: durationOf(id), label: "nose vertical" }];
   if (id === "turnQuat") return [{ t: durationOf(id) * (90 / knobs.tumble), label: "nose vertical" }];
+  if (id === "vehGuide") return [{ t: 2, label: "kickover" }];
+  if (id === "vehAuto") return [{ t: 0.4, label: "pitch command" }];
   if (id === "loopSample") {
     const markers: ChartMarker[] = [{ t: 1, label: "target step" }];
     for (let t = knobs.dt; t < durationOf(id) - 1e-9; t += knobs.dt) {
@@ -1116,5 +1284,6 @@ export function chatBrief(id: SceneId, knobs: Knobs): string {
     return `${scene.title}. Sample time ${knobs.dt.toFixed(2)} s and measurement delay ${knobs.tau.toFixed(2)} s versus continuous control. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (isTurnScene(id)) return turnBrief(id, knobs);
+  if (isVehicleScene(id)) return vehicleBrief(id, knobs);
   return `${scene.title}. Allowed chart columns: ${allowedList(id)}.`;
 }

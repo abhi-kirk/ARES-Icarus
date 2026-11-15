@@ -63,12 +63,12 @@ export const CHAPTERS: CatalogChapter[] = [
     slug: "vehicle",
     title: "The vehicle",
     scenes: [
-      { slug: "ascent", name: "Ascent", ready: false },
-      { slug: "thrust-axis", name: "Thrust along the nose", ready: false },
-      { slug: "wind", name: "Wind", ready: false },
-      { slug: "estimate", name: "Sensors and an estimate", ready: false },
-      { slug: "guidance", name: "Guidance", ready: false },
-      { slug: "autopilot", name: "Autopilot as mass and air change", ready: false },
+      { slug: "ascent", name: "Ascent", sceneId: "vehAscent", ready: true },
+      { slug: "thrust-axis", name: "Thrust along the nose", sceneId: "vehNose", ready: true },
+      { slug: "wind", name: "Wind", sceneId: "vehWind", ready: true },
+      { slug: "estimate", name: "Sensors and an estimate", sceneId: "vehEstimate", ready: true },
+      { slug: "guidance", name: "Guidance", sceneId: "vehGuide", ready: true },
+      { slug: "autopilot", name: "Autopilot as mass and air change", sceneId: "vehAuto", ready: true },
     ],
   },
   {
