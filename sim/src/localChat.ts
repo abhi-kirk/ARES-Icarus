@@ -60,8 +60,10 @@ export function localTurn(text: string, time: number, scene: SceneId, knobs: Kno
     };
   }
 
-  if (question && /\b(the answer|correct|am i right|is it right)\b/.test(lower)) {
-    return { text: "That one is graded in the card. I can still define a symbol, move the time, or plot a series." };
+  if (question && /\b(the answer|correct|am i right|is it right|hint|stuck|help|this question|the question|q&a|card)\b/.test(lower)) {
+    return {
+      text: `The card asks: ${question} ${sceneById(scene).opener}`,
+    };
   }
 
   if (number !== undefined && scene === "step" && wants(lower, ["step", "dt"])) {

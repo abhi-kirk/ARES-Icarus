@@ -16,7 +16,7 @@ The burn. Thrust stays constant while the tank empties, so the acceleration clim
 
 The engine. The command jumps and the engine follows, but the thrust cannot pass 50 N.
 
-Under the title, that column scrolls: the equations, then an Icarus Q&A card with beginner, intermediate, and advanced questions. A typed answer is graded by Grok. Ask can move the time or plot a series. It does not answer a question on a card.
+Under the title, that column scrolls: the equations, then an Icarus Q&A card with beginner, intermediate, and advanced questions. A typed answer is graded by Grok. Ask can move the time or plot a series. When the reader asks for help with a card question, Ask explains it and says whether an answer they offer holds.
 
 Play runs that clock in real time. The live chart draws only as far as the picture has gone. A chart the conversation asks for draws the whole run, with the same time marked.
 

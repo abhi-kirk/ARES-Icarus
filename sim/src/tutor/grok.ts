@@ -65,7 +65,6 @@ export async function* grokStreamDeltas(
       store: false,
       stream: true,
       reasoning: { effort },
-      max_output_tokens: effort === "low" ? 450 : 650,
       instructions,
       input: [{ role: "user", content: user }],
     }),
