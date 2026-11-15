@@ -25,7 +25,7 @@ const BY_CHAPTER: Record<ChapterId, string[]> = {
   vehicle: [
     "What does guidance do on the way down?",
     "How does wind push the rocket?",
-    "What is an estimate in plain words?",
+    "What is an estimate?",
   ],
   descent: [
     "What is a path under constraints?",

@@ -13,16 +13,16 @@ export const READING: ReadingMap = {
         segments: [
           {
             kind: "look",
-            text: "Start above the rest point and the spring is already arguing with the motion. The mass is high, but the acceleration points back down.",
+            text: "Start above the rest point. The mass is high, and the acceleration points back down.",
           },
           {
             kind: "look",
-            text: "That is the first habit this page is trying to build: do not read position as destiny. A rocket, a spring, or any moving body also carries a direction of change and a force story.",
+            text: "Position is one number. A rocket, a spring, or any moving body also carries a direction of change and a force.",
           },
           {
             kind: "relation",
             tex: String.raw`m\ddot{x} = -kx`,
-            stake: "This is the claim the scene is making: displacement creates a restoring force. With the damper open, speed is not in the force law.",
+            stake: "Displacement creates a restoring force. With the damper open, the force depends on displacement alone.",
             gloss: String.raw`$m$ is the mass. $k$ is the spring stiffness. $x$ is height from the rest point.`,
           },
           {
@@ -36,7 +36,7 @@ export const READING: ReadingMap = {
           },
           {
             kind: "trace",
-            text: "That trade is the beginning of state thinking. You are not memorizing a spring equation; you are watching how one number is not enough to say what happens next.",
+            text: "Height and rate trade roles through the cycle. Together they say what the next moment does.",
           },
         ],
       },
@@ -47,11 +47,11 @@ export const READING: ReadingMap = {
         segments: [
           {
             kind: "look",
-            text: "The readout is not two separate facts. Height says where the mass is, and rate says what it is about to do.",
+            text: "Height says where the mass is, and rate says what it is about to do.",
           },
           {
             kind: "look",
-            text: "This is why a state is more than a label. Two moments can have the same height and different rates, which means the next moment will not be the same.",
+            text: "Two moments can share a height and carry different rates, so they leave in different directions.",
           },
           {
             kind: "relation",
@@ -61,7 +61,7 @@ export const READING: ReadingMap = {
           },
           {
             kind: "trace",
-            text: "A phase plot turns those two numbers into one point. As time moves, that point loops instead of marching left to right.",
+            text: "A phase plot turns those two numbers into one point. As time moves, that point loops.",
           },
           {
             kind: "trace",
@@ -84,12 +84,12 @@ export const READING: ReadingMap = {
           },
           {
             kind: "look",
-            text: "A simulation is always making a bargain like this. It cannot know the whole curve at once, so it takes a small promise from the current state and lives with the result until the next update.",
+            text: "Each update takes the current state as a short promise and keeps that promise until the next sample.",
           },
           {
             kind: "relation",
             tex: String.raw`v_{n+1} = v_n - \Delta t\,x_n`,
-            stake: "The update uses the height at the start of the step. It does not peek at the curve between samples.",
+            stake: "The update uses the height at the start of the step.",
             gloss: String.raw`$n$ is the current step. $\Delta t$ is the step length. $x_n$ and $v_n$ are the state at the start.`,
           },
           {
@@ -99,11 +99,11 @@ export const READING: ReadingMap = {
           },
           {
             kind: "trace",
-            text: "The stepped trace is not wrong because it is jagged. It is wrong when the held value no longer matches the motion it is trying to approximate.",
+            text: "The stepped trace goes wrong when the held value has left the motion it is approximating.",
           },
           {
             kind: "trace",
-            text: "Shrinking the step does not make the method smarter. It just makes each guess shorter, which gives the force law more chances to correct the path.",
+            text: "A shorter step makes each guess shorter, so the force law gets more chances to correct the path.",
           },
         ],
       },
@@ -133,7 +133,7 @@ export const READING: ReadingMap = {
           {
             kind: "relation",
             tex: String.raw`a = F/m - g`,
-            stake: "Thrust is the input, but acceleration is what the vehicle feels. The same $F$ is less impressive when $m$ is large.",
+            stake: "Thrust is the input. Acceleration is what the vehicle feels. The same $F$ produces less acceleration when $m$ is large.",
             gloss: String.raw`$F$ is thrust in newtons. $g$ is $9.81\,\mathrm{m/s^2}$.`,
           },
           {
@@ -153,11 +153,11 @@ export const READING: ReadingMap = {
         segments: [
           {
             kind: "look",
-            text: "The rocket is never commanded to a height. It earns every meter through acceleration, rate, and time.",
+            text: "Height arrives through acceleration, rate, and time.",
           },
           {
             kind: "look",
-            text: "That chain matters later for landing. A controller can ask for thrust now, but the effect reaches height only after it has passed through acceleration and rate.",
+            text: "A controller can ask for thrust now. Height feels that thrust after it has passed through acceleration and rate.",
           },
           {
             kind: "relation",
@@ -171,7 +171,7 @@ export const READING: ReadingMap = {
           },
           {
             kind: "trace",
-            text: "If the rocket is still moving upward with negative acceleration, it has not turned yet. The state tells you both what is happening and what is about to happen.",
+            text: "Upward motion with negative acceleration is the moment before the turn. The state holds the motion now and the motion that follows.",
           },
         ],
       },
@@ -201,7 +201,7 @@ export const READING: ReadingMap = {
           {
             kind: "contrast",
             tex: String.raw`0 \le F \le 50`,
-            stake: "Even the catch-up has limits. The command can ask for more than the engine can supply, but the vehicle only feels the clamped value.",
+            stake: "The command can ask for more than the engine can supply. The vehicle feels the clamped value.",
           },
           {
             kind: "trace",
@@ -220,11 +220,11 @@ export const READING: ReadingMap = {
         segments: [
           {
             kind: "look",
-            text: "A slow engine is not just a slow line on the chart. It changes when acceleration arrives, so the whole trajectory changes.",
+            text: "A slow engine changes when acceleration arrives, so the whole trajectory changes.",
           },
           {
             kind: "look",
-            text: "This is the same motion chain as the burn, but with an actuator in front of it. The command is upstream of the state, not part of the state itself.",
+            text: "This is the burn's motion chain with an actuator in front of it. The command sits upstream of the state.",
           },
           {
             kind: "relation",
@@ -247,21 +247,21 @@ export const READING: ReadingMap = {
     threads: [
       {
         id: "open",
-        title: "A plan that never looks back",
+        title: "A plan with a fixed thrust",
         focus: ["Open loop ignores measured state", "A disturbance becomes drift"],
         segments: [
           {
             kind: "look",
-            text: "Open loop is not careless math. It is a command that never checks whether the vehicle is still where the plan expected it to be.",
+            text: "Open loop is a command that keeps going on the plan, whatever height the vehicle has reached.",
           },
           {
             kind: "look",
-            text: "That can work when the world matches the plan. It falls apart when a disturbance, modeling error, or changing vehicle turns the planned thrust into the wrong thrust.",
+            text: "The plan holds while the world matches it. A disturbance, a modeling error, or a changing vehicle turns the planned thrust into the wrong thrust.",
           },
           {
             kind: "relation",
             tex: String.raw`F = F_0 + \Delta F`,
-            stake: "After one second, the extra thrust is simply held. Nothing in this law asks whether height is above or below the reference.",
+            stake: "After one second, the extra thrust is held for the rest of the run.",
             gloss: String.raw`$F_0$ is hover thrust. $\Delta F$ is the extra thrust knob.`,
           },
           {
@@ -275,7 +275,7 @@ export const READING: ReadingMap = {
           },
           {
             kind: "trace",
-            text: "The important thing is not that the extra thrust is large. It is that nothing notices the drift and pushes back.",
+            text: "The drift grows because the law holds the extra thrust and leaves it there.",
           },
         ],
       },
@@ -294,12 +294,12 @@ export const READING: ReadingMap = {
           },
           {
             kind: "look",
-            text: "The point is not to crown one term as the right answer. Each term notices something useful and misses something else.",
+            text: "Each term notices something useful and misses something else.",
           },
           {
             kind: "relation",
             tex: String.raw`e = x_{\mathrm{ref}} - x`,
-            stake: "Error is signed. It says not only how far you are from the target, but which way the correction needs to push.",
+            stake: "Error is signed. It gives the distance to the target and the direction the correction needs to push.",
           },
           {
             kind: "contrast",
@@ -308,11 +308,11 @@ export const READING: ReadingMap = {
           },
           {
             kind: "trace",
-            text: "Overshoot, delay, and sluggishness are not separate topics here. They are the visible fingerprints of what each term chooses to notice.",
+            text: "Overshoot, delay, and sluggishness are the fingerprints of what each term chooses to notice.",
           },
           {
             kind: "trace",
-            text: "When a trace races past the target, ask what signal kept pushing. When it never quite catches up, ask what signal was too weak or missing.",
+            text: "When a trace races past the target, ask what signal kept pushing. When it stays short of the target, ask what signal was too weak.",
           },
         ],
       },
@@ -327,11 +327,11 @@ export const READING: ReadingMap = {
         segments: [
           {
             kind: "look",
-            text: "Close to hover, the full vehicle and the simpler model can look almost identical. That agreement is local, not magic.",
+            text: "Close to hover, the full vehicle and the simpler model can look almost identical. That agreement is local.",
           },
           {
             kind: "look",
-            text: "Linearization is a way of saying: near this operating point, keep the part of the model that changes first. It is a local promise, not a new vehicle.",
+            text: "Near this operating point, linearization keeps the part of the model that changes first. It is a local promise.",
           },
           {
             kind: "relation",
@@ -349,7 +349,7 @@ export const READING: ReadingMap = {
           },
           {
             kind: "trace",
-            text: "That is why the offset knob matters. It does not just move the starting point; it tests how far the local story can be stretched.",
+            text: "The offset knob tests how far the local story can be stretched.",
           },
         ],
       },
@@ -359,7 +359,7 @@ export const READING: ReadingMap = {
     threads: [
       {
         id: "unstable",
-        title: "An equilibrium you cannot leave alone",
+        title: "An equilibrium that runs away",
         focus: ["Wrong-sign acceleration makes hover unstable", "Feedback can stabilize and land"],
         segments: [
           {
@@ -368,7 +368,7 @@ export const READING: ReadingMap = {
           },
           {
             kind: "look",
-            text: "This is the difference between being balanced and being stable. A pencil can balance on its tip, but the balance does not forgive a small mistake.",
+            text: "Balance and stability are different. A pencil can balance on its tip, and a small mistake sends it off.",
           },
           {
             kind: "relation",
@@ -382,11 +382,11 @@ export const READING: ReadingMap = {
           },
           {
             kind: "trace",
-            text: "The open-loop trace tells you what the plant wants to do. The closed-loop trace tells you what the controller can keep from happening.",
+            text: "The open-loop trace is the path the plant takes on its own. The closed-loop trace is the path the controller holds.",
           },
           {
             kind: "trace",
-            text: "Landing is not drawn here as a heroic final burn. It is a moving reference plus feedback that keeps correcting a plant that would rather leave.",
+            text: "Landing here is a moving reference plus feedback that keeps correcting a plant that wants to leave.",
           },
         ],
       },
@@ -396,8 +396,8 @@ export const READING: ReadingMap = {
     threads: [
       {
         id: "hidden",
-        title: "What the sensor does not see",
-        focus: ["Measured height is not the whole vehicle", "Hidden modes can couple back into motion"],
+        title: "The motion beside the height sensor",
+        focus: ["Measured height is one part of the vehicle", "Hidden modes can couple back into motion"],
         segments: [
           {
             kind: "look",
@@ -405,12 +405,12 @@ export const READING: ReadingMap = {
           },
           {
             kind: "look",
-            text: "That is why a good-looking height trace is not always proof that the vehicle is healthy. The controller can only react to the state it can see or estimate.",
+            text: "A calm height trace can sit on a vehicle that is still in trouble. The controller reacts to the state it can see or estimate.",
           },
           {
             kind: "relation",
             tex: String.raw`\ddot q = \lambda^2 q`,
-            stake: "The internal coordinate $q$ has its own dynamics. If it is not measured, the controller does not get to react to it directly.",
+            stake: "The internal coordinate $q$ has its own dynamics. The controller reacts to $q$ once something measures it.",
           },
           {
             kind: "contrast",
@@ -419,7 +419,7 @@ export const READING: ReadingMap = {
           },
           {
             kind: "trace",
-            text: "The hidden-mode trace is not there for the controller. It is there for you, so the missing state has somewhere to show itself.",
+            text: "The hidden-mode trace is for you, so the missing state has somewhere to show itself.",
           },
           {
             kind: "trace",
@@ -442,12 +442,12 @@ export const READING: ReadingMap = {
           },
           {
             kind: "look",
-            text: "Digital control is not worse because it is digital. It is different because time now has gates: measure, compute, hold, and measure again.",
+            text: "Digital control puts gates in time: measure, compute, hold, and measure again.",
           },
           {
             kind: "relation",
             tex: String.raw`F = F_0 + K_p e + K_i\!\int e\,dt`,
-            stake: "Continuous feedback updates as the error changes. Nothing has to wait for the next sample.",
+            stake: "Continuous feedback updates as the error changes.",
           },
           {
             kind: "contrast",
@@ -504,7 +504,7 @@ export const READING: ReadingMap = {
           },
           {
             kind: "trace",
-            text: "At 90 degrees of pitch the gap is zero. A roll about the nose and a yaw about vertical are the same turn, so those two commands no longer do different work.",
+            text: "At 90 degrees of pitch the gap is zero. A roll about the nose and a yaw about vertical are the same turn.",
           },
         ],
       },
@@ -514,7 +514,7 @@ export const READING: ReadingMap = {
     threads: [
       {
         id: "quaternion",
-        title: "The same pitch, without a lost axis",
+        title: "The same pitch, past vertical",
         focus: ["A pitch is half-angle cosine and sine", "The numbers stay finite through vertical"],
         segments: [
           { kind: "look", text: "The nose takes the same path as in the lock scene, and it is allowed to keep going past vertical." },
@@ -526,7 +526,7 @@ export const READING: ReadingMap = {
           {
             kind: "contrast",
             tex: String.raw`\theta = 90^\circ`,
-            stake: "Euler yaw and roll become the same command here. The quaternion components do not swap roles or go to infinity.",
+            stake: "Euler yaw and roll become the same command here. The quaternion components keep their roles and stay finite.",
           },
           {
             kind: "trace",
@@ -540,10 +540,10 @@ export const READING: ReadingMap = {
     threads: [
       {
         id: "spin",
-        title: "A rate that does not change",
+        title: "A rate that stays put",
         focus: ["No torque leaves the spin rate constant", "Angle is rate times time"],
         segments: [
-          { kind: "look", text: "The stripe walks around the body at one pace. Nothing is pushing the spin faster or slower." },
+          { kind: "look", text: "The stripe walks around the body at one pace. The spin stays at that pace." },
           {
             kind: "relation",
             tex: String.raw`\theta = \omega t`,
@@ -572,7 +572,7 @@ export const READING: ReadingMap = {
           },
           {
             kind: "trace",
-            text: "A larger inertia makes the spin trace shallower and the angle arrive later. The torque did not change.",
+            text: "A larger inertia makes the spin trace shallower and the angle arrive later.",
           },
         ],
       },
@@ -589,7 +589,7 @@ export const READING: ReadingMap = {
           {
             kind: "relation",
             tex: String.raw`F_y = T\sin\delta`,
-            stake: "Side force is the part of the thrust that is no longer along the body.",
+            stake: "Side force is the thrust across the body.",
           },
           {
             kind: "contrast",
@@ -598,7 +598,7 @@ export const READING: ReadingMap = {
           },
           {
             kind: "trace",
-            text: "The two traces rise together and then hold. There is no second actuator here that could cancel the moment and keep the side force.",
+            text: "The two traces rise together and then hold. One gimbal sets both, so the moment stays with the side force.",
           },
         ],
       },
@@ -611,7 +611,7 @@ export const READING: ReadingMap = {
         title: "Where the air pushes",
         focus: ["Aerodynamic force acts at the center of pressure", "The moment restores when that point is behind the mass"],
         segments: [
-          { kind: "look", text: "The gold mark is the center of mass. The pale mark is the center of pressure. The rocket's lean is the angle of attack." },
+          { kind: "look", text: "The gold mark is the center of mass. The pale blue mark is the center of pressure. The rocket's lean is the angle of attack." },
           {
             kind: "relation",
             tex: String.raw`M = -q S d\, C_{N\alpha}\, \alpha\, \sigma`,
@@ -624,7 +624,7 @@ export const READING: ReadingMap = {
           },
           {
             kind: "trace",
-            text: "With a positive margin the angle of attack swings back through zero. With a negative margin it leaves and does not return.",
+            text: "With a positive margin the angle of attack swings back through zero. With a negative margin the lean keeps growing.",
           },
         ],
       },
@@ -637,7 +637,7 @@ export const READING: ReadingMap = {
         title: "Fuel that is still free to move",
         focus: ["The tank drains from the bottom", "The fuel that remains can swing and shift the center of mass"],
         segments: [
-          { kind: "look", text: "The gold slug is the fuel that has not burned. It swings in the tank, and it rides higher as the tank empties." },
+          { kind: "look", text: "The gold slug is the fuel still in the tank. It swings, and it rides higher as the tank empties." },
           {
             kind: "relation",
             tex: String.raw`x_{\mathrm{cm}} = \frac{m_{\mathrm{fuel}}}{m}\, x_{\mathrm{slug}}`,

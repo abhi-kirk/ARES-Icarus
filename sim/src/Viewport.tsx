@@ -439,12 +439,13 @@ function TurnBodyMarks() {
       if (thrust.current) thrust.current.position.set(0, -1.2, 0);
     }
     if (id === "turnAir" && cg.current && cp.current) {
-      cg.current.position.set(0, 0.05, 0);
-      cp.current.position.set(0, -0.2 - pose.cp * 0.4, 0);
+      cg.current.position.set(0, 0.05, 0.2);
+      cp.current.position.set(0, -0.2 - pose.cp * 0.4, 0.2);
     }
     if (id === "turnSlosh" && slug.current && tank.current) {
-      tank.current.position.set(0, 0.05, 0);
-      slug.current.position.set(Math.sin(pose.slosh) * 0.32, -0.25 + (1 - pose.fill) * 0.55, 0);
+      const full = (16 * Math.PI) / 180;
+      tank.current.position.set(0, 0.05, 0.34);
+      slug.current.position.set((pose.slosh / full) * 0.14, -0.25 + (1 - pose.fill) * 0.55, 0.34);
     }
   });
 
@@ -464,11 +465,11 @@ function TurnBodyMarks() {
         <meshBasicMaterial color={GOLD} />
       </mesh>
       <mesh ref={cp} visible={false}>
-        <sphereGeometry args={[0.055, 16, 12]} />
-        <meshBasicMaterial color={PALE} />
+        <sphereGeometry args={[0.07, 16, 12]} />
+        <meshBasicMaterial color="#8ec8e8" />
       </mesh>
       <mesh ref={tank} visible={false}>
-        <cylinderGeometry args={[0.1, 0.1, 0.85, 18, 1, true]} />
+        <cylinderGeometry args={[0.2, 0.2, 0.85, 18, 1, true]} />
         <meshBasicMaterial color={PALE} wireframe />
       </mesh>
       <mesh ref={slug} visible={false}>

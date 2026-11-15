@@ -8,7 +8,7 @@ import type { ChatRequest, GradeResponse, QuestionResponse, TutorRequest } from 
 async function question(key: string, level: NonNullable<ReturnType<typeof levelById>>, body: TutorRequest): Promise<Response> {
   if (body.op !== "question") return Response.json({ error: "Unknown request" }, { status: 400 });
   const previous = body.previous ? clip(body.previous, 400) : "(none yet)";
-  const user = `Scene context:\n${clip(renderLessonContext(body.context), 2200)}\n\nLevel: ${level.label}\nAim: ${level.aim}\nDo not repeat: ${previous}`;
+  const user = `Scene context:\n${clip(renderLessonContext(body.context), 2200)}\n\nLevel: ${level.label}\nAim: ${level.aim}\nAlready asked, so write a different question: ${previous}`;
   const raw = await grokText(key, QUESTION_INSTRUCTIONS, user, "low");
   const parsed = readJson(raw) as Partial<QuestionResponse>;
   if (!parsed.prompt) return Response.json({ error: "Grok did not return a question" }, { status: 502 });

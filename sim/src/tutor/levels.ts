@@ -14,7 +14,7 @@ export const LEVELS = [
   {
     id: "advanced",
     label: "Advanced",
-    aim: "Ask the reader to predict what changes if a knob moves or the clock advances. One or two sentences. Do not ask for a derivation.",
+    aim: "Ask the reader to predict what changes if a knob moves or the clock advances. One or two sentences. Stay with the prediction.",
   },
 ] as const;
 

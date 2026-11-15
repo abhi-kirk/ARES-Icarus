@@ -215,6 +215,7 @@ function option(
       },
     } : { show: false },
     xAxis: {
+      id: "t",
       type: "value",
       min: 0,
       max: xMax,
