@@ -1065,6 +1065,278 @@ $c$ is the coefficient on that speed squared.`,
       },
     ],
   },
+  desCost: {
+    threads: [
+      plain(
+        "A score that chooses the pull",
+        ["The weight on height sets the gain", "The cost does not contain the ground"],
+        [
+          "A landing can be scored. One part of the score is how far the height sits from the pad, and another is how much thrust you spend getting there. Those weights choose the gain that pulls the vehicle home.",
+          "A heavier weight on height makes a stronger gain, so the fall is checked sooner and the thrust peaks higher. The score has no ground in it, so a hard pull can pass through the pad and come back.",
+        ],
+      ),
+      {
+        id: "gain",
+        title: "The weight sets both gains",
+        focus: ["kp grows with the square root of the height weight", "kd brakes the rate"],
+        segments: [
+          {
+            kind: "look",
+            text: "The vehicle starts 18 m up, already falling at 6 m/s. The gain is the only thing steering it, on a mass of 2 kg.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`u = -k_p h - k_d v`,
+            stake: "u is the acceleration left after gravity. It pulls height toward the pad and brakes a downward rate. Thrust is that acceleration plus gravity, times the mass.",
+            gloss: String.raw`$u$ is the extra acceleration.
+$h$ is height.
+$v$ is the climb rate.
+$k_p$ acts on height.
+$k_d$ acts on rate.`,
+          },
+          {
+            kind: "relation",
+            tex: String.raw`k_p = \sqrt{q/r},\quad k_d = \sqrt{2 k_p}`,
+            stake: "q is the weight on height and r is the weight on thrust, held at 1. A larger q is a larger gain on height. The rate gain is the square root of twice that, so a fast fall gets a brake that matches the height gain.",
+            gloss: String.raw`$q$ is the weight on height.
+$r$ is the weight on thrust.`,
+          },
+          {
+            kind: "trace",
+            text: "At two seconds a weight of 1 has the height near 3 m, and a weight of 4 has it under 1 m. Both traces can cross the pad. Raising the weight spends more thrust early.",
+          },
+        ],
+      },
+    ],
+  },
+  desPath: {
+    threads: [
+      plain(
+        "Walls on the way down",
+        ["Thrust has a floor and a ceiling", "The cone keeps the path over the pad"],
+        [
+          "The way down has walls. Thrust can only be so small and so large, and the vehicle has to stay inside a cone that opens upward from the pad. Outside that cone the pad is no longer under the vehicle in the way the landing allows.",
+          "A tight cone meets the vehicle early and pushes the path onto the wall. A wide cone leaves room to come in on the guidance, and the wall stays pale and unused.",
+        ],
+      ),
+      {
+        id: "cone",
+        title: "The cone and the thrust ring",
+        focus: ["Downrange is limited by height and the cone angle", "Thrust magnitude stays between two bounds"],
+        segments: [
+          {
+            kind: "look",
+            text: "The vehicle starts 24 m downrange and 36 m up. The pale lines are the cone at the angle you set.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`|x| \le z \tan\theta`,
+            stake: "x is downrange and z is height. θ is the cone angle. At a given height the vehicle may sit no farther from the pad than the height times the tangent of that angle. Past the wall, a sideways acceleration pushes it back in.",
+            gloss: String.raw`$\theta$ is the cone angle.
+$x$ is downrange.
+$z$ is height.`,
+          },
+          {
+            kind: "relation",
+            tex: String.raw`6 \le \|T\| \le 55`,
+            stake: "T is the thrust vector in newtons. The floor keeps a push on the engine, and the ceiling is as hard as this engine pushes. The cone is the knob. The thrust bounds stay put.",
+            gloss: String.raw`$\|T\|$ is the size of the thrust.`,
+          },
+          {
+            kind: "trace",
+            text: "A 10° cone has pulled the vehicle back toward the pad by two seconds. A 35° cone still has it well out to the side at that same moment. Both end near the pad, inside their own walls.",
+          },
+        ],
+      },
+    ],
+  },
+  desLoss: {
+    threads: [
+      plain(
+        "A hole the answer does not use",
+        ["Allowed thrust is a ring", "The slack stays equal to the thrust you fly"],
+        [
+          "The thrusts you may use form a ring. The hole in the middle is every push smaller than the floor, and the outside of the ring is every push larger than the engine. A relaxed problem fills that hole and still charges you for a slack at least as large as the floor.",
+          "On this descent the thrust you see stays on that charge. It matches the command while the command sits outside the hole. Raise the floor until it crosses the command, and the early push is lifted onto the rim. Lift it far enough and the vehicle leaves the pad.",
+        ],
+      ),
+      {
+        id: "ring",
+        title: "The slack and the rim",
+        focus: ["The cost pays for the slack", "The flown thrust stays at least as large as the floor"],
+        segments: [
+          {
+            kind: "look",
+            text: "Command is the push the guidance asked for. Thrust is the push after the floor and the ceiling. They share a line while the floor sits under the whole burn.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`\|T\| \le \sigma,\quad T_{\min} \le \sigma \le T_{\max}`,
+            stake: "σ is the slack, the push you pay for. T is the thrust vector. The first inequality lets the real push sit inside the circle of radius σ, which fills the hole. The second keeps the slack between the floor and the ceiling. The cost adds σ up over the flight, so a larger slack costs more fuel.",
+            gloss: String.raw`$\sigma$ is the slack.
+$T_{\min}$ is the floor.
+$T_{\max}$ is the ceiling.`,
+          },
+          {
+            kind: "relation",
+            tex: String.raw`\|T\| = \sigma`,
+            stake: "The landing you see puts the thrust on the slack. A command inside the hole is raised to the floor, and then the slack is that floor. A command between the floor and the ceiling is flown as itself, and the slack equals it.",
+          },
+          {
+            kind: "trace",
+            text: "With the floor at 8 N the thrust matches the command and the vehicle meets the pad. The smallest command on that run is about 12 N. A floor of 20 N rides above that command, and the height no longer arrives with the speed gone.",
+          },
+        ],
+      },
+    ],
+  },
+  desScvx: {
+    threads: [
+      plain(
+        "Fly it, then aim again",
+        ["The first profile falls through the pad", "Each pass moves the thrust toward a guidance solution"],
+        [
+          "The first thrust is only a weak upward push, smaller than the weight, so the rocket falls through the pad. A guidance solution knows the thrust that would arrive at the pad with the speed gone. The flown profile is not replaced all at once.",
+          "Each pass moves the thrust 0.65 of the way toward that solution and flies the result from the same start. The fall gets shallower. By the fifth pass the height meets the pad.",
+        ],
+      ),
+      {
+        id: "pass",
+        title: "Most of the way, then fly",
+        focus: ["The update keeps part of the old thrust", "The guidance acceleration aims at the pad in the time left"],
+        segments: [
+          {
+            kind: "look",
+            text: "The solid height is the pass you are on. The dashed height is the pass before it. On the first pass the two lines are the same weak push.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`T_{k+1} = T_k + 0.65\,(T_{\mathrm{sol}} - T_k)`,
+            stake: "T_k is the thrust profile on this pass. T_sol is the guidance thrust for the same start. The next profile keeps 0.35 of the old thrust and takes 0.65 of the new one, then the vehicle flies that mix from the start again.",
+            gloss: String.raw`$k$ is the pass.
+$T_{\mathrm{sol}}$ is the guidance thrust.`,
+          },
+          {
+            kind: "relation",
+            tex: String.raw`a = -6r/t_f^{2} - 4v/t_f`,
+            stake: "a is the acceleration that meets the pad with no speed in the time still left. r is the distance still to cover and v is the speed. That acceleration, plus gravity, is the guidance thrust before the mix.",
+            gloss: String.raw`$t_f$ is the time left.
+$r$ is the distance still to the pad.
+$v$ is the speed.`,
+          },
+          {
+            kind: "trace",
+            text: "Pass 1 ends about 15 m under the pad. Pass 3 is a short miss. Pass 5 meets the pad with the speed nearly gone. The knob is the pass.",
+          },
+        ],
+      },
+    ],
+  },
+  desGusto: {
+    threads: [
+      plain(
+        "One step, only so far",
+        ["The correction has a limited length", "A short step stays on the bad fall"],
+        [
+          "GuSTO takes one correction from a weak first push. The correction is the thrust the guidance wants, and it is allowed to change the old thrust only up to a distance called the trust region.",
+          "A short region leaves the rocket close to the first fall. A region long enough to hold the whole correction reaches the pad. The dashed height is the first push, before any of that step.",
+        ],
+      ),
+      {
+        id: "region",
+        title: "The correction is shortened to the region",
+        focus: ["The new thrust stays within the trust radius of the old one", "The radius is the knob"],
+        segments: [
+          {
+            kind: "look",
+            text: "The first push is 14 N straight up, under the weight of the 2 kg vehicle. The guidance thrust points at the pad. The flown thrust is that guidance thrust, pulled back toward 14 N when the step is longer than the region.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`\|T_{\mathrm{new}} - T_{\mathrm{old}}\| \le \Delta`,
+            stake: "Δ is the trust region in newtons. T_old is the weak push. T_new is what flies. When the guidance step is longer than Δ, it is shortened to length Δ and the direction is kept.",
+            gloss: String.raw`$\Delta$ is the trust region.
+$T_{\mathrm{old}}$ is the first push.
+$T_{\mathrm{new}}$ is the thrust that flies.`,
+          },
+          {
+            kind: "trace",
+            text: "A region of 1 N falls well through the pad. A region of 3 N is a short miss. A region of 6 N meets the pad, and a larger region has no further step to take.",
+          },
+        ],
+      },
+    ],
+  },
+  desReplan: {
+    threads: [
+      plain(
+        "The plan is for the state you have",
+        ["A gust changes the sideways speed", "The new plan starts from the state after the gust"],
+        [
+          "A plan is a thrust that would reach the pad from the state at the start. It keeps being recomputed as the clock runs, from whatever state the vehicle has now.",
+          "At 2.2 seconds a sideways gust changes the speed. The plan from before that gust keeps its old downrange, drawn dashed. The vehicle follows the new plan and comes back to the pad. A larger gust swings farther out before the return.",
+        ],
+      ),
+      {
+        id: "gust",
+        title: "The same guidance, from the new speed",
+        focus: ["The gust is added to sideways speed", "Each plan uses the time still left"],
+        segments: [
+          {
+            kind: "look",
+            text: "Downrange is the path after the gust. The dashed line is the path the old plan still believes, the one that never felt the gust.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`a = -6r/t_f^{2} - 4v/t_f`,
+            stake: "The acceleration is rebuilt from the distance and the speed the vehicle has now, and from the time left. After the gust, v includes the new sideways speed, so the thrust turns to take that speed back out.",
+            gloss: String.raw`$r$ is the distance still to the pad.
+$v$ is the speed, gust included.
+$t_f$ is the time left.`,
+          },
+          {
+            kind: "trace",
+            text: "With no gust the two downrange lines stay together. A gust of 6 m/s has the new path near 9 m at four seconds while the old plan is near 4 m. Both are back at the pad by the end.",
+          },
+        ],
+      },
+    ],
+  },
+  desMiss: {
+    threads: [
+      plain(
+        "The fuel runs out on the way",
+        ["Thrust stops when the budget is gone", "Speed left at the pad is a miss"],
+        [
+          "Fuel is a budget, not a force you can keep spending. The landing wants thrust the whole way down. Each newton of thrust spends a little of that budget.",
+          "When the budget hits zero the thrust stops and gravity keeps the fall. Reaching the pad with speed still on the vehicle is a miss. Enough fuel lets the speed die as the height arrives.",
+        ],
+      ),
+      {
+        id: "budget",
+        title: "Thrust spends the budget",
+        focus: ["Fuel falls in proportion to thrust", "An empty budget sets thrust to zero"],
+        segments: [
+          {
+            kind: "look",
+            text: "The vehicle starts 45 m up, falling at 3 m/s. The rate trace freezes at the speed it had when the height reached the pad.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`\dot m_f = -T / v_e`,
+            stake: "m_f is the fuel still left, in kilograms. T is thrust. v_e is the exhaust speed, 280 m/s. A larger thrust empties the budget faster. At zero fuel the thrust is zero for the rest of the flight.",
+            gloss: String.raw`$m_f$ is fuel left.
+$T$ is thrust.
+$v_e$ is exhaust speed.`,
+          },
+          {
+            kind: "trace",
+            text: "A budget of 0.4 kg reaches the pad still moving fast. A budget near 0.7 kg arrives with the speed nearly gone, and what is left in the tank stays unused.",
+          },
+        ],
+      },
+    ],
+  },
 };
 
 export function readingFor(id: SceneId) {

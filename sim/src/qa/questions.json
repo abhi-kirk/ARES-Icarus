@@ -253,5 +253,75 @@
     "eli5": {
       "beginner": "One gain pulls the nose toward the command while the vehicle burns fuel. What does the air do to that nose as the vehicle goes faster?"
     }
+  },
+  "desCost": {
+    "gain": {
+      "beginner": "In $k_p = \\sqrt{q/r}$, what does $q$ weigh?",
+      "intermediate": "The weight on height goes up. What happens to the thrust early in the fall, and what does the height do by two seconds?",
+      "advanced": "The height crosses below the pad and comes back. Which part of the cost is silent about the ground?"
+    },
+    "eli5": {
+      "beginner": "A heavier weight on height makes a stronger pull home. What else does that heavier weight spend, and why can the vehicle still pass through the pad?"
+    }
+  },
+  "desPath": {
+    "cone": {
+      "beginner": "In $|x| \\le z \\tan\\theta$, what does $\\theta$ name?",
+      "intermediate": "You tighten the cone. Where does the downrange go, relative to the pale wall, in the first two seconds?",
+      "advanced": "The thrust floor and ceiling stay fixed while you change the cone. Which bound is the knob, and what stays on the thrust?"
+    },
+    "eli5": {
+      "beginner": "The vehicle has to stay inside a cone from the pad. What does a tighter cone do to the path?"
+    }
+  },
+  "desLoss": {
+    "ring": {
+      "beginner": "What is $\\sigma$ charging you for?",
+      "intermediate": "The command dips inside the hole and the thrust does not follow it. Where does the thrust sit, and what does the slack equal?",
+      "advanced": "You raise the floor from 8 N to 20 N. What happens to the early thrust, and what happens to the arrival?"
+    },
+    "eli5": {
+      "beginner": "Allowed thrust is a ring with a hole of pushes that are too small. When you raise the floor through the push the landing wanted, what happens to the path?"
+    }
+  },
+  "desScvx": {
+    "pass": {
+      "beginner": "In the update for $T_{k+1}$, what fraction of the new guidance thrust is taken?",
+      "intermediate": "Pass 1 and pass 5 fly from the same start. What does the height do on each?",
+      "advanced": "The guidance acceleration uses the time left and the distance still to the pad. What does the mix with the old thrust keep you from doing in a single pass?"
+    },
+    "eli5": {
+      "beginner": "The first thrust is a weak upward push. What changes about the fall as you move to a later pass?"
+    }
+  },
+  "desGusto": {
+    "region": {
+      "beginner": "What does $\\Delta$ limit?",
+      "intermediate": "The trust region grows from 1 N to 6 N. What happens to the height at the end of the flight?",
+      "advanced": "Past the region that already holds the whole correction, the path stops changing. Why is there no further step?"
+    },
+    "eli5": {
+      "beginner": "The correction from the weak first push can only be so long. What does a short trust region leave the rocket doing?"
+    }
+  },
+  "desReplan": {
+    "gust": {
+      "beginner": "What does the gust change at 2.2 seconds?",
+      "intermediate": "At four seconds the new downrange and the dashed line disagree. Which one felt the gust, and where do they both end?",
+      "advanced": "The acceleration is rebuilt from the speed the vehicle has now. What does that speed include just after the gust?"
+    },
+    "eli5": {
+      "beginner": "A sideways gust hits, and the old plan was for the speed from before it. What does the new plan do with the vehicle?"
+    }
+  },
+  "desMiss": {
+    "budget": {
+      "beginner": "In $\\dot m_f = -T / v_e$, what does $v_e$ name?",
+      "intermediate": "The fuel budget runs out before the pad. What happens to the thrust, and what does the rate do when the height arrives?",
+      "advanced": "You add fuel until the arrival speed is nearly gone. What happens to the fuel that is still left at the pad?"
+    },
+    "eli5": {
+      "beginner": "The landing spends fuel to kill the fall. What is left on the vehicle if the fuel runs out early?"
+    }
   }
 }

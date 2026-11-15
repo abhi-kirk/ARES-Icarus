@@ -3,6 +3,7 @@
 import { loopRowAt, loopRowsFor, LOOP_LIMIT, LOOP_M, LOOP_T0 } from "./loopPlant";
 import { turnAt, turnBrief, turnDuration, turnRows, type TurnId, type TurnSample } from "./turnPlant";
 import { vehicleAt, vehicleBrief, vehicleDuration, vehicleRows, type VehicleId, type VehicleSample } from "./vehiclePlant";
+import { costGains, descentAt, descentBrief, descentDuration, descentRows, type DescentId, type DescentSample } from "./descentPlant";
 
 
 export type SceneId =
@@ -29,7 +30,14 @@ export type SceneId =
   | "vehWind"
   | "vehEstimate"
   | "vehGuide"
-  | "vehAuto";
+  | "vehAuto"
+  | "desCost"
+  | "desPath"
+  | "desLoss"
+  | "desScvx"
+  | "desGusto"
+  | "desReplan"
+  | "desMiss";
 
 export type Column =
   | "height"
@@ -137,6 +145,13 @@ export type Knobs = {
   trust: number;
   kick: number;
   hold: number;
+  care: number;
+  cone: number;
+  floor: number;
+  pass: number;
+  region: number;
+  gust: number;
+  fuel: number;
 };
 
 export const KNOBS: Knobs = {
@@ -165,6 +180,13 @@ export const KNOBS: Knobs = {
   trust: 2,
   kick: 18,
   hold: 6,
+  care: 1,
+  cone: 15,
+  floor: 8,
+  pass: 3,
+  region: 3,
+  gust: 6,
+  fuel: 0.4,
 };
 
 // Undamped spring. Mass 1 kg, stiffness 1 N/m, so one swing takes 2π seconds.
@@ -204,7 +226,14 @@ export type KnobKey =
   | "wind"
   | "trust"
   | "kick"
-  | "hold";
+  | "hold"
+  | "care"
+  | "cone"
+  | "floor"
+  | "pass"
+  | "region"
+  | "gust"
+  | "fuel";
 
 const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   dt: { min: 0.05, max: 0.5 },
@@ -232,6 +261,13 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   trust: { min: 0.4, max: 6 },
   kick: { min: 5, max: 35 },
   hold: { min: 2, max: 14 },
+  care: { min: 0.05, max: 4 },
+  cone: { min: 8, max: 40 },
+  floor: { min: 0, max: 24 },
+  pass: { min: 1, max: 5 },
+  region: { min: 1, max: 8 },
+  gust: { min: 0, max: 14 },
+  fuel: { min: 0.2, max: 1.2 },
 };
 
 export function clampNamed(key: KnobKey, value: number): number {
@@ -514,6 +550,83 @@ export const SCENES: {
     chartTitle: "Pitch and mass",
     visual: "The rocket pitches toward the command while the tank gets lighter.",
   },
+  {
+    id: "desCost",
+    name: "A cost that makes a gain",
+    title: "A cost that makes a gain",
+    lede: "The weight on height chooses the gain. A heavier weight checks the fall sooner and spends more thrust. The cost has no ground in it, so the path can pass through the pad.",
+    opener: "Height is the state. Thrust is what the gain asks for. Drag the rocket to change the weight on height.",
+    live: ["height", "thrust"],
+    askable: ["height", "thrust", "rate"],
+    chartTitle: "Height and thrust",
+    visual: "The rocket falls toward the pad. A heavier weight on height brakes sooner.",
+  },
+  {
+    id: "desPath",
+    name: "A path under constraints",
+    title: "A path under constraints",
+    lede: "Thrust stays between a floor and a ceiling, and the vehicle has to remain inside a cone that opens from the pad. A tight cone puts the path on the wall.",
+    opener: "Height and downrange are the path. Drag the rocket to change the cone.",
+    live: ["height", "downrange"],
+    askable: ["height", "downrange", "thrust", "rate"],
+    chartTitle: "Height and downrange",
+    visual: "The pale lines are the cone. The rocket stays inside them.",
+  },
+  {
+    id: "desLoss",
+    name: "Lossless convexification",
+    title: "Lossless convexification",
+    lede: "Allowed thrust is a ring, with a hole of pushes that are too small. The landing charges for a slack at least as large as the inner rim, and the thrust you see stays on that charge.",
+    opener: "Thrust is the push that flies. Command is the push the guidance asked for before the floor. Drag the rocket to raise the floor.",
+    live: ["thrust", "command"],
+    askable: ["thrust", "command", "height", "downrange"],
+    chartTitle: "Thrust and command",
+    visual: "The rocket descends. When the floor crosses the command, the early push grows.",
+  },
+  {
+    id: "desScvx",
+    name: "Successive convexification",
+    title: "Successive convexification",
+    lede: "The first thrust is a weak upward push, and the rocket falls through the pad. Each pass moves that profile most of the way toward a guidance solution and flies it again.",
+    opener: "Height is this pass. The dashed line is the pass before it. Drag the rocket to change the pass.",
+    live: ["height", "reference"],
+    askable: ["height", "reference", "downrange", "thrust"],
+    chartTitle: "This pass and the one before",
+    visual: "The rocket flies the pass you picked. Early passes fall through the pad.",
+  },
+  {
+    id: "desGusto",
+    name: "GuSTO",
+    title: "GuSTO",
+    lede: "One correction may move the thrust only a limited distance from the weak first push. A small trust region leaves the fall. A larger one reaches the pad.",
+    opener: "Height is the corrected path. The dashed line is the first push. Drag the rocket to change the trust region.",
+    live: ["height", "reference"],
+    askable: ["height", "reference", "downrange", "thrust"],
+    chartTitle: "Corrected path and the first push",
+    visual: "The rocket flies the thrust that was allowed to move inside the trust region.",
+  },
+  {
+    id: "desReplan",
+    name: "Replanning",
+    title: "Replanning",
+    lede: "A gust changes the sideways speed, and the plan from the start no longer fits. A new plan, computed from the state after the gust, brings the vehicle back to the pad.",
+    opener: "Downrange is the new plan. The dashed line is the plan from before the gust. Drag the rocket to change the gust.",
+    live: ["downrange", "reference"],
+    askable: ["downrange", "reference", "height", "rate"],
+    chartTitle: "New plan and the old one",
+    visual: "The rocket is kicked sideways at 2.2 seconds and steers back.",
+  },
+  {
+    id: "desMiss",
+    name: "Runs that do not land",
+    title: "Runs that do not land",
+    lede: "Fuel is a budget. When it runs out the thrust stops, and a vehicle that reaches the pad still moving has missed the landing.",
+    opener: "Height is the fall. Rate is the speed, and it stays at the impact speed once the pad is reached. Drag the rocket to change the fuel.",
+    live: ["height", "rate"],
+    askable: ["height", "rate", "thrust"],
+    chartTitle: "Height and rate",
+    visual: "The rocket falls. A short fuel budget reaches the pad with speed left.",
+  },
 ];
 
 export function sceneById(id: SceneId) {
@@ -534,6 +647,7 @@ export function durationOf(id: SceneId): number {
   if (id === "loopSample") return 12;
   if (isTurnScene(id)) return turnDuration(id);
   if (isVehicleScene(id)) return vehicleDuration(id);
+  if (isDescentScene(id)) return descentDuration(id);
   return 5;
 }
 
@@ -547,6 +661,10 @@ export function isTurnScene(id: SceneId): id is TurnId {
 
 export function isVehicleScene(id: SceneId): id is VehicleId {
   return id.startsWith("veh");
+}
+
+export function isDescentScene(id: SceneId): id is DescentId {
+  return id.startsWith("des");
 }
 
 export function clampKnob(id: SceneId, value: number): number {
@@ -573,6 +691,13 @@ export function clampKnob(id: SceneId, value: number): number {
   if (id === "vehEstimate") return clampNamed("trust", value);
   if (id === "vehGuide") return clampNamed("kick", value);
   if (id === "vehAuto") return clampNamed("hold", value);
+  if (id === "desCost") return clampNamed("care", value);
+  if (id === "desPath") return clampNamed("cone", value);
+  if (id === "desLoss") return clampNamed("floor", value);
+  if (id === "desScvx") return clampNamed("pass", value);
+  if (id === "desGusto") return clampNamed("region", value);
+  if (id === "desReplan") return clampNamed("gust", value);
+  if (id === "desMiss") return clampNamed("fuel", value);
   return value;
 }
 
@@ -805,8 +930,19 @@ function fromVehicleSample(row: VehicleSample): Row {
   return next;
 }
 
+function fromDescentSample(row: DescentSample): Row {
+  const next = blank(row.t);
+  next.height = row.height;
+  next.rate = row.rate;
+  next.downrange = row.downrange;
+  next.thrust = row.thrust;
+  next.command = row.command;
+  next.reference = row.reference;
+  return next;
+}
+
 export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
-  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}`;
+  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}`;
   if (rowCache && rowCache.key === key) return rowCache.rows;
 
   let rows: Row[];
@@ -815,6 +951,7 @@ export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
   else if (id === "engine") rows = engineRows(knobs.tau, knobs.ask);
   else if (isTurnScene(id)) rows = turnRows(id, knobs).map(fromTurnSample);
   else if (isVehicleScene(id)) rows = vehicleRows(id, knobs).map(fromVehicleSample);
+  else if (isDescentScene(id)) rows = descentRows(id, knobs).map(fromDescentSample);
   else rows = loopRowsFor(id, knobs).map(fromLoopRow);
 
   rowCache = { key, rows };
@@ -889,6 +1026,23 @@ export function bodyAt(id: SceneId, t: number, knobs: Knobs): BodyDraw {
       drift: sample.drift,
       aim: sample.aim / (180 / Math.PI),
       estimate: sample.estimate,
+    };
+  }
+  if (isDescentScene(id)) {
+    const sample = descentAt(id, t, knobs);
+    return {
+      height: sample.height,
+      truth: sample.height,
+      flame: sample.flame,
+      yaw: 0,
+      tilt: sample.tilt,
+      gimbal: 0,
+      slosh: 0,
+      cp: 0,
+      fill: 1,
+      drift: sample.drift,
+      aim: 0,
+      estimate: sample.height,
     };
   }
   const row = rowAt(rowsFor(id, knobs), t);
@@ -1090,7 +1244,7 @@ export function readout(id: SceneId, t: number, knobs: Knobs): ReadoutLine[] {
       { name: "Rate", text: `${row.rate.toFixed(1)} m/s`, column: "rate" },
     ];
   }
-  if (isTurnScene(id) || isVehicleScene(id)) {
+  if (isTurnScene(id) || isVehicleScene(id) || isDescentScene(id)) {
     const live = sceneById(id).live;
     return [
       { name: "Time", text: `${t.toFixed(2)} s` },
@@ -1196,6 +1350,27 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
   if (id === "vehEstimate") return [knob("trust", "Gain", knobs.trust, LIMITS.trust.min, LIMITS.trust.max, 0.1, knobs.trust.toFixed(1))];
   if (id === "vehGuide") return [knob("kick", "Kick", knobs.kick, LIMITS.kick.min, LIMITS.kick.max, 1, `${knobs.kick.toFixed(0)}°`)];
   if (id === "vehAuto") return [knob("hold", "Gain", knobs.hold, LIMITS.hold.min, LIMITS.hold.max, 0.5, knobs.hold.toFixed(1))];
+  if (id === "desCost") {
+    const gains = costGains(knobs.care);
+    return [
+      knob(
+        "care",
+        "Weight",
+        knobs.care,
+        LIMITS.care.min,
+        LIMITS.care.max,
+        0.05,
+        knobs.care.toFixed(2),
+        `kp ${gains.kp.toFixed(2)}  kd ${gains.kd.toFixed(2)}`,
+      ),
+    ];
+  }
+  if (id === "desPath") return [knob("cone", "Cone", knobs.cone, LIMITS.cone.min, LIMITS.cone.max, 1, `${knobs.cone.toFixed(0)}°`)];
+  if (id === "desLoss") return [knob("floor", "Floor", knobs.floor, LIMITS.floor.min, LIMITS.floor.max, 1, `${knobs.floor.toFixed(0)} N`)];
+  if (id === "desScvx") return [knob("pass", "Pass", knobs.pass, LIMITS.pass.min, LIMITS.pass.max, 1, `${Math.round(knobs.pass)}`)];
+  if (id === "desGusto") return [knob("region", "Trust", knobs.region, LIMITS.region.min, LIMITS.region.max, 0.5, `${knobs.region.toFixed(1)} N`)];
+  if (id === "desReplan") return [knob("gust", "Gust", knobs.gust, LIMITS.gust.min, LIMITS.gust.max, 0.5, `${knobs.gust.toFixed(1)} m/s`)];
+  if (id === "desMiss") return [knob("fuel", "Fuel", knobs.fuel, LIMITS.fuel.min, LIMITS.fuel.max, 0.05, `${knobs.fuel.toFixed(2)} kg`)];
   return [];
 }
 
@@ -1240,6 +1415,7 @@ export function chartMarkers(id: SceneId, knobs: Knobs): ChartMarker[] {
   if (id === "turnQuat") return [{ t: durationOf(id) * (90 / knobs.tumble), label: "nose vertical" }];
   if (id === "vehGuide") return [{ t: 2, label: "kickover" }];
   if (id === "vehAuto") return [{ t: 0.4, label: "pitch command" }];
+  if (id === "desReplan") return [{ t: 2.2, label: "gust" }];
   if (id === "loopSample") {
     const markers: ChartMarker[] = [{ t: 1, label: "target step" }];
     for (let t = knobs.dt; t < durationOf(id) - 1e-9; t += knobs.dt) {
@@ -1285,5 +1461,6 @@ export function chatBrief(id: SceneId, knobs: Knobs): string {
   }
   if (isTurnScene(id)) return turnBrief(id, knobs);
   if (isVehicleScene(id)) return vehicleBrief(id, knobs);
+  if (isDescentScene(id)) return `${descentBrief(id, knobs)} Allowed chart columns: ${allowedList(id)}.`;
   return `${scene.title}. Allowed chart columns: ${allowedList(id)}.`;
 }

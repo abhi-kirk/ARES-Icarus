@@ -15,7 +15,7 @@ import {
 import type { Group, Mesh } from "three";
 import type { OrbitControls as OrbitRig } from "three-stdlib";
 import { NOZZLE_Y, Rocket } from "./Rocket";
-import { bodyAt, clampKnob, isTurnScene, isVehicleScene, viewSpan, type SceneId, type Knobs } from "./scenes";
+import { bodyAt, clampKnob, isDescentScene, isTurnScene, isVehicleScene, viewSpan, type SceneId, type Knobs } from "./scenes";
 import { getKnobs, getScene, getTime, setKnob, setTime, useKnobs, useScene } from "./sceneStore";
 import { unlock } from "./sound";
 
@@ -97,6 +97,13 @@ function dragValue(dy: number, scene: SceneId): void {
   if (scene === "vehEstimate") setKnob("trust", clampKnob(scene, knobs.trust + dy * 0.012));
   if (scene === "vehGuide") setKnob("kick", clampKnob(scene, knobs.kick + dy * 0.08));
   if (scene === "vehAuto") setKnob("hold", clampKnob(scene, knobs.hold + dy * 0.03));
+  if (scene === "desCost") setKnob("care", clampKnob(scene, knobs.care + dy * 0.012));
+  if (scene === "desPath") setKnob("cone", clampKnob(scene, knobs.cone + dy * 0.08));
+  if (scene === "desLoss") setKnob("floor", clampKnob(scene, knobs.floor + dy * 0.06));
+  if (scene === "desScvx") setKnob("pass", Math.round(clampKnob(scene, knobs.pass + dy * 0.02)));
+  if (scene === "desGusto") setKnob("region", clampKnob(scene, knobs.region + dy * 0.05));
+  if (scene === "desReplan") setKnob("gust", clampKnob(scene, knobs.gust + dy * 0.04));
+  if (scene === "desMiss") setKnob("fuel", clampKnob(scene, knobs.fuel + dy * 0.003));
 }
 
 // Coil from the mount down to the mass. The ends pull in to the center line
@@ -249,7 +256,7 @@ function Picture({ orbit, onBodyDrag }: { orbit: RefObject<OrbitRig | null>; onB
 
     if (rocket.current) {
       const turn = isTurnScene(scene);
-      const vehicle = isVehicleScene(scene);
+      const vehicle = isVehicleScene(scene) || isDescentScene(scene);
       rocket.current.visible = !showRig;
       rocket.current.scale.setScalar(ROCKET_SCALE);
       if (turn) {
@@ -374,6 +381,7 @@ function Picture({ orbit, onBodyDrag }: { orbit: RefObject<OrbitRig | null>; onB
       </group>
       <TurnWorldMarks />
       <VehicleWorldMarks />
+      <DescentCone />
 
       <group ref={ground} visible={false}>
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
@@ -578,6 +586,51 @@ function VehicleWorldMarks() {
       </group>
     </group>
   );
+}
+
+function DescentCone() {
+  const left = useRef<Mesh>(null);
+  const right = useRef<Mesh>(null);
+
+  useFrame(() => {
+    const id = getScene();
+    const on = id === "desPath";
+    if (left.current) left.current.visible = on;
+    if (right.current) right.current.visible = on;
+    if (!on || !left.current || !right.current) return;
+    const knobs = getKnobs();
+    const span = viewSpan(id, knobs);
+    const reach = Math.max(span.max - span.min, 1);
+    const top = Math.max(span.max, 1);
+    const tan = Math.tan((knobs.cone * Math.PI) / 180);
+    const x = ((top * tan) / reach) * 1.1;
+    const y0 = viewY(0, id, knobs);
+    const y1 = viewY(top, id, knobs);
+    placeConeWall(left.current, -x, y0, y1);
+    placeConeWall(right.current, x, y0, y1);
+  });
+
+  return (
+    <group>
+      <mesh ref={left} visible={false}>
+        <boxGeometry args={[0.012, 1, 0.012]} />
+        <meshBasicMaterial color={PALE} transparent opacity={0.55} />
+      </mesh>
+      <mesh ref={right} visible={false}>
+        <boxGeometry args={[0.012, 1, 0.012]} />
+        <meshBasicMaterial color={PALE} transparent opacity={0.55} />
+      </mesh>
+    </group>
+  );
+}
+
+function placeConeWall(mesh: Mesh, x: number, y0: number, y1: number): void {
+  const dx = x;
+  const dy = y1 - y0;
+  const length = Math.max(0.2, Math.hypot(dx, dy));
+  mesh.position.set(x / 2, (y0 + y1) / 2, -0.2);
+  mesh.scale.set(1, length, 1);
+  mesh.rotation.z = Math.atan2(dx, dy);
 }
 
 function StageGuide() {
