@@ -72,7 +72,7 @@ export function descentBrief(id: DescentId, knobs: Knobs): string {
     return `A cost that makes a gain. Height weight q = ${knobs.care.toFixed(2)}, control weight r = ${knobs.spend.toFixed(2)}, so kp = ${gains.kp.toFixed(2)} and kd = ${gains.kd.toFixed(2)}. Mass ${MASS} kg. Thrust floors at 0 N. The ground is not in the cost.`;
   }
   if (id === "desPath") {
-    return `A path under constraints. Start at downrange ${PATH_X0} m, height ${PATH_Z0} m (inside an 8° cone). Glide cone ${knobs.cone.toFixed(0)} degrees from vertical. Thrust stays between ${PATH_T_FLOOR} N and ${TMAX} N. reference is the cone wall |x| ≤ z tan θ.`;
+    return `A path under constraints. Start at downrange ${PATH_X0} m, height ${PATH_Z0} m (inside an 8° cone). Glide cone θ = ${knobs.cone.toFixed(0)}° measured from vertical through the pad. Wall is |x| ≤ z tan θ. Thrust is a vector with magnitude between ${PATH_T_FLOOR} N and ${TMAX} N.`;
   }
   if (id === "desLoss") {
     return `Lossless convexification. Thrust floor ${knobs.floor.toFixed(0)} N, ceiling ${TMAX} N. σ is stored in reference and equals |T| (minimum-fuel puts the thrust on the slack). Command is the uncapped ask.`;

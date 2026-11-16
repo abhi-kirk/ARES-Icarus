@@ -218,7 +218,7 @@ export function turnBrief(id: TurnId, knobs: Knobs): string {
     return `Gimbal lock. Pitch rises from horizontal to ${knobs.pitch.toFixed(0)} degrees. axisGap is the angle between the nose and the vertical yaw axis. They meet at 90 degrees of pitch. Allowed chart columns: pitch, axisGap.`;
   }
   if (id === "turnQuat") {
-    return `Quaternions. One pitch about Z, from 0 to ${knobs.tumble.toFixed(0)} degrees. quatW is cos(pitch/2) and quatZ is sin(pitch/2), with pitch in radians. Allowed chart columns: quatW, quatZ, pitch.`;
+    return `Quaternions. One pitch about Z, from 0 to ${knobs.tumble.toFixed(0)} degrees. quatW is cos(pitch/2) and quatZ is sin(pitch/2), with pitch in radians. World axes are X horizontal and Z vertical in this chapter. Allowed chart columns: quatW, quatZ, pitch.`;
   }
   if (id === "turnSpin") {
     return `Spin. Constant rate ${knobs.rate.toFixed(0)} degrees per second, so angle is that rate times time. Allowed chart columns: angle, spin.`;

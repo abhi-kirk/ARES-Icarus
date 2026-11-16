@@ -65,6 +65,8 @@ export async function* grokStreamDeltas(
       store: false,
       stream: true,
       reasoning: { effort },
+      // Cap Ask replies so a long derivation finishes instead of cutting mid-sentence.
+      max_output_tokens: effort === "low" ? 900 : 1200,
       instructions,
       input: [{ role: "user", content: user }],
     }),

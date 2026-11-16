@@ -1,6 +1,16 @@
 import { readJson } from "./grok";
 import type { ChatReply } from "./types";
 
+/** Decode one JSON string escape. Keep unknown sequences like \\theta as LaTeX. */
+function unescapeJsonChar(ch: string): string {
+  if (ch === "n") return "\n";
+  if (ch === "t") return "\t";
+  if (ch === "r") return "\r";
+  if (ch === '"' || ch === "\\" || ch === "/") return ch;
+  // Not a JSON escape (often the start of LaTeX \\theta, \\times). Keep the slash.
+  return `\\${ch}`;
+}
+
 /** Best-effort extract of the text field while JSON is still streaming. */
 export function chatDisplayFromPartial(raw: string): string {
   const start = raw.indexOf('"text"');
@@ -12,9 +22,7 @@ export function chatDisplayFromPartial(raw: string): string {
   for (let i = quote + 1; i < raw.length; i++) {
     const ch = raw[i];
     if (escaped) {
-      if (ch === "n") out += "\n";
-      else if (ch === "t") out += "\t";
-      else out += ch;
+      out += unescapeJsonChar(ch);
       escaped = false;
       continue;
     }
