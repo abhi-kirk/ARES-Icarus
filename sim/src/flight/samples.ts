@@ -12,11 +12,22 @@ export type Sample = {
   fz: number;
   padX: number;
   padY: number;
+  roll: number;
+  pitch: number;
+  yaw: number;
+  gimbalX: number;
+  gimbalY: number;
 };
 
 function num(value: unknown): number | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   return value;
+}
+
+function optionalNum(value: unknown): number {
+  const parsed = num(value);
+  if (parsed === null) return 0;
+  return parsed;
 }
 
 export function parseSample(line: string): Sample | null {
@@ -58,7 +69,26 @@ export function parseSample(line: string): Sample | null {
   ) {
     return null;
   }
-  return { t, x, y, z, vx, vy, vz, fuel, fx, fy, fz, padX, padY };
+  return {
+    t,
+    x,
+    y,
+    z,
+    vx,
+    vy,
+    vz,
+    fuel,
+    fx,
+    fy,
+    fz,
+    padX,
+    padY,
+    roll: optionalNum(raw.roll),
+    pitch: optionalNum(raw.pitch),
+    yaw: optionalNum(raw.yaw),
+    gimbalX: optionalNum(raw.gimbalX),
+    gimbalY: optionalNum(raw.gimbalY),
+  };
 }
 
 export function parseLines(text: string): Sample[] {
@@ -106,6 +136,11 @@ export function sampleAt(samples: Sample[], time: number): Sample | null {
     fz: mix(left.fz, right.fz, u),
     padX: mix(left.padX, right.padX, u),
     padY: mix(left.padY, right.padY, u),
+    roll: mix(left.roll, right.roll, u),
+    pitch: mix(left.pitch, right.pitch, u),
+    yaw: mix(left.yaw, right.yaw, u),
+    gimbalX: mix(left.gimbalX, right.gimbalX, u),
+    gimbalY: mix(left.gimbalY, right.gimbalY, u),
   };
 }
 

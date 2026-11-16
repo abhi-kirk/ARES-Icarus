@@ -11,6 +11,7 @@
 #include "config/config.h"
 #include "dynamics/constants.h"
 #include "dynamics/rocket_3dof.h"
+#include "dynamics/rocket_6dof.h"
 #include "dynamics/state_indices.h"
 #include "environment/landing_pad.h"
 #include "environment/wind_model.h"
@@ -47,6 +48,11 @@ void write_sample(const FlightSample& sample) {
               << ",\"fz\":" << sample.fz
               << ",\"padX\":" << sample.pad_x
               << ",\"padY\":" << sample.pad_y
+              << ",\"roll\":" << sample.roll
+              << ",\"pitch\":" << sample.pitch
+              << ",\"yaw\":" << sample.yaw
+              << ",\"gimbalX\":" << sample.gimbal_x
+              << ",\"gimbalY\":" << sample.gimbal_y
               << "}\n";
     std::cout.flush();
     if (!std::cout) g_stop.store(true);
@@ -64,14 +70,14 @@ int main() {
     Config config;
     if (!load_config_text(text.str(), config)) return 1;
 
-    State state(STATE_SIZE);
-    state << config.simulation.initial_px,
-             config.simulation.initial_py,
-             config.simulation.initial_pz,
-             config.simulation.initial_vx,
-             config.simulation.initial_vy,
-             config.simulation.initial_vz,
-             config.simulation.initial_fuel;
+    State state = State::Zero(STATE_SIZE);
+    state[POS_X] = config.simulation.initial_px;
+    state[POS_Y] = config.simulation.initial_py;
+    state[POS_Z] = config.simulation.initial_pz;
+    state[VEL_X] = config.simulation.initial_vx;
+    state[VEL_Y] = config.simulation.initial_vy;
+    state[VEL_Z] = config.simulation.initial_vz;
+    state[FUEL]  = config.simulation.initial_fuel;
 
     CascadeGuidance guidance(config);
     guidance.initialize(state);

@@ -33,6 +33,12 @@ struct FlightSample {
     double fz = 0.0;
     double pad_x = 0.0;
     double pad_y = 0.0;
+    // Attitude / TVC (radians). Stay zero on the 3-DOF plant.
+    double roll = 0.0;
+    double pitch = 0.0;
+    double yaw = 0.0;
+    double gimbal_x = 0.0;
+    double gimbal_y = 0.0;
 };
 
 using SampleEmit = std::function<void(const FlightSample&)>;

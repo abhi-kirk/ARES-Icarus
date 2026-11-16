@@ -11,12 +11,13 @@ const KNOBS = {
   pad: { min: -4, max: 4 },
   gust: { min: 0, max: 20 },
   gain: { min: 0.02, max: 0.5 },
-  // Floor / ceiling are stored in newtons on the case; the page scrubber is in kN.
   floor: { min: 0, max: 15000 },
   ceiling: { min: 12000, max: 25000 },
   cone: { min: 5, max: 90 },
   glide: { min: 5, max: 90 },
   lag: { min: 0, max: 1.5 },
+  gimbal: { min: 4, max: 25 },
+  inertia: { min: 500, max: 5000 },
 };
 
 const NOMINAL = {
@@ -53,6 +54,14 @@ const NOMINAL = {
     glide_pull: 0.5,
     thrust_tau: 0.0,
     thrust_slew: 0.0,
+    use_6dof: true,
+    Ixx: 2000.0,
+    Iyy: 2000.0,
+    Izz: 400.0,
+    gimbal_lever: 8.0,
+    gimbal_max_deg: 15.0,
+    attitude_kp: 1.5,
+    attitude_kd: 0.8,
     use_rerun: false,
     rerun_spawn_viewer: false,
     rerun_save_rrd: false,
@@ -86,6 +95,8 @@ export function caseFromRequest(body) {
     const cone = finite(sim.pointing_cone_deg);
     const glide = finite(sim.glide_cone_deg);
     const lag = finite(sim.thrust_tau);
+    const gimbal = finite(sim.gimbal_max_deg);
+    const inertia = finite(sim.Ixx);
     if (height !== null) next.simulation.initial_z_pos = height;
     if (offset !== null) next.simulation.initial_x_pos = offset;
     if (descent !== null) next.simulation.initial_z_velocity = descent;
@@ -98,6 +109,11 @@ export function caseFromRequest(body) {
     if (cone !== null) next.simulation.pointing_cone_deg = cone;
     if (glide !== null) next.simulation.glide_cone_deg = glide;
     if (lag !== null) next.simulation.thrust_tau = lag;
+    if (gimbal !== null) next.simulation.gimbal_max_deg = gimbal;
+    if (inertia !== null) {
+      next.simulation.Ixx = inertia;
+      next.simulation.Iyy = inertia;
+    }
   }
   const gain = finite(body?.outer_pid_vertical_position?.gains?.kp);
   if (gain !== null) next.outer_pid_vertical_position.gains.kp = gain;
@@ -117,6 +133,9 @@ export function caseFromRequest(body) {
   next.simulation.pointing_cone_deg = clamp(next.simulation.pointing_cone_deg, KNOBS.cone.min, KNOBS.cone.max);
   next.simulation.glide_cone_deg = clamp(next.simulation.glide_cone_deg, KNOBS.glide.min, KNOBS.glide.max);
   next.simulation.thrust_tau = clamp(next.simulation.thrust_tau, KNOBS.lag.min, KNOBS.lag.max);
+  next.simulation.gimbal_max_deg = clamp(next.simulation.gimbal_max_deg, KNOBS.gimbal.min, KNOBS.gimbal.max);
+  next.simulation.Ixx = clamp(next.simulation.Ixx, KNOBS.inertia.min, KNOBS.inertia.max);
+  next.simulation.Iyy = next.simulation.Ixx;
   next.outer_pid_vertical_position.gains.kp = clamp(
     next.outer_pid_vertical_position.gains.kp,
     KNOBS.gain.min,

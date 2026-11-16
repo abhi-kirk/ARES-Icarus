@@ -38,6 +38,11 @@ export type FlightCase = {
     glide_cone_deg: number;
     // First-order engine lag time constant (s). 0 means instantaneous.
     thrust_tau: number;
+    // 6-DOF / TVC. Gimbal limit in degrees; Ixx (= Iyy) in kg·m².
+    use_6dof: boolean;
+    gimbal_max_deg: number;
+    Ixx: number;
+    Iyy: number;
     use_rerun: boolean;
     rerun_spawn_viewer: boolean;
     rerun_save_rrd: boolean;
@@ -57,7 +62,9 @@ export type KnobKey =
   | "ceiling"
   | "cone"
   | "glide"
-  | "lag";
+  | "lag"
+  | "gimbal"
+  | "inertia";
 
 export type KnobSpec = {
   key: KnobKey;
@@ -83,6 +90,8 @@ export const KNOBS: KnobSpec[] = [
   { key: "cone", label: "Tilt", min: 5, max: 90, step: 1, unit: "°" },
   { key: "glide", label: "Glide", min: 5, max: 90, step: 1, unit: "°" },
   { key: "lag", label: "Lag", min: 0, max: 1.5, step: 0.05, unit: "s" },
+  { key: "gimbal", label: "Gimbal", min: 4, max: 25, step: 1, unit: "°" },
+  { key: "inertia", label: "Inertia", min: 500, max: 5000, step: 100, unit: "kg·m²" },
 ];
 
 export const NOMINAL_CASE: FlightCase = {
@@ -117,6 +126,10 @@ export const NOMINAL_CASE: FlightCase = {
     pointing_cone_deg: 90.0,
     glide_cone_deg: 90.0,
     thrust_tau: 0.0,
+    use_6dof: true,
+    gimbal_max_deg: 15.0,
+    Ixx: 2000.0,
+    Iyy: 2000.0,
     use_rerun: false,
     rerun_spawn_viewer: false,
     rerun_save_rrd: false,
@@ -148,6 +161,8 @@ export function readKnob(flight: FlightCase, key: KnobKey): number {
   if (key === "cone") return flight.simulation.pointing_cone_deg;
   if (key === "glide") return flight.simulation.glide_cone_deg;
   if (key === "lag") return flight.simulation.thrust_tau;
+  if (key === "gimbal") return flight.simulation.gimbal_max_deg;
+  if (key === "inertia") return flight.simulation.Ixx;
   return flight.outer_pid_vertical_position.gains.kp;
 }
 
@@ -164,7 +179,11 @@ function writeKnob(flight: FlightCase, key: KnobKey, value: number): void {
   else if (key === "cone") flight.simulation.pointing_cone_deg = value;
   else if (key === "glide") flight.simulation.glide_cone_deg = value;
   else if (key === "lag") flight.simulation.thrust_tau = value;
-  else flight.outer_pid_vertical_position.gains.kp = value;
+  else if (key === "gimbal") flight.simulation.gimbal_max_deg = value;
+  else if (key === "inertia") {
+    flight.simulation.Ixx = value;
+    flight.simulation.Iyy = value;
+  } else flight.outer_pid_vertical_position.gains.kp = value;
 }
 
 export function knobValue(flight: FlightCase, key: KnobKey): number {
@@ -194,6 +213,8 @@ export function caseFromRequest(body: unknown): FlightCase {
     const cone = finite(sim.pointing_cone_deg);
     const glide = finite(sim.glide_cone_deg);
     const lag = finite(sim.thrust_tau);
+    const gimbal = finite(sim.gimbal_max_deg);
+    const inertia = finite(sim.Ixx);
     if (height !== null) writeKnob(next, "height", height);
     if (offset !== null) writeKnob(next, "offset", offset);
     if (descent !== null) writeKnob(next, "descent", descent);
@@ -206,6 +227,8 @@ export function caseFromRequest(body: unknown): FlightCase {
     if (cone !== null) writeKnob(next, "cone", cone);
     if (glide !== null) writeKnob(next, "glide", glide);
     if (lag !== null) writeKnob(next, "lag", lag);
+    if (gimbal !== null) writeKnob(next, "gimbal", gimbal);
+    if (inertia !== null) writeKnob(next, "inertia", inertia);
   }
   const gain = finite(raw.outer_pid_vertical_position?.gains?.kp);
   if (gain !== null) writeKnob(next, "gain", gain);

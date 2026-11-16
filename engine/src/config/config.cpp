@@ -65,6 +65,15 @@ bool apply_config(const json& j, Config& config) {
         config.simulation.thrust_tau         = j["simulation"].value("thrust_tau", 0.0);
         config.simulation.thrust_slew        = j["simulation"].value("thrust_slew", 0.0);
 
+        config.simulation.use_6dof           = j["simulation"].value("use_6dof", true);
+        config.simulation.Ixx                = j["simulation"].value("Ixx", 2000.0);
+        config.simulation.Iyy                = j["simulation"].value("Iyy", 2000.0);
+        config.simulation.Izz                = j["simulation"].value("Izz", 400.0);
+        config.simulation.gimbal_lever       = j["simulation"].value("gimbal_lever", 8.0);
+        config.simulation.gimbal_max_deg     = j["simulation"].value("gimbal_max_deg", 15.0);
+        config.simulation.attitude_kp        = j["simulation"].value("attitude_kp", 1.5);
+        config.simulation.attitude_kd        = j["simulation"].value("attitude_kd", 0.8);
+
         config.simulation.use_rerun          = j["simulation"].value("use_rerun", false);
         config.simulation.rerun_spawn_viewer = j["simulation"].value("rerun_spawn_viewer", true);
         config.simulation.rerun_save_rrd     = j["simulation"].value("rerun_save_rrd", true);

@@ -25,6 +25,7 @@ const FIGURES: { title: string; keys: KnobKey[] }[] = [
   { title: "Initial", keys: ["offset", "fuel"] },
   { title: "Sea", keys: ["wind", "pad", "gust"] },
   { title: "Guidance", keys: ["gain", "floor", "ceiling", "cone", "glide", "lag"] },
+  { title: "Attitude", keys: ["gimbal", "inertia"] },
 ];
 
 const SIDE_MIN = 260;
@@ -49,6 +50,8 @@ function flightMetrics(sample: Sample | null): { label: string; value: string; u
   const speed = Math.hypot(sample?.vx ?? 0, sample?.vy ?? 0);
   const thrust = Math.hypot(sample?.fx ?? 0, sample?.fy ?? 0, sample?.fz ?? 0) / 1000;
   const side = Math.hypot(sample?.fx ?? 0, sample?.fy ?? 0) / 1000;
+  const lean = (180 / Math.PI) * Math.hypot(sample?.roll ?? 0, sample?.pitch ?? 0);
+  const gimbal = (180 / Math.PI) * Math.hypot(sample?.gimbalX ?? 0, sample?.gimbalY ?? 0);
   return [
     { label: "Range", value: range.toFixed(0), unit: "m" },
     { label: "Speed", value: speed.toFixed(1), unit: "m/s" },
@@ -56,6 +59,8 @@ function flightMetrics(sample: Sample | null): { label: string; value: string; u
     { label: "Across", value: dy.toFixed(0), unit: "m" },
     { label: "Thrust", value: thrust.toFixed(1), unit: "kN" },
     { label: "Side", value: side.toFixed(1), unit: "kN" },
+    { label: "Lean", value: lean.toFixed(1), unit: "°" },
+    { label: "Gimbal", value: gimbal.toFixed(1), unit: "°" },
   ];
 }
 

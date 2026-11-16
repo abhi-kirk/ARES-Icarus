@@ -67,6 +67,17 @@ struct SimConfig {
     double thrust_tau = 0.0;
     double thrust_slew = 0.0;
 
+    // 6-DOF plant. When use_6dof is true the stream integrates Euler
+    // attitude with gimbal TVC; the force PID still sets the ask.
+    bool use_6dof = true;
+    double Ixx = 2000.0;
+    double Iyy = 2000.0;
+    double Izz = 400.0;
+    double gimbal_lever = 8.0;
+    double gimbal_max_deg = 15.0;
+    double attitude_kp = 1.5;
+    double attitude_kd = 0.8;
+
     bool use_rerun          = false;
     bool rerun_spawn_viewer = true;
     bool rerun_save_rrd     = true;

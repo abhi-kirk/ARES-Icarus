@@ -4,6 +4,7 @@
 #include "config/config.h"
 #include "dynamics/constants.h"
 #include "dynamics/rocket_3dof.h"
+#include "dynamics/rocket_6dof.h"
 #include "dynamics/state_indices.h"
 #include "gnc/control/controller.h"
 #include "gnc/control/pid_controller.h"
@@ -21,14 +22,14 @@ int main() {
     const auto exe_path = std::filesystem::current_path();
     if (!load_config((exe_path / "config.json").string(), config)) return 1;
 
-    State state(STATE_SIZE);
-    state << config.simulation.initial_px,
-             config.simulation.initial_py,
-             config.simulation.initial_pz,
-             config.simulation.initial_vx,
-             config.simulation.initial_vy,
-             config.simulation.initial_vz,
-             config.simulation.initial_fuel;
+    State state = State::Zero(STATE_SIZE);
+    state[POS_X] = config.simulation.initial_px;
+    state[POS_Y] = config.simulation.initial_py;
+    state[POS_Z] = config.simulation.initial_pz;
+    state[VEL_X] = config.simulation.initial_vx;
+    state[VEL_Y] = config.simulation.initial_vy;
+    state[VEL_Z] = config.simulation.initial_vz;
+    state[FUEL]  = config.simulation.initial_fuel;
 
     // Guidance: outer vertical loop (position -> rate-limited ref_velocity)
     CascadeGuidance guidance(config);
