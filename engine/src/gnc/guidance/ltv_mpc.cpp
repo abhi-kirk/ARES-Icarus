@@ -12,8 +12,6 @@ namespace icarus {
 
 namespace {
 
-// OSQP's csc_matrix only stores pointers. Build an owned CSC so the buffers
-// live until osqp_cleanup frees them.
 csc* owned_csc_from_triplets(
     int rows,
     int cols,
@@ -34,7 +32,6 @@ csc* owned_csc_from_triplets(
     return M;
 }
 
-// Pack a dense symmetric matrix into OSQP's upper-triangular CSC form.
 csc* dense_to_csc_upper(const Eigen::MatrixXd& dense) {
     const int n = static_cast<int>(dense.rows());
     std::vector<c_int> row_idx;
@@ -85,7 +82,8 @@ void LtvMpc::configure(
     double w_terminal,
     double thrust_min,
     double thrust_max,
-    double pointing_cone_deg
+    double pointing_cone_deg,
+    double glide_cone_deg
 ) {
     horizon_ = std::max(2, horizon);
     dt_ = std::max(0.05, dt);
@@ -96,6 +94,9 @@ void LtvMpc::configure(
     thrust_min_ = thrust_min;
     thrust_max_ = thrust_max;
     pointing_cone_deg_ = pointing_cone_deg;
+    glide_cone_deg_ = glide_cone_deg;
+    have_warm_ = false;
+    last_U_.resize(0);
 }
 
 void LtvMpc::set_reference(const SoftLandReference* reference) {
@@ -120,7 +121,6 @@ MpcSolveResult LtvMpc::solve(
     const int nU = N * nu;
     const int nX = N * nx;
 
-    // Discrete double integrator with gravity on z.
     Eigen::MatrixXd A = Eigen::MatrixXd::Identity(nx, nx);
     A.block(0, 3, 3, 3) = dt_ * Eigen::Matrix3d::Identity();
 
@@ -132,7 +132,6 @@ MpcSolveResult LtvMpc::solve(
     c(2) = -0.5 * dt_ * dt_ * GRAVITY;
     c(5) = -dt_ * GRAVITY;
 
-    // Current pad-relative state.
     Eigen::VectorXd x0(nx);
     x0 << state_pos.x() - pad_x,
           state_pos.y() - pad_y,
@@ -141,7 +140,6 @@ MpcSolveResult LtvMpc::solve(
           state_vel.y(),
           state_vel.z();
 
-    // Build G, H, d so X = G x0 + H U + d, with X = [x1; ...; xN].
     Eigen::MatrixXd G = Eigen::MatrixXd::Zero(nX, nx);
     Eigen::MatrixXd H = Eigen::MatrixXd::Zero(nX, nU);
     Eigen::VectorXd d = Eigen::VectorXd::Zero(nX);
@@ -152,7 +150,6 @@ MpcSolveResult LtvMpc::solve(
         G.block(k * nx, 0, nx, nx) = A_pow;
         d.segment(k * nx, nx) = d_roll;
 
-        // H block: x_{k+1} depends on u_0 .. u_k
         Eigen::MatrixXd A_to_u = Eigen::MatrixXd::Identity(nx, nx);
         for (int j = k; j >= 0; --j) {
             H.block(k * nx, j * nu, nx, nu) = A_to_u * B;
@@ -163,7 +160,6 @@ MpcSolveResult LtvMpc::solve(
         A_pow = A * A_pow;
     }
 
-    // Reference stack and stage weights.
     Eigen::VectorXd Xref = Eigen::VectorXd::Zero(nX);
     Eigen::VectorXd Uref = Eigen::VectorXd::Zero(nU);
     Eigen::MatrixXd Q = Eigen::MatrixXd::Zero(nX, nX);
@@ -194,111 +190,151 @@ MpcSolveResult LtvMpc::solve(
         R.block(k * nu, k * nu, nu, nu) = w_u_ * Eigen::Matrix3d::Identity();
     }
 
-    // Cost (1/2) U^T P U + q^T U  with
-    // P = 2 (H^T Q H + R),  q = 2 H^T Q (G x0 + d - Xref) - 2 R Uref.
-    const Eigen::VectorXd bias = G * x0 + d - Xref;
-    Eigen::MatrixXd Pdense = 2.0 * (H.transpose() * Q * H + R);
-    // Keep P symmetric positive definite for OSQP.
-    Pdense = 0.5 * (Pdense + Pdense.transpose());
+    const Eigen::VectorXd affine = G * x0 + d;
+    const Eigen::VectorXd bias = affine - Xref;
+    Eigen::MatrixXd Pu = 2.0 * (H.transpose() * Q * H + R);
+    Pu = 0.5 * (Pu + Pu.transpose());
     for (int i = 0; i < nU; ++i) {
-        Pdense(i, i) += 1e-8;
+        Pu(i, i) += 1e-8;
     }
-    Eigen::VectorXd qdense = 2.0 * H.transpose() * Q * bias - 2.0 * R * Uref;
+    Eigen::VectorXd qu = 2.0 * H.transpose() * Q * bias - 2.0 * R * Uref;
 
-    // Constraints: box on Fx,Fy,Fz plus a linear pointing cone on each step.
-    //   -Tmax <= Fx,Fy <= Tmax
-    //    Tmin <= Fz    <= Tmax
-    //   |Fx| <= tan(cone) * Fz   (and same for Fy) when cone < 90
-    const double cone_rad = pointing_cone_deg_ * (3.14159265358979323846 / 180.0);
-    const double tan_cone = (pointing_cone_deg_ >= 89.9) ? 1.0e6 : std::tan(cone_rad);
-    // Cone extras: Fx - tan Fz <= 0, -Fx - tan Fz <= 0, and the same for Fy.
-    const int n_cone = (pointing_cone_deg_ < 89.9) ? N * 4 : 0;
-    const int n_cons = n_cone;
+    // Pointing cone on each control: |Fx|,|Fy| <= tan(point) * Fz (hard).
+    const double point_rad = pointing_cone_deg_ * (3.14159265358979323846 / 180.0);
+    const double tan_point = (pointing_cone_deg_ >= 89.9) ? 1.0e6 : std::tan(point_rad);
+    const int n_point = (pointing_cone_deg_ < 89.9) ? N * 4 : 0;
 
-    Eigen::MatrixXd Aineq = Eigen::MatrixXd::Zero(std::max(1, n_cons), nU);
-    Eigen::VectorXd lineq = Eigen::VectorXd::Constant(std::max(1, n_cons), -OSQP_INFTY);
-    Eigen::VectorXd uineq = Eigen::VectorXd::Constant(std::max(1, n_cons), OSQP_INFTY);
+    // Glide corridor on each predicted state:
+    //   |px|,|py| <= tan(glide) * z + pad_radius
+    // Soft: A_glide U - s <= b, s >= 0, with a large quadratic penalty on s.
+    // pad_radius keeps a finite landing zone so the cone does not collapse to a
+    // point at z→0 (which otherwise makes the vehicle climb to regain margin).
+    const double glide_rad = glide_cone_deg_ * (3.14159265358979323846 / 180.0);
+    const double tan_glide = (glide_cone_deg_ >= 89.9) ? 1.0e6 : std::tan(glide_rad);
+    const double pad_radius = 5.0;
+    const int n_glide = (glide_cone_deg_ < 89.9) ? N * 4 : 0;
+    const double w_glide_slack = 2.0e3;
 
-    if (n_cone > 0) {
+    // Decision vector z = [U; s]. Pointing stays hard on U only.
+    const int n_var = nU + n_glide;
+    Eigen::MatrixXd Pdense = Eigen::MatrixXd::Zero(n_var, n_var);
+    Pdense.topLeftCorner(nU, nU) = Pu;
+    for (int i = 0; i < n_glide; ++i) {
+        Pdense(nU + i, nU + i) = 2.0 * w_glide_slack;
+    }
+    Eigen::VectorXd qdense = Eigen::VectorXd::Zero(n_var);
+    qdense.head(nU) = qu;
+
+    // Rows: thrust bounds (nU) + pointing (n_point) + soft glide (n_glide) + s >= 0 (n_glide).
+    const int nA = nU + n_point + n_glide + n_glide;
+    Eigen::MatrixXd Afull = Eigen::MatrixXd::Zero(std::max(1, nA), n_var);
+    Eigen::VectorXd lfull = Eigen::VectorXd::Constant(std::max(1, nA), -OSQP_INFTY);
+    Eigen::VectorXd ufull = Eigen::VectorXd::Constant(std::max(1, nA), OSQP_INFTY);
+
+    // Thrust box on U.
+    Afull.block(0, 0, nU, nU) = Eigen::MatrixXd::Identity(nU, nU);
+    for (int k = 0; k < N; ++k) {
+        lfull(k * nu + 0) = -thrust_max_;
+        ufull(k * nu + 0) = thrust_max_;
+        lfull(k * nu + 1) = -thrust_max_;
+        ufull(k * nu + 1) = thrust_max_;
+        lfull(k * nu + 2) = thrust_min_;
+        ufull(k * nu + 2) = thrust_max_;
+    }
+
+    int row = nU;
+    if (n_point > 0) {
         for (int k = 0; k < N; ++k) {
-            const int c0 = k * 4;
             const int u0 = k * nu;
-            // Fx - tan Fz <= 0
-            Aineq(c0 + 0, u0 + 0) = 1.0;
-            Aineq(c0 + 0, u0 + 2) = -tan_cone;
-            uineq(c0 + 0) = 0.0;
-            // -Fx - tan Fz <= 0
-            Aineq(c0 + 1, u0 + 0) = -1.0;
-            Aineq(c0 + 1, u0 + 2) = -tan_cone;
-            uineq(c0 + 1) = 0.0;
-            // Fy - tan Fz <= 0
-            Aineq(c0 + 2, u0 + 1) = 1.0;
-            Aineq(c0 + 2, u0 + 2) = -tan_cone;
-            uineq(c0 + 2) = 0.0;
-            // -Fy - tan Fz <= 0
-            Aineq(c0 + 3, u0 + 1) = -1.0;
-            Aineq(c0 + 3, u0 + 2) = -tan_cone;
-            uineq(c0 + 3) = 0.0;
-            lineq(c0 + 0) = -OSQP_INFTY;
-            lineq(c0 + 1) = -OSQP_INFTY;
-            lineq(c0 + 2) = -OSQP_INFTY;
-            lineq(c0 + 3) = -OSQP_INFTY;
+            Afull(row, u0 + 0) = 1.0;
+            Afull(row, u0 + 2) = -tan_point;
+            ufull(row) = 0.0;
+            ++row;
+            Afull(row, u0 + 0) = -1.0;
+            Afull(row, u0 + 2) = -tan_point;
+            ufull(row) = 0.0;
+            ++row;
+            Afull(row, u0 + 1) = 1.0;
+            Afull(row, u0 + 2) = -tan_point;
+            ufull(row) = 0.0;
+            ++row;
+            Afull(row, u0 + 1) = -1.0;
+            Afull(row, u0 + 2) = -tan_point;
+            ufull(row) = 0.0;
+            ++row;
         }
     }
 
-    // Variable bounds.
-    std::vector<c_float> l_bounds(nU);
-    std::vector<c_float> u_bounds(nU);
-    for (int k = 0; k < N; ++k) {
-        l_bounds[k * nu + 0] = -thrust_max_;
-        u_bounds[k * nu + 0] = thrust_max_;
-        l_bounds[k * nu + 1] = -thrust_max_;
-        u_bounds[k * nu + 1] = thrust_max_;
-        l_bounds[k * nu + 2] = thrust_min_;
-        u_bounds[k * nu + 2] = thrust_max_;
-    }
+    if (n_glide > 0) {
+        int s_i = 0;
+        for (int k = 0; k < N; ++k) {
+            // A_glide U - s <= b  =>  (e_x - tan e_z)^T (affine + H U) - s <= 0
+            const int x_row = k * nx + 0;
+            const int y_row = k * nx + 1;
+            const int z_row = k * nx + 2;
+            Eigen::RowVectorXd Hx = H.row(x_row);
+            Eigen::RowVectorXd Hy = H.row(y_row);
+            Eigen::RowVectorXd Hz = H.row(z_row);
+            const double ax = affine(x_row);
+            const double ay = affine(y_row);
+            const double az = affine(z_row);
 
-    // OSQP wants one constraint matrix. Stack identity (for bounds) with cone.
-    // Easier: use OSQP's data->l/u on A=I for bounds only when no cone; with cone
-    // use [I; Aineq].
-    const int nA = nU + n_cons;
-    Eigen::MatrixXd Afull = Eigen::MatrixXd::Zero(nA, nU);
-    Afull.block(0, 0, nU, nU) = Eigen::MatrixXd::Identity(nU, nU);
-    if (n_cons > 0) {
-        Afull.block(nU, 0, n_cons, nU) = Aineq.topRows(n_cons);
-    }
-    Eigen::VectorXd lfull(nA);
-    Eigen::VectorXd ufull(nA);
-    for (int i = 0; i < nU; ++i) {
-        lfull(i) = l_bounds[i];
-        ufull(i) = u_bounds[i];
-    }
-    for (int i = 0; i < n_cons; ++i) {
-        lfull(nU + i) = lineq(i);
-        ufull(nU + i) = uineq(i);
+            // px - tan*z <= pad_radius  =>  Hx U - tan Hz U - s <= -ax + tan az + pad
+            Afull.block(row, 0, 1, nU) = Hx - tan_glide * Hz;
+            Afull(row, nU + s_i) = -1.0;
+            ufull(row) = -ax + tan_glide * az + pad_radius;
+            ++row;
+            ++s_i;
+
+            Afull.block(row, 0, 1, nU) = -Hx - tan_glide * Hz;
+            Afull(row, nU + s_i) = -1.0;
+            ufull(row) = ax + tan_glide * az + pad_radius;
+            ++row;
+            ++s_i;
+
+            Afull.block(row, 0, 1, nU) = Hy - tan_glide * Hz;
+            Afull(row, nU + s_i) = -1.0;
+            ufull(row) = -ay + tan_glide * az + pad_radius;
+            ++row;
+            ++s_i;
+
+            Afull.block(row, 0, 1, nU) = -Hy - tan_glide * Hz;
+            Afull(row, nU + s_i) = -1.0;
+            ufull(row) = ay + tan_glide * az + pad_radius;
+            ++row;
+            ++s_i;
+        }
+
+        // s >= 0
+        for (int i = 0; i < n_glide; ++i) {
+            Afull(row, nU + i) = 1.0;
+            lfull(row) = 0.0;
+            ufull(row) = OSQP_INFTY;
+            ++row;
+        }
     }
 
     csc* P_csc = dense_to_csc_upper(Pdense);
-    csc* A_csc = dense_to_csc(Afull);
+    csc* A_csc = dense_to_csc(Afull.topRows(nA));
     if (P_csc == nullptr || A_csc == nullptr) {
         if (P_csc) c_free(P_csc);
         if (A_csc) c_free(A_csc);
-        // Fallback: hover thrust.
-        result.force = Eigen::Vector3d(0.0, 0.0, m * GRAVITY);
+        // Fall back to the reference ask, not pure hover.
+        result.force = Uref.segment(0, 3);
         return result;
     }
 
-    std::vector<c_float> q_vec(nU);
+    std::vector<c_float> q_vec(n_var);
     std::vector<c_float> l_vec(nA);
     std::vector<c_float> u_vec(nA);
-    for (int i = 0; i < nU; ++i) q_vec[i] = qdense(i);
+    for (int i = 0; i < n_var; ++i) q_vec[i] = qdense(i);
     for (int i = 0; i < nA; ++i) {
         l_vec[i] = lfull(i);
         u_vec[i] = ufull(i);
     }
 
     OSQPData data;
-    data.n = nU;
+    data.n = n_var;
     data.m = nA;
     data.P = P_csc;
     data.q = q_vec.data();
@@ -319,9 +355,23 @@ MpcSolveResult LtvMpc::solve(
     if (setup_status != 0 || work == nullptr) {
         c_free(P_csc);
         c_free(A_csc);
-        result.force = Eigen::Vector3d(0.0, 0.0, m * GRAVITY);
+        result.force = Uref.segment(0, 3);
         return result;
     }
+
+    // Shift the previous U left by one step and warm-start OSQP (U only; slacks 0).
+    std::vector<c_float> warm(n_var, 0.0);
+    if (have_warm_ && last_U_.size() == nU) {
+        for (int i = 0; i < nU - nu; ++i) {
+            warm[i] = last_U_(i + nu);
+        }
+        for (int i = 0; i < nu; ++i) {
+            warm[nU - nu + i] = last_U_(nU - nu + i);
+        }
+    } else {
+        for (int i = 0; i < nU; ++i) warm[i] = Uref(i);
+    }
+    osqp_warm_start_x(work, warm.data());
 
     osqp_solve(work);
 
@@ -335,11 +385,12 @@ MpcSolveResult LtvMpc::solve(
             U(i) = work->solution->x[i];
         }
         result.ok = true;
+        last_U_ = U;
+        have_warm_ = true;
     }
 
     result.force = U.segment(0, 3);
 
-    // Roll the predicted states for the plan trail (inertial).
     Eigen::VectorXd x = x0;
     for (int k = 0; k < N; ++k) {
         Eigen::Vector3d uk = U.segment(k * nu, 3);
@@ -350,7 +401,6 @@ MpcSolveResult LtvMpc::solve(
     }
 
     osqp_cleanup(work);
-    // osqp_cleanup frees P and A that were given to setup.
     return result;
 }
 

@@ -166,10 +166,14 @@ void Simulator::run(
     LtvMpc mpc;
     MpcSolveResult last_plan;
     int mpc_divider = 1;
+    // Rebuild the soft-land reference when burned mass changes the thrust
+    // schedule enough to matter (about 5% of the mass used for that profile).
+    const double mass_rebuild_frac = 0.05;
     if (use_mpc) {
         Eigen::Vector2d pad0 = landing_pad.pad_position(t);
         const double mass0 = MASS_DRY + state[FUEL];
         soft_ref.build(
+            t,
             Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
             Eigen::Vector3d(state[VEL_X], state[VEL_Y], state[VEL_Z]),
             mass0,
@@ -188,7 +192,8 @@ void Simulator::run(
             cfg.mpc_w_terminal,
             cfg.thrust_min,
             cfg.thrust_max,
-            cfg.pointing_cone_deg
+            cfg.pointing_cone_deg,
+            cfg.glide_cone_deg
         );
         mpc.set_reference(&soft_ref);
         mpc_divider = std::max(1, static_cast<int>(std::lround(cfg.mpc_dt / dt_inner_v)));
@@ -229,6 +234,22 @@ void Simulator::run(
         if (use_mpc) {
             if (sim_counter % mpc_divider == 0) {
                 const double mass = MASS_DRY + state[FUEL];
+                // Rebuild when mass has dropped enough that the old force
+                // schedule no longer matches the current vehicle.
+                const double mass_ref = soft_ref.mass_used();
+                if (mass_ref > 1.0 && (mass_ref - mass) > mass_rebuild_frac * mass_ref) {
+                    soft_ref.build(
+                        t,
+                        Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
+                        Eigen::Vector3d(state[VEL_X], state[VEL_Y], state[VEL_Z]),
+                        mass,
+                        cfg.thrust_min,
+                        cfg.thrust_max,
+                        cfg.mpc_dt,
+                        pad_pos[0],
+                        pad_pos[1]
+                    );
+                }
                 last_plan = mpc.solve(
                     t,
                     Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
@@ -320,8 +341,22 @@ void Simulator::run(
 
         t += dt_inner_v;
 
-        if (state[POS_Z] <= 0.0) {
-            interpolate_touchdown(state, prev_state, t, prev_t, dt_inner_v);
+        // Soft contact: near the pad with little downward speed counts as
+        // landed. Without this the MPC can skim low and climb again.
+        const double speed_xy = std::hypot(state[VEL_X], state[VEL_Y]);
+        const bool soft_contact =
+            state[POS_Z] > 0.0 &&
+            state[POS_Z] < 1.0 &&
+            state[VEL_Z] > -1.5 &&
+            state[VEL_Z] < 0.5 &&
+            speed_xy < 4.0;
+        if (state[POS_Z] <= 0.0 || soft_contact) {
+            if (state[POS_Z] > 0.0) {
+                state[POS_Z] = 0.0;
+                state[VEL_Z] = std::min(0.0, state[VEL_Z]);
+            } else {
+                interpolate_touchdown(state, prev_state, t, prev_t, dt_inner_v);
+            }
         }
 
         state[FUEL] = std::max(0.0, state[FUEL]);

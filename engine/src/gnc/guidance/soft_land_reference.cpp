@@ -8,6 +8,7 @@
 namespace icarus {
 
 void SoftLandReference::build(
+    double t0,
     const Eigen::Vector3d& pos0,
     const Eigen::Vector3d& vel0,
     double mass,
@@ -18,6 +19,8 @@ void SoftLandReference::build(
     double pad_y
 ) {
     knots_.clear();
+    t0_ = t0;
+    mass_used_ = std::max(mass, 1.0);
     dt_ = std::max(0.05, dt);
 
     // Work in pad-relative coordinates so the target is the origin.
@@ -27,6 +30,7 @@ void SoftLandReference::build(
     const double vx0 = vel0.x();
     const double vy0 = vel0.y();
     const double vz0 = vel0.z();
+    const double m = mass_used_;
 
     // Vertical soft-land time for constant accel: zf = z0 + vz0*tf + 0.5*a*tf^2 = 0
     // and vzf = vz0 + a*tf = 0 => a = -vz0/tf => tf = -2*z0/vz0 when descending.
@@ -34,27 +38,21 @@ void SoftLandReference::build(
     if (vz0 < -0.5) {
         tf = -2.0 * z0 / vz0;
     } else {
-        // Hovering or climbing: pick a time that can brake under thrust_max.
-        const double a_down = GRAVITY - thrust_max / std::max(mass, 1.0);
-        // Use a mild descent accel of about 2 m/s^2 net down if possible.
+        const double a_down = GRAVITY - thrust_max / m;
         const double a_cmd = std::min(-2.0, a_down);
         tf = std::sqrt(std::max(1.0, -2.0 * z0 / a_cmd));
     }
-    tf = std::clamp(tf, 8.0, 80.0);
+    tf = std::clamp(tf, 5.0, 80.0);
 
-    // Net vertical accel that reaches z=0, vz=0 in tf (exact for constant a).
     double a_z = -2.0 * (z0 / (tf * tf) + vz0 / tf);
-    // Horizontal: cancel position and velocity by tf under constant accel.
     double a_x = -2.0 * x0 / (tf * tf) - 2.0 * vx0 / tf;
     double a_y = -2.0 * y0 / (tf * tf) - 2.0 * vy0 / tf;
 
-    // Convert accel to force. Fz fights gravity as well.
     auto force_from_accel = [&](double ax, double ay, double az) {
         Eigen::Vector3d F;
-        F.x() = mass * ax;
-        F.y() = mass * ay;
-        F.z() = mass * (az + GRAVITY);
-        // Keep magnitude inside the thrust ring (isotropic clamp).
+        F.x() = m * ax;
+        F.y() = m * ay;
+        F.z() = m * (az + GRAVITY);
         double mag = F.norm();
         if (mag > thrust_max && mag > 1e-9) {
             F *= thrust_max / mag;
@@ -69,31 +67,42 @@ void SoftLandReference::build(
     };
 
     Eigen::Vector3d F0 = force_from_accel(a_x, a_y, a_z);
-    // Recompute accel from the clamped force so the knot trail matches the ask.
-    a_x = F0.x() / mass;
-    a_y = F0.y() / mass;
-    a_z = F0.z() / mass - GRAVITY;
+    a_x = F0.x() / m;
+    a_y = F0.y() / m;
+    a_z = F0.z() / m - GRAVITY;
 
     duration_ = tf;
     const int steps = std::max(2, static_cast<int>(std::ceil(tf / dt_)));
     const double step = tf / steps;
 
+    // Hover ask used once the profile reaches the pad. Keeping the initial
+    // deceleration force F0 on the grounded knots makes the MPC bounce.
+    const Eigen::Vector3d F_hover(0.0, 0.0, m * GRAVITY);
+
     for (int k = 0; k <= steps; ++k) {
-        const double t = k * step;
+        const double tau = k * step;
         ReferenceKnot knot;
-        knot.t = t;
-        // Pad-relative position and velocity under constant accel.
-        const double xr = x0 + vx0 * t + 0.5 * a_x * t * t;
-        const double yr = y0 + vy0 * t + 0.5 * a_y * t * t;
-        const double zr = z0 + vz0 * t + 0.5 * a_z * t * t;
+        knot.t = t0_ + tau;
+        const double xr = x0 + vx0 * tau + 0.5 * a_x * tau * tau;
+        const double yr = y0 + vy0 * tau + 0.5 * a_y * tau * tau;
+        const double zr = z0 + vz0 * tau + 0.5 * a_z * tau * tau;
         knot.pos = Eigen::Vector3d(xr + pad_x, yr + pad_y, std::max(0.0, zr));
-        knot.vel = Eigen::Vector3d(vx0 + a_x * t, vy0 + a_y * t, vz0 + a_z * t);
+        knot.vel = Eigen::Vector3d(vx0 + a_x * tau, vy0 + a_y * tau, vz0 + a_z * tau);
+        knot.force = F0;
         if (knot.pos.z() <= 1e-6) {
             knot.pos.z() = 0.0;
             knot.vel = Eigen::Vector3d::Zero();
+            knot.force = F_hover;
         }
-        knot.force = F0;
         knots_.push_back(knot);
+    }
+
+    // Guarantee the final knot is a settled hover on the pad.
+    if (!knots_.empty()) {
+        ReferenceKnot& last = knots_.back();
+        last.pos = Eigen::Vector3d(pad_x, pad_y, 0.0);
+        last.vel = Eigen::Vector3d::Zero();
+        last.force = F_hover;
     }
 }
 
@@ -102,7 +111,6 @@ ReferenceKnot SoftLandReference::at(double t) const {
     if (t <= knots_.front().t) return knots_.front();
     if (t >= knots_.back().t) return knots_.back();
 
-    // Linear blend between the two knots that bracket t.
     for (size_t i = 1; i < knots_.size(); ++i) {
         if (t <= knots_[i].t) {
             const ReferenceKnot& a = knots_[i - 1];

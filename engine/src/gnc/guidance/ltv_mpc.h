@@ -18,6 +18,8 @@ struct MpcSolveResult {
 
 // Condensed LTV-MPC on the translation plant. Linearizes a double integrator
 // with gravity, tracks SoftLandReference, and solves a QP with OSQP.
+// Warm-starts from the previous solution (shifted one step). Glide-slope
+// inequalities are soft (slack + penalty) so an outside start stays feasible.
 class LtvMpc {
 public:
     void configure(
@@ -29,7 +31,8 @@ public:
         double w_terminal,
         double thrust_min,
         double thrust_max,
-        double pointing_cone_deg
+        double pointing_cone_deg,
+        double glide_cone_deg
     );
 
     void set_reference(const SoftLandReference* reference);
@@ -46,16 +49,21 @@ public:
     );
 
 private:
-    int horizon_ = 25;
+    int horizon_ = 40;
     double dt_ = 0.1;
-    double w_pos_ = 4.0;
-    double w_vel_ = 1.0;
-    double w_u_ = 1.0e-8;
-    double w_terminal_ = 20.0;
+    double w_pos_ = 25.0;
+    double w_vel_ = 40.0;
+    double w_u_ = 1.0e-9;
+    double w_terminal_ = 80.0;
     double thrust_min_ = 0.0;
     double thrust_max_ = 25000.0;
     double pointing_cone_deg_ = 90.0;
+    double glide_cone_deg_ = 90.0;
     const SoftLandReference* reference_ = nullptr;
+
+    // Previous control sequence for OSQP warm start (length 3 * horizon).
+    Eigen::VectorXd last_U_;
+    bool have_warm_ = false;
 };
 
 }  // namespace icarus

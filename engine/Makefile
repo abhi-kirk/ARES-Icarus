@@ -1,7 +1,7 @@
 BUILD_DIR := build
 CMAKE := cmake
 
-.PHONY: all configure build clean rebuild run
+.PHONY: all configure build clean rebuild run regress
 
 all: build
 
@@ -18,3 +18,6 @@ rebuild: clean build
 
 run: build
 	./$(BUILD_DIR)/Icarus
+
+regress: build
+	node scripts/mpc_regress.mjs
