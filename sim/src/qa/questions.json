@@ -208,7 +208,7 @@
     "nose": {
       "beginner": "Which way does the thrust point when the nose tilts?",
       "intermediate": "One tilt sets the vertical acceleration through $\\cos\\theta$ and the sideways acceleration through $\\sin\\theta$. What does a steeper tilt trade?",
-      "advanced": "If you increase the tilt, what happens to the downrange compared with the height?"
+      "advanced": "At what tilt is $a_y=0$ for $T=50\\,\\mathrm{N}$ on $2\\,\\mathrm{kg}$, and what do height and downrange do past that angle from rest?"
     },
     "eli5": {
       "beginner": "The thrust stays along the nose. What does leaning the nose do to the climb, and what does it do to the downrange travel?"

@@ -551,7 +551,9 @@ function TurnWorldMarks() {
 
 function VehicleWorldMarks() {
   const wind = useRef<Group>(null);
+  const thrust = useRef<Group>(null);
   const up = useRef<Group>(null);
+  const side = useRef<Group>(null);
   const ghost = useRef<Mesh>(null);
   const aim = useRef<Group>(null);
 
@@ -560,8 +562,11 @@ function VehicleWorldMarks() {
     const vehicle = isVehicleScene(id);
     const knobs = getKnobs();
     const pose = vehicle ? bodyAt(id, getTime(), knobs) : null;
+    const nose = id === "vehNose";
     if (wind.current) wind.current.visible = id === "vehWind";
-    if (up.current) up.current.visible = id === "vehNose";
+    if (thrust.current) thrust.current.visible = nose;
+    if (up.current) up.current.visible = nose;
+    if (side.current) side.current.visible = nose;
     if (ghost.current) ghost.current.visible = id === "vehEstimate";
     if (aim.current) aim.current.visible = id === "vehGuide" || id === "vehAuto";
     if (!pose || !vehicle) return;
@@ -573,9 +578,23 @@ function VehicleWorldMarks() {
       wind.current.position.set(x + 0.42, y + 0.4, 0.2);
       aimArrow(wind.current, 1, 0, 0, 0.45 + knobs.wind / 30);
     }
-    if (up.current) {
-      up.current.position.set(x, y + 0.2, 0.15);
-      aimArrow(up.current, 0, 1, 0, 1.05);
+    if (nose) {
+      const tilt = (knobs.lean * Math.PI) / 180;
+      const cos = Math.cos(tilt);
+      const sin = Math.sin(tilt);
+      // Thrust along the nose; pale arrows are the vertical and side shares.
+      if (thrust.current) {
+        thrust.current.position.set(x, y + 0.35, 0.18);
+        aimArrow(thrust.current, sin, cos, 0, 1.15);
+      }
+      if (up.current) {
+        up.current.position.set(x - 0.22, y + 0.2, 0.12);
+        aimArrow(up.current, 0, 1, 0, 0.35 + 0.7 * Math.max(cos, 0));
+      }
+      if (side.current) {
+        side.current.position.set(x + 0.08, y + 0.12, 0.12);
+        aimArrow(side.current, 1, 0, 0, 0.2 + 0.85 * Math.abs(sin));
+      }
     }
     if (ghost.current) {
       ghost.current.position.set(x + 0.32, viewY(pose.estimate, id, knobs) + NOZZLE_LIFT, 0.16);
@@ -591,7 +610,13 @@ function VehicleWorldMarks() {
       <group ref={wind} visible={false}>
         <ArrowMesh color={PALE} />
       </group>
+      <group ref={thrust} visible={false}>
+        <ArrowMesh color={GOLD} />
+      </group>
       <group ref={up} visible={false}>
+        <ArrowMesh color={PALE} />
+      </group>
+      <group ref={side} visible={false}>
         <ArrowMesh color={PALE} />
       </group>
       <mesh ref={ghost} visible={false}>

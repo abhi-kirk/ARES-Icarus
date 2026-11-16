@@ -38,6 +38,22 @@ export function ascentTw(thrust: number): number {
   return thrust / ascentWeight();
 }
 
+/** Tilt from vertical where vertical accel is zero for the nose scene (T=50 N, m=2 kg). */
+export function noseBreakEvenDeg(): number {
+  const specific = NOSE_THRUST / MASS;
+  return Math.acos(G / specific) * DEG;
+}
+
+export function noseClimbAccel(tiltDeg: number): number {
+  const tilt = tiltDeg / DEG;
+  return (NOSE_THRUST / MASS) * Math.cos(tilt) - G;
+}
+
+export function noseSideAccel(tiltDeg: number): number {
+  const tilt = tiltDeg / DEG;
+  return (NOSE_THRUST / MASS) * Math.sin(tilt);
+}
+
 export function vehicleDuration(id: VehicleId): number {
   if (id === "vehGuide" || id === "vehAuto") return 8;
   return 6;
@@ -156,7 +172,10 @@ export function vehicleBrief(id: VehicleId, knobs: Knobs): string {
     return `Ascent. Mass ${MASS} kg, g = ${G} m/s², weight ${weight.toFixed(1)} N. Thrust ${knobs.lift.toFixed(0)} N (T/W = ${tw.toFixed(2)}). a = T/m − g. If T ≤ weight the vehicle stays on the pad. Allowed chart columns: height, rate, accel, thrust.`;
   }
   if (id === "vehNose") {
-    return `Thrust along the nose. Thrust ${NOSE_THRUST} N on a ${MASS} kg vehicle, tilted ${knobs.lean.toFixed(0)} degrees from vertical. Height and downrange integrate the two components. Allowed chart columns: height, downrange, rate, pitch.`;
+    const ay = noseClimbAccel(knobs.lean);
+    const ax = noseSideAccel(knobs.lean);
+    const breakEven = noseBreakEvenDeg();
+    return `Thrust along the nose. Thrust ${NOSE_THRUST} N on a ${MASS} kg vehicle, tilted ${knobs.lean.toFixed(0)}° from vertical. a_y = ${(NOSE_THRUST / MASS).toFixed(2)} cosθ − g = ${ay.toFixed(2)} m/s². a_x = ${(NOSE_THRUST / MASS).toFixed(2)} sinθ = ${ax.toFixed(2)} m/s². Break-even a_y=0 at θ* = ${breakEven.toFixed(1)}°. Gold arrow is thrust; pale arrows are the vertical and side shares. Allowed chart columns: height, downrange, rate, pitch.`;
   }
   if (id === "vehWind") {
     return `Wind. The climb uses ${CLIMB_THRUST} N on ${MASS} kg. Wind is ${knobs.wind.toFixed(0)} m/s across the path. Attack is the angle between the nose and the air. Allowed chart columns: rate, attack, height.`;
@@ -208,13 +227,21 @@ function sample(id: VehicleId, t: number, knobs: Knobs, pose: Pose): VehicleSamp
     const side = specific * Math.sin(tilt);
     row.accel = up;
     row.thrust = NOSE_THRUST;
+    row.pitch = knobs.lean;
+    row.tilt = -tilt;
+    row.flame = 0.85;
+    // From rest on the pad: no climb when a_y ≤ 0 (break-even near 66.9°).
+    if (up <= 0) {
+      row.rate = 0;
+      row.height = 0;
+      row.downrange = 0;
+      row.drift = 0;
+      return row;
+    }
     row.rate = up * t;
     row.height = 0.5 * up * t * t;
     row.downrange = 0.5 * side * t * t;
-    row.pitch = knobs.lean;
-    row.tilt = -tilt;
     row.drift = row.downrange;
-    row.flame = 0.85;
     return row;
   }
 

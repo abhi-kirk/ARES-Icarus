@@ -916,35 +916,42 @@ $T/W$ is the live readout.`,
     threads: [
       plain(
         "The push follows the nose",
-        ["Thrust points along the body", "Tilt splits it into lift and downrange"],
+        ["Thrust points along the body", "Past ~66.9° the climb accel hits zero"],
         [
-          "A rocket pushes along its nose. Point the nose straight up and the whole push fights weight. Lean the nose and [the push splits: the part along the vertical still fights weight, and the part across the vertical starts the vehicle moving downrange](https://en.wikipedia.org/wiki/Vector_decomposition).",
-          "One angle sets both parts. A small lean keeps most of the push in the climb. A steeper lean spends more of it downrange and leaves less to fight weight, so the climb gives some of itself up. The tilt knob is that angle. The thrust stays fixed, and the flame leans with the nose.",
+          "A rocket pushes along its nose. Point the nose straight up and the whole push fights weight. Lean the nose and [the push splits: the part along the vertical still fights weight, and the part across the vertical starts the vehicle moving downrange](https://en.wikipedia.org/wiki/Vector_decomposition). The gold arrow is thrust; the pale arrows are those two shares.",
+          "One angle sets both parts. Raise the tilt toward $\\theta^\\star=\\arccos(mg/T)\\approx 66.9^\\circ$ and the climb acceleration falls to zero. Past that break-even the vehicle stays on the pad.",
         ],
       ),
       {
         id: "nose",
         title: "Cosine lifts, sine goes downrange",
-        focus: ["Thrust is along the body axis", "Tilt splits it into lift and downrange"],
+        focus: ["Thrust is along the body axis", "Break-even when a_y = 0"],
         segments: [
-          { kind: "look", text: "The rocket leans, and the flame leans with it. The pad stays behind as the path moves sideways. Thrust is 50 N on the same 2 kg vehicle, and the tilt knob spends that push between the two directions." },
+          { kind: "look", text: "The rocket leans, and the flame leans with it. Thrust is 50 N on 2 kg (T/m = 25 m/s²). The Tilt aside shows a_y, a_x, and θ*." },
           {
             kind: "relation",
             tex: String.raw`a_y = (T/m)\cos\theta - g`,
-            stake: "Cosine is the share of the nose that still points up. At zero tilt it is 1, so the whole push fights gravity. As the tilt grows, cosine shrinks, less acceleration remains in the climb, and gravity takes a larger share of what is left.",
-            gloss: String.raw`$T$ is thrust.
-$m$ is mass.
+            stake: "Tilt $\\theta$ is from vertical. Cosine is the share of the nose that still points up. When $(T/m)\\cos\\theta = g$, climb accel is zero.",
+            gloss: String.raw`$T$ is $50\,\mathrm{N}$.
+$m$ is $2\,\mathrm{kg}$.
 $\theta$ is the tilt from vertical.
-$g$ is gravity.`,
+$g$ is $9.81\,\mathrm{m/s^2}$.`,
           },
           {
             kind: "contrast",
             tex: String.raw`a_x = (T/m)\sin\theta`,
-            stake: "Sine is the share that points sideways. It is zero when the nose is vertical, and it grows as the nose leans, so downrange acceleration appears as climb acceleration gives way.",
+            stake: "Sine is the share that points sideways. It grows as the nose leans, so downrange acceleration appears as climb acceleration gives way.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`\theta^\star = \arccos\!\left(\frac{mg}{T}\right)`,
+            stake: "That is the break-even tilt, about $66.9^\\circ$ here. Beyond it $a_y \\le 0$ and the pad hold keeps height and downrange at zero from rest.",
+            gloss: String.raw`$\theta^\star$ is the break-even tilt.
+$mg/T$ is weight over thrust.`,
           },
           {
             kind: "trace",
-            text: "Height and downrange both grow as the square of time, each with its own acceleration. A steeper tilt raises the downrange trace and softens the height trace.",
+            text: "While $a_y>0$, height and downrange both grow as the square of time. Scrub tilt through θ* and watch a_y cross zero on the readout.",
           },
         ],
       },

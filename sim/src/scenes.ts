@@ -15,6 +15,9 @@ import { turnAt, turnBrief, turnDuration, turnRows, type TurnId, type TurnSample
 import {
   ascentTw,
   ascentWeight,
+  noseBreakEvenDeg,
+  noseClimbAccel,
+  noseSideAccel,
   vehicleAt,
   vehicleBrief,
   vehicleDuration,
@@ -317,7 +320,8 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   slosh: { min: 4, max: 35 },
   // Below weight (~19.6 N on 2 kg) the ascent stays on the pad; keep that case reachable.
   lift: { min: 10, max: 70 },
-  lean: { min: 0, max: 40 },
+  // Past θ* ≈ 66.9° vertical accel is ≤ 0 for T=50 N on 2 kg; keep that case on the slider.
+  lean: { min: 0, max: 75 },
   wind: { min: 0, max: 25 },
   trust: { min: 0, max: 6 },
   noise: { min: 0, max: 20 },
@@ -572,12 +576,12 @@ export const SCENES: {
     id: "vehNose",
     name: "Thrust along the nose",
     title: "Thrust along the nose",
-    lede: "Thrust points along the nose. Cosine of the tilt is the share that still fights weight, and sine is the share that carries the vehicle downrange.",
-    opener: "Height is the vertical part. Downrange is the sideways part. Drag the rocket to change the tilt.",
+    lede: "Thrust points along the nose. Cosine fights weight; sine goes downrange. At about 66.9° the climb accel hits zero, and the vehicle stays on the pad.",
+    opener: "Gold is thrust along the nose; pale arrows are the vertical and side shares. Drag the rocket to change the tilt.",
     live: ["height", "downrange"],
     askable: ["height", "downrange", "rate", "pitch"],
     chartTitle: "Height and downrange",
-    visual: "The rocket leans by the tilt. Thrust stays on the nose, so the path leaves the vertical.",
+    visual: "Thrust along the nose splits into climb and downrange. Past the break-even tilt the pad holds.",
   },
   {
     id: "vehWind",
@@ -1453,6 +1457,14 @@ export function readout(id: SceneId, t: number, knobs: Knobs): ReadoutLine[] {
       { name: "T/W", text: tw.toFixed(2) },
     ];
   }
+  if (id === "vehNose") {
+    return [
+      { name: "Time", text: `${t.toFixed(2)} s` },
+      { name: "Height", text: `${row.height.toFixed(1)} m`, column: "height" },
+      { name: "Downrange", text: `${row.downrange.toFixed(1)} m`, column: "downrange" },
+      { name: "a_y", text: `${noseClimbAccel(knobs.lean).toFixed(2)} m/s²` },
+    ];
+  }
   if (isTurnScene(id) || isVehicleScene(id) || isDescentScene(id)) {
     const live = sceneById(id).live;
     return [
@@ -1627,7 +1639,15 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
       ),
     ];
   }
-  if (id === "vehNose") return [knob("lean", "Tilt", knobs.lean, LIMITS.lean.min, LIMITS.lean.max, 1, `${knobs.lean.toFixed(0)}°`)];
+  if (id === "vehNose") {
+    const ay = noseClimbAccel(knobs.lean);
+    const breakEven = noseBreakEvenDeg();
+    const aside =
+      ay <= 0
+        ? `a_y ${ay.toFixed(2)} · pad · θ* ${breakEven.toFixed(1)}°`
+        : `a_y ${ay.toFixed(2)} · a_x ${noseSideAccel(knobs.lean).toFixed(2)} · θ* ${breakEven.toFixed(1)}°`;
+    return [knob("lean", "Tilt", knobs.lean, LIMITS.lean.min, LIMITS.lean.max, 1, `${knobs.lean.toFixed(0)}°`, aside)];
+  }
   if (id === "vehWind") return [knob("wind", "Wind", knobs.wind, LIMITS.wind.min, LIMITS.wind.max, 1, `${knobs.wind.toFixed(0)} m/s`)];
   if (id === "vehEstimate") {
     return [
