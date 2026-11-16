@@ -62,6 +62,8 @@ bool apply_config(const json& j, Config& config) {
         config.simulation.pointing_cone_deg  = j["simulation"].value("pointing_cone_deg", 90.0);
         config.simulation.glide_cone_deg     = j["simulation"].value("glide_cone_deg", 90.0);
         config.simulation.glide_pull         = j["simulation"].value("glide_pull", 0.5);
+        config.simulation.thrust_tau         = j["simulation"].value("thrust_tau", 0.0);
+        config.simulation.thrust_slew        = j["simulation"].value("thrust_slew", 0.0);
 
         config.simulation.use_rerun          = j["simulation"].value("use_rerun", false);
         config.simulation.rerun_spawn_viewer = j["simulation"].value("rerun_spawn_viewer", true);

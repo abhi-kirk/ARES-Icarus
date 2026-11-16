@@ -61,6 +61,12 @@ struct SimConfig {
     double glide_cone_deg = 90.0;
     double glide_pull = 0.5;
 
+    // Engine response. thrust_tau is the first-order lag time (s); 0 means
+    // the force jumps with the command. thrust_slew is an optional hard
+    // rate limit in N/s; 0 means no extra slew cap beyond the lag.
+    double thrust_tau = 0.0;
+    double thrust_slew = 0.0;
+
     bool use_rerun          = false;
     bool rerun_spawn_viewer = true;
     bool rerun_save_rrd     = true;

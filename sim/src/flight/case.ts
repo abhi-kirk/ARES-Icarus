@@ -36,6 +36,8 @@ export type FlightCase = {
     pointing_cone_deg: number;
     // Approach corridor from the pad. Degrees from vertical; 90 is open.
     glide_cone_deg: number;
+    // First-order engine lag time constant (s). 0 means instantaneous.
+    thrust_tau: number;
     use_rerun: boolean;
     rerun_spawn_viewer: boolean;
     rerun_save_rrd: boolean;
@@ -54,7 +56,8 @@ export type KnobKey =
   | "floor"
   | "ceiling"
   | "cone"
-  | "glide";
+  | "glide"
+  | "lag";
 
 export type KnobSpec = {
   key: KnobKey;
@@ -79,6 +82,7 @@ export const KNOBS: KnobSpec[] = [
   { key: "ceiling", label: "Ceiling", min: 12, max: 25, step: 0.5, unit: "kN" },
   { key: "cone", label: "Tilt", min: 5, max: 90, step: 1, unit: "°" },
   { key: "glide", label: "Glide", min: 5, max: 90, step: 1, unit: "°" },
+  { key: "lag", label: "Lag", min: 0, max: 1.5, step: 0.05, unit: "s" },
 ];
 
 export const NOMINAL_CASE: FlightCase = {
@@ -112,6 +116,7 @@ export const NOMINAL_CASE: FlightCase = {
     thrust_max: 25000.0,
     pointing_cone_deg: 90.0,
     glide_cone_deg: 90.0,
+    thrust_tau: 0.0,
     use_rerun: false,
     rerun_spawn_viewer: false,
     rerun_save_rrd: false,
@@ -142,6 +147,7 @@ export function readKnob(flight: FlightCase, key: KnobKey): number {
   if (key === "ceiling") return flight.simulation.thrust_max / 1000;
   if (key === "cone") return flight.simulation.pointing_cone_deg;
   if (key === "glide") return flight.simulation.glide_cone_deg;
+  if (key === "lag") return flight.simulation.thrust_tau;
   return flight.outer_pid_vertical_position.gains.kp;
 }
 
@@ -157,6 +163,7 @@ function writeKnob(flight: FlightCase, key: KnobKey, value: number): void {
   else if (key === "ceiling") flight.simulation.thrust_max = value * 1000;
   else if (key === "cone") flight.simulation.pointing_cone_deg = value;
   else if (key === "glide") flight.simulation.glide_cone_deg = value;
+  else if (key === "lag") flight.simulation.thrust_tau = value;
   else flight.outer_pid_vertical_position.gains.kp = value;
 }
 
@@ -186,6 +193,7 @@ export function caseFromRequest(body: unknown): FlightCase {
     const ceilingN = finite(sim.thrust_max);
     const cone = finite(sim.pointing_cone_deg);
     const glide = finite(sim.glide_cone_deg);
+    const lag = finite(sim.thrust_tau);
     if (height !== null) writeKnob(next, "height", height);
     if (offset !== null) writeKnob(next, "offset", offset);
     if (descent !== null) writeKnob(next, "descent", descent);
@@ -197,6 +205,7 @@ export function caseFromRequest(body: unknown): FlightCase {
     if (ceilingN !== null) writeKnob(next, "ceiling", ceilingN / 1000);
     if (cone !== null) writeKnob(next, "cone", cone);
     if (glide !== null) writeKnob(next, "glide", glide);
+    if (lag !== null) writeKnob(next, "lag", lag);
   }
   const gain = finite(raw.outer_pid_vertical_position?.gains?.kp);
   if (gain !== null) writeKnob(next, "gain", gain);

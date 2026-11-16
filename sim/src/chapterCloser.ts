@@ -48,7 +48,7 @@ export function chapterCloser(scene: SceneId): ChapterCloser | null {
 
   return {
     title: "Fly the landing",
-    body: `${RECAP.descent} The Simulator is the powered landing console: fuel, wind, gust, gain, thrust ring, tilt cone, and glide corridor sit on the same flight the engine streams.`,
+    body: `${RECAP.descent} The Simulator is the powered landing console: fuel, wind, gust, gain, thrust ring, tilt, glide, and engine lag sit on the same flight the engine streams.`,
     href: "/simulator",
     linkLabel: "Open the Simulator",
   };

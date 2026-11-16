@@ -16,6 +16,7 @@ const KNOBS = {
   ceiling: { min: 12000, max: 25000 },
   cone: { min: 5, max: 90 },
   glide: { min: 5, max: 90 },
+  lag: { min: 0, max: 1.5 },
 };
 
 const NOMINAL = {
@@ -50,6 +51,8 @@ const NOMINAL = {
     pointing_cone_deg: 90.0,
     glide_cone_deg: 90.0,
     glide_pull: 0.5,
+    thrust_tau: 0.0,
+    thrust_slew: 0.0,
     use_rerun: false,
     rerun_spawn_viewer: false,
     rerun_save_rrd: false,
@@ -82,6 +85,7 @@ export function caseFromRequest(body) {
     const ceiling = finite(sim.thrust_max);
     const cone = finite(sim.pointing_cone_deg);
     const glide = finite(sim.glide_cone_deg);
+    const lag = finite(sim.thrust_tau);
     if (height !== null) next.simulation.initial_z_pos = height;
     if (offset !== null) next.simulation.initial_x_pos = offset;
     if (descent !== null) next.simulation.initial_z_velocity = descent;
@@ -93,6 +97,7 @@ export function caseFromRequest(body) {
     if (ceiling !== null) next.simulation.thrust_max = ceiling;
     if (cone !== null) next.simulation.pointing_cone_deg = cone;
     if (glide !== null) next.simulation.glide_cone_deg = glide;
+    if (lag !== null) next.simulation.thrust_tau = lag;
   }
   const gain = finite(body?.outer_pid_vertical_position?.gains?.kp);
   if (gain !== null) next.outer_pid_vertical_position.gains.kp = gain;
@@ -111,6 +116,7 @@ export function caseFromRequest(body) {
   }
   next.simulation.pointing_cone_deg = clamp(next.simulation.pointing_cone_deg, KNOBS.cone.min, KNOBS.cone.max);
   next.simulation.glide_cone_deg = clamp(next.simulation.glide_cone_deg, KNOBS.glide.min, KNOBS.glide.max);
+  next.simulation.thrust_tau = clamp(next.simulation.thrust_tau, KNOBS.lag.min, KNOBS.lag.max);
   next.outer_pid_vertical_position.gains.kp = clamp(
     next.outer_pid_vertical_position.gains.kp,
     KNOBS.gain.min,
