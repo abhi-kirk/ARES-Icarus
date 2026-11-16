@@ -954,6 +954,8 @@ body {
 }
 
 .is-right { box-shadow: inset 1px 0 0 #2f7d4a; padding-left: 0.75rem; }
+.is-partial { box-shadow: inset 1px 0 0 #8a6a2f; padding-left: 0.75rem; }
+.is-partial .verdict-mark { color: #c4a35a; }
 .is-wrong .verdict-mark { color: var(--muted); }
 
 .drawer {

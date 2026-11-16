@@ -20,11 +20,21 @@ async function grade(key: string, level: NonNullable<ReturnType<typeof levelById
   if (!body.question || !body.answer?.trim()) return Response.json({ error: "Missing question or answer" }, { status: 400 });
   const user = `Scene context:\n${clip(renderLessonContext(body.context), 2200)}\n\nLevel: ${level.label}\nQuestion: ${clip(body.question, 500)}\nThe reader answered: ${clip(body.answer, 1000)}`;
   const raw = await grokText(key, GRADE_INSTRUCTIONS, user, "low");
-  const parsed = readJson(raw) as Partial<GradeResponse>;
-  if (typeof parsed.correct !== "boolean" || !parsed.note) {
+  const parsed = readJson(raw) as Partial<GradeResponse> & { correct?: boolean };
+  const verdict = gradeVerdict(parsed);
+  if (!verdict || !parsed.note) {
     return Response.json({ error: "Grok did not grade that answer" }, { status: 502 });
   }
-  return Response.json({ correct: parsed.correct, note: clip(parsed.note, 280) });
+  return Response.json({ verdict, note: clip(parsed.note, 280) });
+}
+
+function gradeVerdict(parsed: Partial<GradeResponse> & { correct?: boolean }): GradeResponse["verdict"] | null {
+  if (parsed.verdict === "right" || parsed.verdict === "partial" || parsed.verdict === "wrong") {
+    return parsed.verdict;
+  }
+  // Older model replies used a boolean before the three-way verdict.
+  if (typeof parsed.correct === "boolean") return parsed.correct ? "right" : "wrong";
+  return null;
 }
 
 function clip(text: string, max: number): string {

@@ -6,8 +6,20 @@ import { cachedPrompt, rememberPrompt } from "./cache";
 import { seedPrompt } from "./seeds";
 import { postJson } from "../tutor/client";
 import { LEVELS, type LevelId } from "../tutor/levels";
-import type { GradeResponse, QuestionResponse } from "../tutor/types";
+import type { GradeResponse, GradeVerdict, QuestionResponse } from "../tutor/types";
 import type { LessonContext } from "../lessonContext";
+
+function verdictClass(verdict: GradeVerdict): string {
+  if (verdict === "right") return "is-right";
+  if (verdict === "partial") return "is-partial";
+  return "is-wrong";
+}
+
+function verdictLabel(verdict: GradeVerdict): string {
+  if (verdict === "right") return "Right.";
+  if (verdict === "partial") return "Partly.";
+  return "Not quite.";
+}
 
 type Slot = {
   prompt: string;
@@ -165,14 +177,14 @@ export function QaCard({
             </form>
           ) : null}
           {current.grade ? (
-            <div className={current.grade.correct ? "verdict is-right" : "verdict is-wrong"}>
+            <div className={`verdict ${verdictClass(current.grade.verdict)}`}>
               <p className="verdict-mark">
-                {current.grade.correct ? (
+                {current.grade.verdict === "right" ? (
                   <span className="check" aria-hidden="true">
                     <Check size={15} strokeWidth={2.75} />
                   </span>
                 ) : null}
-                {current.grade.correct ? "Right." : "Not quite."}
+                {verdictLabel(current.grade.verdict)}
               </p>
               <p className="prose">
                 <MathText text={current.grade.note} />

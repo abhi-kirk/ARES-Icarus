@@ -20,7 +20,10 @@ export type TutorRequest = QuestionRequest | GradeRequest;
 
 export type QuestionResponse = { prompt: string };
 
-export type GradeResponse = { correct: boolean; note: string };
+/** Fully right, partly right with a named gap, or wrong. */
+export type GradeVerdict = "right" | "partial" | "wrong";
+
+export type GradeResponse = { verdict: GradeVerdict; note: string };
 
 export type ChatRequest = {
   text: string;

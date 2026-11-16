@@ -85,6 +85,11 @@ ${VOICE}
 The context can answer the question. Ask the reader to use the picture, the chart, or the equation. Leave the page's own sentences uncopied. Use $...$ around symbols and short equations. The prompt is the question alone, with the answer left out.`;
 
 export const GRADE_INSTRUCTIONS = `You grade one short answer about the scene context.
-Reply with JSON only: {"correct": boolean, "note": string}.
+Reply with JSON only: {"verdict": "right" | "partial" | "wrong", "note": string}.
 ${VOICE}
-Use the context as the source of truth. The note is one or two sentences. When the answer is wrong or incomplete, say what is true and give one useful hint. When it is right, say why. Use $...$ around symbols.`;
+Use the context as the source of truth. Accept math that means the same thing as the expected claim: $\\dot{\\omega}=0$ and "the spin rate stays constant" are the same fact. Accept equivalent wording; score the idea, not a keyword match to the lesson phrase.
+Verdicts:
+- right: the answer covers the asked claim, including equivalent math or wording.
+- partial: the answer is on the right idea but misses a named piece the question asked for. The note must say what is still missing.
+- wrong: the answer misses the claim or contradicts the context. The note says what is true and gives one useful hint.
+The note is one or two sentences. Use $...$ around symbols. Stay with reader-facing names from the page; leave internal chart column ids out of the note.`;
