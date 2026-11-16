@@ -984,23 +984,31 @@ $\Delta t$ is the step.`,
   vehGuide: {
     threads: [
       plain(
-        "A direction, then a body that follows",
-        ["Guidance names the pitch the nose should hold", "The body closes the gap over a short time"],
+        "Aim at a target from an estimate",
+        ["Guidance commands a pitch from filtered downrange and height", "The body follows that live command"],
         [
-          "[Guidance is the direction you want the nose to point](https://en.wikipedia.org/wiki/Guidance_system). For the first two seconds that direction is straight up. Then the command [tips over toward a kick angle](https://en.wikipedia.org/wiki/Gravity_turn), taking a second to finish the tip.",
-          "The body arrives over a short time. It turns toward the command, faster while the gap is larger, with a time scale of about seven tenths of a second. Thrust stays on the nose, so once the nose tips, part of the push goes downrange and the path bends with it. The kick knob is the angle the command settles on.",
+          "[Guidance is the direction you want the nose to point](https://en.wikipedia.org/wiki/Guidance_system), built here from a filtered estimate of where the vehicle is. The target is a point on the ground a chosen downrange away.",
+          "Each step, noisy measurements of downrange and height are filtered, then the command is the angle from that estimate toward the target. The body closes on the command with $\\tau = 0.7\\,\\mathrm{s}$. Thrust stays on the nose, so the path bends as the nose tips.",
         ],
       ),
       {
         id: "guide",
-        title: "A direction to hold",
-        focus: ["Guidance commands a pitch", "The body follows that command"],
+        title: "Closed-loop aim",
+        focus: ["The command comes from the estimate and the target", "The body lags the command", "Downrange and height show the flown path"],
         segments: [
-          { kind: "look", text: "The pale arrow is the direction guidance wants. The nose starts vertical, then tips toward that arrow." },
+          { kind: "look", text: "The chart is downrange and height. The pale arrow is the live pitch command. Drag Target to move the ground aim point." },
+          {
+            kind: "relation",
+            tex: String.raw`\theta_{\mathrm{cmd}} = \mathrm{atan2}(x_t - \hat{x},\, \hat{z})`,
+            stake: "The command is the pitch from vertical that points from the estimated position $(\\hat{x},\\hat{z})$ toward the ground target $x_t$. The estimate is a fixed-gain filter on noisy measurements, the same idea as the previous scene.",
+            gloss: String.raw`$x_t$ is the target downrange.
+$\hat{x}$ is the estimated downrange.
+$\hat{z}$ is the estimated height.`,
+          },
           {
             kind: "relation",
             tex: String.raw`\dot\theta = (\theta_{\mathrm{cmd}} - \theta)/\tau`,
-            stake: "The rate of pitch is the miss divided by $\\tau$. A larger miss turns the nose faster. $\\tau$ is $0.7\\,\\mathrm{s}$, so a miss that stayed constant would take about that long to close. The command itself is zero until 2 s, then slews to the kick angle over the next second.",
+            stake: "The rate of pitch is the miss divided by $\\tau = 0.7\\,\\mathrm{s}$. A larger miss turns the nose faster. The command itself moves every step as the estimate and geometry change.",
             gloss: String.raw`$\theta$ is the nose pitch.
 $\theta_{\mathrm{cmd}}$ is the command.
 $\tau$ is the follow time.`,
@@ -1008,11 +1016,11 @@ $\tau$ is the follow time.`,
           {
             kind: "contrast",
             tex: String.raw`a_x = (T/m)\sin\theta`,
-            stake: "Thrust stays on the nose, so the sideways acceleration is the thrust per mass times the sine of the pitch the body has actually reached. Downrange grows after the nose tips, on the body's angle, which lags the command.",
+            stake: "Thrust stays on the nose, so the sideways acceleration uses the body's pitch, which lags the command. A farther target asks for a larger tip and builds more downrange.",
           },
           {
             kind: "trace",
-            text: "The aim trace steps into the kickover at 2 s. The pitch trace follows it and meets it. A larger kick lifts both, and the downrange bend gets deeper because the sine of a larger pitch is larger.",
+            text: "A farther target asks for a larger tip early, so the path builds more downrange by the end. The pitch follows the live aim as the estimate updates; there is no scripted step at two seconds.",
           },
         ],
       },

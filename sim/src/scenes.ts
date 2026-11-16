@@ -200,7 +200,7 @@ export const KNOBS: Knobs = {
   lean: 15,
   wind: 8,
   trust: 2,
-  kick: 18,
+  kick: 90,
   hold: 6,
   care: 1,
   spend: 1,
@@ -287,7 +287,8 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   wind: { min: 0, max: 25 },
   trust: { min: 0, max: 6 },
   noise: { min: 0, max: 20 },
-  kick: { min: 5, max: 35 },
+  // Target downrange for closed-loop guidance (meters).
+  kick: { min: 40, max: 160 },
   hold: { min: 2, max: 14 },
   care: { min: 0.05, max: 4 },
   spend: { min: 0.25, max: 4 },
@@ -563,12 +564,12 @@ export const SCENES: {
     id: "vehGuide",
     name: "Guidance",
     title: "Guidance",
-    lede: "Guidance names the direction the nose should point. The body turns toward that command, faster while the miss is larger, and the path bends once the nose has actually tipped.",
-    opener: "Aim is the commanded pitch. Pitch is where the nose is. Drag the rocket to change the kickover.",
-    live: ["aim", "pitch"],
-    askable: ["aim", "pitch", "height", "downrange"],
-    chartTitle: "Command and pitch",
-    visual: "The pale arrow is the command. The rocket's nose follows it.",
+    lede: "Closed-loop guidance aims the nose at a ground target from a filtered estimate of downrange and height. The body follows that command, and the path bends as the nose tips.",
+    opener: "Downrange and height are the flown path. Drag the rocket to change the target downrange.",
+    live: ["downrange", "height"],
+    askable: ["downrange", "height", "aim", "pitch", "estimate"],
+    chartTitle: "Downrange and height",
+    visual: "The pale arrow is the live pitch command toward the target. Estimate is the filtered downrange used for aiming.",
   },
   {
     id: "vehAuto",
@@ -1470,7 +1471,9 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
       knob("noise", "Noise", knobs.noise, LIMITS.noise.min, LIMITS.noise.max, 0.5, `${knobs.noise.toFixed(1)} m`, "sensor wave"),
     ];
   }
-  if (id === "vehGuide") return [knob("kick", "Kick", knobs.kick, LIMITS.kick.min, LIMITS.kick.max, 1, `${knobs.kick.toFixed(0)}°`)];
+  if (id === "vehGuide") {
+    return [knob("kick", "Target", knobs.kick, LIMITS.kick.min, LIMITS.kick.max, 5, `${knobs.kick.toFixed(0)} m`, "ground target x")];
+  }
   if (id === "vehAuto") return [knob("hold", "Gain", knobs.hold, LIMITS.hold.min, LIMITS.hold.max, 0.5, knobs.hold.toFixed(1))];
   if (id === "desCost") {
     const gains = costGains(knobs.care, knobs.spend);
@@ -1607,7 +1610,7 @@ export function chartMarkers(id: SceneId, knobs: Knobs): ChartMarker[] {
     const over = rows.find((row) => row.command > 55 + 0.05);
     return over ? [{ t: over.t, label: "above ceiling" }] : [];
   }
-  if (id === "vehGuide") return [{ t: 2, label: "kickover" }];
+  if (id === "vehGuide") return [{ t: 0, label: "target" }];
   if (id === "vehAuto") return [{ t: 0.4, label: "pitch command" }];
   if (id === "desReplan") {
     const markers: ChartMarker[] = [{ t: 2.2, label: "gust" }];

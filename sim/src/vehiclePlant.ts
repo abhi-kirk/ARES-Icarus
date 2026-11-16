@@ -49,9 +49,12 @@ export function vehicleRows(id: VehicleId, knobs: Knobs): VehicleSample[] {
   let height = 0;
   let downrange = 0;
   let sideSpeed = 0;
+  let aim = 0;
+  let xHat = 0;
+  let zHat = 0;
 
   for (let t = 0; t <= end + 1e-9; t += STEP) {
-    rows.push(sample(id, t, knobs, { estimate, pitch, height, downrange, speed }));
+    rows.push(sample(id, t, knobs, { estimate, pitch, height, downrange, speed, aim: id === "vehGuide" ? aim : 0 }));
     if (id === "vehEstimate") {
       const accel = CLIMB_THRUST / MASS - G;
       const truth = 0.5 * accel * t * t;
@@ -64,9 +67,16 @@ export function vehicleRows(id: VehicleId, knobs: Knobs): VehicleSample[] {
       rateHat = ratePred + knobs.trust * gap * STEP * 0.5;
     }
     if (id === "vehGuide") {
-      const command = kickCommand(t, knobs.kick);
-      const follow = (command - pitch) / 0.7;
-      pitch += follow * STEP;
+      // Closed-loop guidance: aim the nose at a ground target using a filtered state.
+      const xMeas = downrange + 0.4 * Math.sin(2.4 * t);
+      const zMeas = height + 0.4 * Math.cos(1.7 * t);
+      xHat += 1.2 * (xMeas - xHat) * STEP;
+      zHat += 1.2 * (zMeas - zHat) * STEP;
+      const targetX = knobs.kick;
+      // Pitch from vertical toward the target, clipped so the climb still has lift.
+      const raw = Math.atan2(targetX - xHat, Math.max(20, zHat)) * DEG;
+      aim = Math.max(-5, Math.min(40, raw));
+      pitch += ((aim - pitch) / 0.7) * STEP;
       const tilt = pitch / DEG;
       const specific = NOSE_THRUST / MASS;
       const up = specific * Math.cos(tilt) - G;
@@ -75,6 +85,11 @@ export function vehicleRows(id: VehicleId, knobs: Knobs): VehicleSample[] {
       sideSpeed += side * STEP;
       height += speed * STEP;
       downrange += sideSpeed * STEP;
+      if (height < 0) {
+        height = 0;
+        speed = Math.max(speed, 0);
+      }
+      estimate = xHat;
     }
     if (id === "vehAuto") {
       const mass = burnMass(t);
@@ -121,7 +136,7 @@ export function vehicleBrief(id: VehicleId, knobs: Knobs): string {
     return `Sensors and an estimate. Fixed-gain filter (not Kalman). Truth is the ${CLIMB_THRUST} N climb. The sensor adds a ${knobs.noise.toFixed(1)} m wave. Gain ${knobs.trust.toFixed(1)}. Chart live series are errors from truth. Allowed chart columns: height, estimate, measured, rate.`;
   }
   if (id === "vehGuide") {
-    return `Guidance. The nose stays vertical for 2 s, then the command pitches to ${knobs.kick.toFixed(0)} degrees. The body follows that command. Allowed chart columns: aim, pitch, height, downrange.`;
+    return `Guidance. Closed-loop: a filtered estimate of downrange and height aims the nose at a ground target ${knobs.kick.toFixed(0)} m downrange. The body follows that command with τ = 0.7 s. Allowed chart columns: downrange, height, aim, pitch, estimate.`;
   }
   return `Autopilot. The command is 12 degrees after 0.4 s. Gain is ${knobs.hold.toFixed(1)}. Mass falls from 3 kg to 1.4 kg, and the air moment grows with speed squared. Allowed chart columns: pitch, mass, aim, height.`;
 }
@@ -132,6 +147,7 @@ type Pose = {
   height: number;
   downrange: number;
   speed: number;
+  aim: number;
 };
 
 function sample(id: VehicleId, t: number, knobs: Knobs, pose: Pose): VehicleSample {
@@ -185,11 +201,12 @@ function sample(id: VehicleId, t: number, knobs: Knobs, pose: Pose): VehicleSamp
   }
 
   if (id === "vehGuide") {
-    row.aim = kickCommand(t, knobs.kick);
+    row.aim = pose.aim;
     row.pitch = pose.pitch;
     row.height = pose.height;
     row.downrange = pose.downrange;
     row.rate = pose.speed;
+    row.estimate = pose.estimate;
     row.tilt = -pose.pitch / DEG;
     row.drift = pose.downrange;
     row.flame = 0.8;
@@ -204,12 +221,6 @@ function sample(id: VehicleId, t: number, knobs: Knobs, pose: Pose): VehicleSamp
   row.tilt = -pose.pitch / DEG;
   row.flame = 0.7;
   return row;
-}
-
-function kickCommand(t: number, kick: number): number {
-  if (t < 2) return 0;
-  const slew = Math.min(1, (t - 2) / 1);
-  return kick * slew;
 }
 
 function burnMass(t: number): number {

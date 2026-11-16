@@ -95,7 +95,7 @@ function dragValue(dy: number, scene: SceneId): void {
   if (scene === "vehNose") setKnob("lean", clampKnob(scene, knobs.lean + dy * 0.1));
   if (scene === "vehWind") setKnob("wind", clampKnob(scene, knobs.wind + dy * 0.06));
   if (scene === "vehEstimate") setKnob("trust", clampKnob(scene, knobs.trust + dy * 0.012));
-  if (scene === "vehGuide") setKnob("kick", clampKnob(scene, knobs.kick + dy * 0.08));
+  if (scene === "vehGuide") setKnob("kick", clampKnob(scene, knobs.kick + dy * 0.4));
   if (scene === "vehAuto") setKnob("hold", clampKnob(scene, knobs.hold + dy * 0.03));
   if (scene === "desCost") setKnob("care", clampKnob(scene, knobs.care + dy * 0.012));
   if (scene === "desPath") setKnob("cone", clampKnob(scene, knobs.cone + dy * 0.08));

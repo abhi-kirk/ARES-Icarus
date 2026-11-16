@@ -237,11 +237,11 @@
   "vehGuide": {
     "guide": {
       "beginner": "What does $\\theta_{\\mathrm{cmd}}$ name?",
-      "intermediate": "The nose closes on the command at a rate set by the gap. What does the pitch trace do after the command steps at two seconds?",
-      "advanced": "If you increase the kick angle, where do the aim and the pitch sit at the end of the run?"
+      "intermediate": "The pitch command is rebuilt each step from the estimated position and the ground target. What does the pitch of the body do relative to that live command?",
+      "advanced": "If you raise the target downrange, what happens to the pitch command early in the flight, and what happens to the downrange at the end?"
     },
     "eli5": {
-      "beginner": "Guidance names a direction for the nose. What does the body do after that command changes, and why does the path bend?"
+      "beginner": "Guidance aims the nose at a point on the ground. What does the body do after that aim changes, and why does the path bend?"
     }
   },
   "vehAuto": {
