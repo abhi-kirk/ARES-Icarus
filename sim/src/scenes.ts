@@ -1,6 +1,15 @@
 // Rocket Dynamics. One clock per scene. Each scene has a claim, a knob you can drag, and chart columns.
 
-import { loopRowAt, loopRowsFor, LOOP_LIMIT, LOOP_M, LOOP_SAMPLE_DELAY_MARK, LOOP_T0 } from "./loopPlant";
+import {
+  loopRowAt,
+  loopRowsFor,
+  LOOP_HOVER_KD,
+  LOOP_HOVER_KP,
+  LOOP_LIMIT,
+  LOOP_M,
+  LOOP_SAMPLE_DELAY_MARK,
+  LOOP_T0,
+} from "./loopPlant";
 import { turnAt, turnBrief, turnDuration, turnRows, type TurnId, type TurnSample } from "./turnPlant";
 import { vehicleAt, vehicleBrief, vehicleDuration, vehicleRows, type VehicleId, type VehicleSample } from "./vehiclePlant";
 import { costGains, descentAt, descentBrief, descentDuration, descentRows, type DescentId, type DescentSample } from "./descentPlant";
@@ -164,7 +173,7 @@ export const KNOBS: Knobs = {
   ki: 8,
   kd: 15,
   perturb: 0.35,
-  unstable: 4,
+  unstable: 1.5,
   coupling: 0.35,
   yaw: 90,
   pitch: 90,
@@ -245,7 +254,8 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   ki: { min: 2, max: 16 },
   kd: { min: 4, max: 28 },
   perturb: { min: 0.08, max: 0.8 },
-  unstable: { min: 2, max: 7 },
+  // μ in the lesson ẍ = μ² x. Keep μ² under Kp/m so closed loop can land.
+  unstable: { min: 0.8, max: 2.5 },
   coupling: { min: 0.1, max: 0.7 },
   yaw: { min: 30, max: 180 },
   pitch: { min: 30, max: 90 },
@@ -1151,30 +1161,47 @@ export function plotOf(id: SceneId, columns: Column[], knobs: Knobs, until: numb
   // Height and rate on the spring share one scale. Splitting them by unit
   // would park the rate on an axis that is not drawn.
   const shareScale = id === "state";
-  return columns.map((column) => ({
-    name: COLUMNS[column].label,
-    column,
-    gold:
-      column === "rate" ||
-      column === "stepped" ||
-      column === "accel" ||
-      column === "actual" ||
-      column === "height" ||
-      column === "pHeight" ||
-      column === "nonlinear" ||
-      column === "openHeight" ||
-      column === "measured" ||
-      column === "discrete",
-    points: seriesPoints(id, column, knobs, until),
-    axis: shareScale || COLUMNS[column].unit === primaryUnit ? 0 : 1,
-  }));
+  return columns.map((column) => {
+    // Unstable hover: open loop runs to huge heights. Put it on its own log axis
+    // so the closed-loop landing stays readable.
+    let axis = shareScale || COLUMNS[column].unit === primaryUnit ? 0 : 1;
+    if (id === "loopHover" && column === "openHeight") axis = 1;
+    if (id === "loopHover" && column === "closedHeight") axis = 0;
+    return {
+      name: COLUMNS[column].label,
+      column,
+      gold:
+        column === "rate" ||
+        column === "stepped" ||
+        column === "accel" ||
+        column === "actual" ||
+        column === "height" ||
+        column === "pHeight" ||
+        column === "nonlinear" ||
+        column === "openHeight" ||
+        column === "measured" ||
+        column === "discrete",
+      points: seriesPoints(id, column, knobs, until),
+      axis,
+    };
+  });
 }
 
-export function axisOf(id: SceneId, columns: Column[], knobs: Knobs): { y: [number, number]; y2?: [number, number] } {
+export function axisOf(id: SceneId, columns: Column[], knobs: Knobs): { y: [number, number]; y2?: [number, number]; y2Log?: boolean } {
   if (id === "state") return { y: [-1.25, 1.25] };
   const full = plotOf(id, columns, knobs, durationOf(id));
   const primary = full.filter((series) => series.axis === 0).flatMap((series) => series.points.map((point) => point[1]));
   const secondary = full.filter((series) => series.axis === 1).flatMap((series) => series.points.map((point) => point[1]));
+  if (id === "loopHover" && secondary.length) {
+    const openValues = secondary.filter((value) => value > 0);
+    const openHi = openValues.length ? Math.max(...openValues) : 1;
+    const openLo = openValues.length ? Math.min(...openValues) : 0.01;
+    return {
+      y: pad(primary, true),
+      y2: [Math.max(1e-3, openLo * 0.8), Math.max(openHi * 1.2, 1)],
+      y2Log: true,
+    };
+  }
   return {
     y: pad(primary, true),
     y2: secondary.length ? pad(secondary, false) : undefined,
@@ -1325,7 +1352,20 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
     return [knob("perturb", "Offset", knobs.perturb, LIMITS.perturb.min, LIMITS.perturb.max, 0.02, `${knobs.perturb.toFixed(2)} m`)];
   }
   if (id === "loopHover") {
-    return [knob("unstable", "Open μ", knobs.unstable, LIMITS.unstable.min, LIMITS.unstable.max, 0.1, `${knobs.unstable.toFixed(1)}`)];
+    const mu2 = knobs.unstable * knobs.unstable;
+    const margin = LOOP_HOVER_KP / LOOP_M - mu2;
+    return [
+      knob(
+        "unstable",
+        "Open μ",
+        knobs.unstable,
+        LIMITS.unstable.min,
+        LIMITS.unstable.max,
+        0.1,
+        `${knobs.unstable.toFixed(1)}`,
+        `μ² ${mu2.toFixed(2)} · Kp/m ${((LOOP_HOVER_KP / LOOP_M).toFixed(2))} · margin ${margin.toFixed(2)}`,
+      ),
+    ];
   }
   if (id === "loopMode") {
     return [knob("coupling", "Coupling", knobs.coupling, LIMITS.coupling.min, LIMITS.coupling.max, 0.02, `${knobs.coupling.toFixed(2)}`)];
@@ -1460,7 +1500,8 @@ export function chatBrief(id: SceneId, knobs: Knobs): string {
     return `${scene.title}. Start offset ${knobs.perturb.toFixed(2)} m with closed-loop hover law. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "loopHover") {
-    return `${scene.title}. Open-loop instability gain ${knobs.unstable.toFixed(1)} with closed-loop landing on the same model. Allowed chart columns: ${allowedList(id)}.`;
+    const mu2 = knobs.unstable * knobs.unstable;
+    return `${scene.title}. Open loop ẍ = μ² x with μ = ${knobs.unstable.toFixed(1)} (μ² = ${mu2.toFixed(2)}). Closed loop adds (Kp e − Kd ẋ)/m with Kp = ${LOOP_HOVER_KP}, Kd = ${LOOP_HOVER_KD}; needs Kp/m > μ² (${(LOOP_HOVER_KP / LOOP_M).toFixed(2)} > ${mu2.toFixed(2)}). Pad clamp at height 0. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "loopMode") {
     return `${scene.title}. Coupling ${knobs.coupling.toFixed(2)} from hidden mode into height. Allowed chart columns: ${allowedList(id)}.`;

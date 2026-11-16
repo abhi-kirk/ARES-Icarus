@@ -124,9 +124,10 @@ function option(
     },
   ];
   if (hasSecond && axis.y2) {
+    const logRight = Boolean(axis.y2Log);
     yAxis.push({
       id: "y2",
-      type: "value",
+      type: logRight ? "log" : "value",
       min: axis.y2[0],
       max: axis.y2[1],
       name: rightUnit,
@@ -137,6 +138,7 @@ function option(
       axisTick: { show: false },
       axisLabel,
       splitLine: { show: false },
+      ...(logRight ? { logBase: 10 } : {}),
     });
   }
 

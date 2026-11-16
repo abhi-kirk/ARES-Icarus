@@ -155,18 +155,26 @@ function simulateEquilibrium(perturb: number, end: number, step: number): LoopRo
   return rows;
 }
 
-function simulateHover(unstableGain: number, end: number, step: number): LoopRow[] {
+/** Closed-loop height gain on the unstable hover plant. Need Kp/m > μ². */
+export const LOOP_HOVER_KP = 22;
+/** Rate gain so the landing settles instead of ringing through the pad. */
+export const LOOP_HOVER_KD = 15;
+
+function simulateHover(mu: number, end: number, step: number): LoopRow[] {
   const rows: LoopRow[] = [];
   let hOpen = 0.05;
   let vOpen = 0;
   let hClosed = 0.05;
   let vClosed = 0;
-  const kp = 22;
+  // Match the lesson: ẍ = μ² x. Code used to multiply by μ alone, so text and plant disagreed.
+  const mu2 = mu * mu;
+  const kp = LOOP_HOVER_KP;
+  const kd = LOOP_HOVER_KD;
   for (let t = 0; t <= end + 1e-9; t += step) {
     const ref = t < 6 ? 0.8 : 0;
-    const openAccel = unstableGain * hOpen;
+    const openAccel = mu2 * hOpen;
     const error = ref - hClosed;
-    const closedAccel = unstableGain * hClosed + (kp * error) / LOOP_M;
+    const closedAccel = mu2 * hClosed + (kp * error - kd * vClosed) / LOOP_M;
 
     const row = blank(t);
     row.reference = ref;
@@ -178,8 +186,17 @@ function simulateHover(unstableGain: number, end: number, step: number): LoopRow
 
     vOpen += openAccel * step;
     hOpen += vOpen * step;
+    // Soft cap so open-loop runaway stays finite for the log chart.
+    if (hOpen > 1e6) {
+      hOpen = 1e6;
+      vOpen = Math.max(vOpen, 0);
+    }
     vClosed += closedAccel * step;
     hClosed += vClosed * step;
+    if (hClosed < 0) {
+      hClosed = 0;
+      vClosed = Math.max(vClosed, 0);
+    }
   }
   return rows;
 }

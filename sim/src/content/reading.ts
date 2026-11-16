@@ -465,8 +465,8 @@ $\Delta F$ is the extra thrust knob.`,
           },
           {
             kind: "contrast",
-            tex: String.raw`\ddot x = \mu^2 x + \frac{K_p}{m}(x_{\mathrm{ref}} - x)`,
-            stake: "Feedback adds a term that watches the gap to the reference. The reference can move toward the pad while the loop keeps pulling the vehicle back.",
+            tex: String.raw`\ddot x = \mu^2 x + \frac{K_p}{m}(x_{\mathrm{ref}} - x) - \frac{K_d}{m}\dot x`,
+            stake: "Feedback adds a term that watches the gap to the reference, and a rate term that damps the landing. The loop can hold only while Kp/m is larger than μ².",
           },
           {
             kind: "trace",
