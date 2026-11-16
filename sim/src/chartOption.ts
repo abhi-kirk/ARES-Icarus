@@ -62,6 +62,8 @@ function seriesLook(columns: Column[], index: number): { color: string; width: n
 function formatAxisValue(value: number): string {
   const abs = Math.abs(value);
   if (abs < 5e-4) return "0";
+  // Long digit strings on runaway axes; keep ticks short.
+  if (abs >= 1e5) return value.toExponential(1).replace(/e\+?/, "e");
   if (abs >= 100) return value.toFixed(0);
   if (abs >= 10) return value.toFixed(1);
   if (abs >= 1) return value.toFixed(2);
@@ -135,6 +137,8 @@ function option(
       type: "value",
       min: axis.y[0],
       max: axis.y[1],
+      // Keep left/right zero lines aligned when both are linear.
+      alignTicks: true,
       name: leftUnit,
       nameLocation: "middle",
       nameGap: 40,
@@ -152,6 +156,7 @@ function option(
       type: logRight ? "log" : "value",
       min: axis.y2[0],
       max: axis.y2[1],
+      alignTicks: !logRight,
       name: rightUnit,
       nameLocation: "middle",
       nameGap: 40,
@@ -295,15 +300,16 @@ function option(
                     fontSize: 10,
                   },
                 },
-                ...markers.map((marker) => ({
+                ...markers.map((marker, markerIndex) => ({
                   xAxis: marker.t,
                   name: marker.label,
                   lineStyle: { color: GRID, type: "dashed" as const, width: 1 },
                   label: {
+                    // Sit above the plot so labels do not collide with x-axis ticks.
                     show: marker.label !== "sample",
                     formatter: marker.label,
-                    position: "start" as const,
-                    distance: 8,
+                    position: "insideEndTop" as const,
+                    distance: 4 + (markerIndex % 3) * 12,
                     ...labelFont,
                   },
                 })),
