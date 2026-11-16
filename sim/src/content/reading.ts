@@ -1180,11 +1180,11 @@ $T_{\max}$ is the ceiling.`,
           {
             kind: "relation",
             tex: String.raw`\|T\| = \sigma`,
-            stake: "The landing you see puts the thrust on the slack. A command inside the hole is raised to the floor, and then the slack is that floor. A command between the floor and the ceiling is flown as itself, and the slack equals it.",
+            stake: "The landing you see puts the thrust on the slack. A command inside the hole is raised to the floor, and then the slack is that floor. A command between the floor and the ceiling is flown as itself, and the slack equals it. For minimum fuel the optimum never wastes slack above |T|, so the relaxation is exact: the ring and the filled disc share the same cheapest path.",
           },
           {
             kind: "trace",
-            text: "With the floor at 8 N the thrust matches the command and the vehicle meets the pad. The smallest command on that run is about 12 N. A floor of 20 N rides above that command, and the height no longer arrives with the speed gone.",
+            text: "With the floor near 12 N the thrust matches the command and the vehicle meets the pad. Raise the floor to 20 N and thrust rides the rim while command can climb past the 55 N ceiling. The height and rate readouts show whether that still lands.",
           },
         ],
       },

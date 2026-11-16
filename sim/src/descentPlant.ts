@@ -75,7 +75,7 @@ export function descentBrief(id: DescentId, knobs: Knobs): string {
     return `A path under constraints. Start at downrange ${PATH_X0} m, height ${PATH_Z0} m (inside an 8° cone). Glide cone ${knobs.cone.toFixed(0)} degrees from vertical. Thrust stays between ${PATH_T_FLOOR} N and ${TMAX} N. reference is the cone wall |x| ≤ z tan θ.`;
   }
   if (id === "desLoss") {
-    return `Lossless convexification. Thrust floor ${knobs.floor.toFixed(0)} N, ceiling ${TMAX} N. The flown magnitude is lifted onto the floor when the command falls inside the hole.`;
+    return `Lossless convexification. Thrust floor ${knobs.floor.toFixed(0)} N, ceiling ${TMAX} N. σ is stored in reference and equals |T| (minimum-fuel puts the thrust on the slack). Command is the uncapped ask.`;
   }
   if (id === "desScvx") {
     return `Successive convexification. Pass ${Math.round(knobs.pass)} of 5. Each pass moves the thrust 0.65 of the way toward the guidance solution and flies that profile.`;
@@ -169,10 +169,11 @@ function lossRows(floor: number): DescentSample[] {
     const tx = MASS * ax;
     const tz = MASS * (az + G);
     const requested = Math.hypot(tx, tz);
-    const command = clampThrust(tx, tz, floor);
-    rows.push(sample(t, z, vz, x, command.mag, requested, 0, command.tx, command.tz, command.mag));
-    vx += (command.tx / MASS) * STEP;
-    vz += (command.tz / MASS - G) * STEP;
+    const flown = clampThrust(tx, tz, floor);
+    // reference holds σ = |T| (lossless: thrust sits on the slack)
+    rows.push(sample(t, z, vz, x, flown.mag, requested, flown.mag, flown.tx, flown.tz, flown.mag));
+    vx += (flown.tx / MASS) * STEP;
+    vz += (flown.tz / MASS - G) * STEP;
     x += vx * STEP;
     z += vz * STEP;
     const held = holdPad(z, vz);

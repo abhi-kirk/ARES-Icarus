@@ -194,7 +194,7 @@ export const KNOBS: Knobs = {
   care: 1,
   spend: 1,
   cone: 15,
-  floor: 8,
+  floor: 12,
   pass: 3,
   region: 3,
   gust: 6,
@@ -279,7 +279,8 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   spend: { min: 0.25, max: 4 },
   // Above ~35° the wall is wider than the path needs, so further opening does nothing.
   cone: { min: 8, max: 35 },
-  floor: { min: 0, max: 24 },
+  // Below ~12 N the guidance command already sits above the floor, so those settings match.
+  floor: { min: 12, max: 28 },
   pass: { min: 1, max: 5 },
   region: { min: 1, max: 8 },
   gust: { min: 0, max: 14 },
@@ -595,9 +596,9 @@ export const SCENES: {
     lede: "Allowed thrust is a ring, with a hole of pushes that are too small. The landing charges for a slack at least as large as the inner rim, and the thrust you see stays on that charge.",
     opener: "Thrust is the push that flies. Command is the push the guidance asked for before the floor. Drag the rocket to raise the floor.",
     live: ["thrust", "command"],
-    askable: ["thrust", "command", "height", "downrange"],
+    askable: ["thrust", "command", "reference", "height", "rate", "downrange"],
     chartTitle: "Thrust and command",
-    visual: "The rocket descends. When the floor crosses the command, the early push grows.",
+    visual: "Thrust is flown (|T| = σ). Command is the uncapped ask. The ceiling is 55 N.",
   },
   {
     id: "desScvx",
@@ -1292,6 +1293,15 @@ export function readout(id: SceneId, t: number, knobs: Knobs): ReadoutLine[] {
       { name: "Rate", text: `${row.rate.toFixed(1)} m/s`, column: "rate" },
     ];
   }
+  if (id === "desLoss") {
+    return [
+      { name: "Time", text: `${t.toFixed(2)} s` },
+      { name: "Height", text: `${row.height.toFixed(1)} m`, column: "height" },
+      { name: "Rate", text: `${row.rate.toFixed(1)} m/s`, column: "rate" },
+      { name: "Thrust", text: `${row.thrust.toFixed(0)} N`, column: "thrust" },
+      { name: "Command", text: `${row.command.toFixed(0)} N`, column: "command" },
+    ];
+  }
   if (isTurnScene(id) || isVehicleScene(id) || isDescentScene(id)) {
     const live = sceneById(id).live;
     return [
@@ -1463,7 +1473,20 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
       ),
     ];
   }
-  if (id === "desLoss") return [knob("floor", "Floor", knobs.floor, LIMITS.floor.min, LIMITS.floor.max, 1, `${knobs.floor.toFixed(0)} N`)];
+  if (id === "desLoss") {
+    return [
+      knob(
+        "floor",
+        "Floor",
+        knobs.floor,
+        LIMITS.floor.min,
+        LIMITS.floor.max,
+        1,
+        `${knobs.floor.toFixed(0)} N`,
+        `σ = |T| · ceiling ${55} N`,
+      ),
+    ];
+  }
   if (id === "desScvx") return [knob("pass", "Pass", knobs.pass, LIMITS.pass.min, LIMITS.pass.max, 1, `${Math.round(knobs.pass)}`)];
   if (id === "desGusto") return [knob("region", "Trust", knobs.region, LIMITS.region.min, LIMITS.region.max, 0.5, `${knobs.region.toFixed(1)} N`)];
   if (id === "desReplan") return [knob("gust", "Gust", knobs.gust, LIMITS.gust.min, LIMITS.gust.max, 0.5, `${knobs.gust.toFixed(1)} m/s`)];
@@ -1525,6 +1548,11 @@ export function chartMarkers(id: SceneId, knobs: Knobs): ChartMarker[] {
     const rows = rowsFor(id, knobs);
     const outside = rows.find((row) => Math.abs(row.downrange) > row.reference + 0.05);
     return outside ? [{ t: outside.t, label: "outside cone" }] : [];
+  }
+  if (id === "desLoss") {
+    const rows = rowsFor(id, knobs);
+    const over = rows.find((row) => row.command > 55 + 0.05);
+    return over ? [{ t: over.t, label: "above ceiling" }] : [];
   }
   if (id === "vehGuide") return [{ t: 2, label: "kickover" }];
   if (id === "vehAuto") return [{ t: 0.4, label: "pitch command" }];
