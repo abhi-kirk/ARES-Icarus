@@ -36,7 +36,7 @@ export function vehicleDuration(id: VehicleId): number {
 let cache: { key: string; rows: VehicleSample[] } | null = null;
 
 export function vehicleRows(id: VehicleId, knobs: Knobs): VehicleSample[] {
-  const key = `${id}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}`;
+  const key = `${id}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.noise}`;
   if (cache && cache.key === key) return cache.rows;
 
   const end = vehicleDuration(id);
@@ -55,10 +55,11 @@ export function vehicleRows(id: VehicleId, knobs: Knobs): VehicleSample[] {
     if (id === "vehEstimate") {
       const accel = CLIMB_THRUST / MASS - G;
       const truth = 0.5 * accel * t * t;
-      const measured = truth + 4 * Math.sin(2.2 * t);
+      const measured = truth + knobs.noise * Math.sin(2.2 * t);
       const ratePred = rateHat + accel * STEP;
       const pred = estimate + rateHat * STEP + 0.5 * accel * STEP * STEP;
       const gap = measured - pred;
+      // Fixed-gain complementary update (not a Kalman gain).
       estimate = pred + knobs.trust * gap * STEP;
       rateHat = ratePred + knobs.trust * gap * STEP * 0.5;
     }
@@ -117,7 +118,7 @@ export function vehicleBrief(id: VehicleId, knobs: Knobs): string {
     return `Wind. The climb uses ${CLIMB_THRUST} N on ${MASS} kg. Wind is ${knobs.wind.toFixed(0)} m/s across the path. Attack is the angle between the nose and the air. Allowed chart columns: rate, attack, height.`;
   }
   if (id === "vehEstimate") {
-    return `Sensors and an estimate. Truth is the ${CLIMB_THRUST} N climb. The sensor adds a 4 m wave. The estimate predicts with the thrust model, then corrects with gain ${knobs.trust.toFixed(1)}. Allowed chart columns: height, estimate, measured, rate.`;
+    return `Sensors and an estimate. Fixed-gain filter (not Kalman). Truth is the ${CLIMB_THRUST} N climb. The sensor adds a ${knobs.noise.toFixed(1)} m wave. Gain ${knobs.trust.toFixed(1)}. Chart live series are errors from truth. Allowed chart columns: height, estimate, measured, rate.`;
   }
   if (id === "vehGuide") {
     return `Guidance. The nose stays vertical for 2 s, then the command pitches to ${knobs.kick.toFixed(0)} degrees. The body follows that command. Allowed chart columns: aim, pitch, height, downrange.`;
@@ -177,7 +178,7 @@ function sample(id: VehicleId, t: number, knobs: Knobs, pose: Pose): VehicleSamp
     const accel = CLIMB_THRUST / MASS - G;
     row.rate = accel * t;
     row.height = 0.5 * accel * t * t;
-    row.measured = row.height + 4 * Math.sin(2.2 * t);
+    row.measured = row.height + knobs.noise * Math.sin(2.2 * t);
     row.estimate = pose.estimate;
     row.flame = 0.75;
     return row;

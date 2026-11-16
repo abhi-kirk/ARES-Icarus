@@ -939,24 +939,25 @@ $\alpha$ is the angle of attack.`,
     threads: [
       plain(
         "Predict, then pull toward the sensor",
-        ["The prediction uses the thrust", "The correction moves the estimate toward the sensor"],
+        ["This is a fixed-gain filter, not a Kalman filter", "The chart shows errors from truth so the wave is visible"],
         [
-          "A sensor reports a height, and the report carries a wave, so the number jitters around the true climb. You can also predict the next height from the thrust, using the speed you already believe and the acceleration that thrust should produce.",
-          "The estimate starts from that prediction. [It then moves partway toward the sensor, and the gain is how hard that pull is](https://en.wikipedia.org/wiki/State_observer). A gentle pull stays near the smooth climb. A hard pull follows the wave. The gain knob is that pull. The pale mark beside the rocket is the estimate, and the rocket is the true height.",
+          "A sensor reports a height with a wave on it. You can also predict the next height from the thrust, using the speed you already believe and the acceleration that thrust should produce.",
+          "The estimate starts from that prediction, then moves partway toward the sensor. [The gain is how hard that pull is: a fixed number you set, not a Kalman gain from variances](https://en.wikipedia.org/wiki/State_observer). High gain follows the wave. Low gain (or zero) trusts the model. The pale mark is the estimate; the rocket is truth.",
         ],
       ),
       {
         id: "estimate",
         title: "Predict, then correct",
-        focus: ["The predictor uses the thrust model", "The corrector pulls toward the sensor"],
+        focus: ["The predictor uses the thrust model", "The corrector pulls toward the sensor", "Noise sets the wave amplitude"],
         segments: [
-          { kind: "look", text: "The rocket is the true height. The pale mark is the estimate, and it rides beside the body. Truth is the 45 N climb. The sensor is that height plus a 4 m wave." },
+          { kind: "look", text: "The chart plots sensor − truth and estimate − truth, so the wave is visible. Raise Noise to grow the wave. Raise Gain and the estimate error starts to track the sensor error." },
           {
             kind: "relation",
-            tex: String.raw`z = h + 4\sin(2.2\,t)`,
-            stake: "The sensor reports the true height $h$ with a wave on it. The wave is what a hard correction will start to follow.",
+            tex: String.raw`z = h + A\sin(2.2\,t)`,
+            stake: "The sensor reports the true height $h$ with a wave of amplitude $A$ (the Noise knob). The wave is what a hard correction will start to follow.",
             gloss: String.raw`$z$ is the sensor.
 $h$ is the true height.
+$A$ is the noise amplitude.
 $t$ is the clock.`,
           },
           {
@@ -970,11 +971,11 @@ $\Delta t$ is the step.`,
           {
             kind: "relation",
             tex: String.raw`\hat{x} = \hat{x}^{-} + K(z-\hat{x}^{-})\Delta t`,
-            stake: "The gap is the sensor minus the prediction. The gain $K$ pulls the estimate across a fraction of that gap on this step. The rate is pulled by half of the same correction, so the speed belief moves with the height belief.",
+            stake: "The gap is the sensor minus the prediction. The fixed gain $K$ pulls the estimate across a fraction of that gap on this step. The rate is pulled by half of the same correction. This is not $K = P/(P+R)$ from a Kalman filter.",
           },
           {
             kind: "trace",
-            text: "The truth is a smooth bend. The estimate stays near it. Raise the gain and the estimate hugs the sensor's wave. Lower it and the estimate trusts the thrust prediction and lets the wave go by.",
+            text: "At Gain 0 the estimate error stays near zero while the sensor error is the full wave. Raise the gain and the estimate error starts to hug that wave. Raise Noise and both error traces grow.",
           },
         ],
       },

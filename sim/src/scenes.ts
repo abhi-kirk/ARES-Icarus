@@ -173,6 +173,7 @@ export type Knobs = {
   region: number;
   gust: number;
   fuel: number;
+  noise: number;
 };
 
 export const KNOBS: Knobs = {
@@ -209,6 +210,7 @@ export const KNOBS: Knobs = {
   region: 3,
   gust: 6,
   fuel: 0.4,
+  noise: 12,
 };
 
 // Undamped spring. Mass 1 kg, stiffness 1 N/m, so one swing takes 2π seconds.
@@ -256,7 +258,8 @@ export type KnobKey =
   | "pass"
   | "region"
   | "gust"
-  | "fuel";
+  | "fuel"
+  | "noise";
 
 const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   dt: { min: 0.05, max: 0.5 },
@@ -282,7 +285,8 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   lift: { min: 25, max: 70 },
   lean: { min: 0, max: 40 },
   wind: { min: 0, max: 25 },
-  trust: { min: 0.4, max: 6 },
+  trust: { min: 0, max: 6 },
+  noise: { min: 0, max: 20 },
   kick: { min: 5, max: 35 },
   hold: { min: 2, max: 14 },
   care: { min: 0.05, max: 4 },
@@ -548,12 +552,12 @@ export const SCENES: {
     id: "vehEstimate",
     name: "Sensors and an estimate",
     title: "Sensors and an estimate",
-    lede: "The sensor reports height with a wave on it. The estimate predicts the next height from thrust and the speed it already believes, then pulls that prediction toward the sensor.",
-    opener: "Height is the truth. Estimate is the corrected prediction. Drag the rocket to change how hard the sensor pulls.",
-    live: ["height", "estimate"],
+    lede: "A fixed-gain filter predicts height from thrust, then pulls toward the sensor. The chart shows sensor error and estimate error from truth. High gain follows the wave. Low gain trusts the model.",
+    opener: "The rocket is truth. The pale mark is the estimate. Drag the rocket to change the gain.",
+    live: ["measured", "estimate"],
     askable: ["height", "estimate", "measured", "rate"],
-    chartTitle: "Truth and estimate",
-    visual: "The rocket is the true height. The pale mark is the estimate.",
+    chartTitle: "Sensor error and estimate error",
+    visual: "Chart values are errors from truth. Raise Noise to grow the wave. Gain 0 trusts only the model.",
   },
   {
     id: "vehGuide",
@@ -981,7 +985,7 @@ function fromDescentSample(row: DescentSample): Row {
 }
 
 export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
-  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}`;
+  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}`;
   if (rowCache && rowCache.key === key) return rowCache.rows;
 
   let rows: Row[];
@@ -1173,7 +1177,14 @@ export function visualContext(id: SceneId): string {
 export function seriesPoints(id: SceneId, column: Column, knobs: Knobs, until: number): [number, number][] {
   if (id === "step" && column === "stepped") return stairPoints(knobs.dt, until);
   const rows = rowsFor(id, knobs).filter((row) => row.t <= until + 1e-9);
-  const points = rows.map((row) => [row.t, row[column]] as [number, number]);
+  // Estimate scene: chart sensor and estimate as errors from truth so the wave is visible.
+  const points = rows.map((row) => {
+    let value = row[column];
+    if (id === "vehEstimate" && (column === "measured" || column === "estimate")) {
+      value = row[column] - row.height;
+    }
+    return [row.t, value] as [number, number];
+  });
   const wantsTip = id === "state" || (id === "step" && column === "truth");
   if (wantsTip) {
     const tip = points[points.length - 1];
@@ -1199,8 +1210,11 @@ export function plotOf(id: SceneId, columns: Column[], knobs: Knobs, until: numb
     if (id === "loopHover" && column === "closedHeight") axis = 0;
     if (id === "loopMode" && column === "hiddenMode") axis = 1;
     if (id === "loopMode" && column === "measured") axis = 0;
+    let name = COLUMNS[column].label;
+    if (id === "vehEstimate" && column === "measured") name = "Sensor − truth (m)";
+    if (id === "vehEstimate" && column === "estimate") name = "Estimate − truth (m)";
     return {
-      name: COLUMNS[column].label,
+      name,
       column,
       gold:
         column === "rate" ||
@@ -1450,7 +1464,12 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
   if (id === "vehAscent") return [knob("lift", "Thrust", knobs.lift, LIMITS.lift.min, LIMITS.lift.max, 1, `${knobs.lift.toFixed(0)} N`)];
   if (id === "vehNose") return [knob("lean", "Tilt", knobs.lean, LIMITS.lean.min, LIMITS.lean.max, 1, `${knobs.lean.toFixed(0)}°`)];
   if (id === "vehWind") return [knob("wind", "Wind", knobs.wind, LIMITS.wind.min, LIMITS.wind.max, 1, `${knobs.wind.toFixed(0)} m/s`)];
-  if (id === "vehEstimate") return [knob("trust", "Gain", knobs.trust, LIMITS.trust.min, LIMITS.trust.max, 0.1, knobs.trust.toFixed(1))];
+  if (id === "vehEstimate") {
+    return [
+      knob("trust", "Gain", knobs.trust, LIMITS.trust.min, LIMITS.trust.max, 0.1, knobs.trust.toFixed(1), "fixed-gain filter"),
+      knob("noise", "Noise", knobs.noise, LIMITS.noise.min, LIMITS.noise.max, 0.5, `${knobs.noise.toFixed(1)} m`, "sensor wave"),
+    ];
+  }
   if (id === "vehGuide") return [knob("kick", "Kick", knobs.kick, LIMITS.kick.min, LIMITS.kick.max, 1, `${knobs.kick.toFixed(0)}°`)];
   if (id === "vehAuto") return [knob("hold", "Gain", knobs.hold, LIMITS.hold.min, LIMITS.hold.max, 0.5, knobs.hold.toFixed(1))];
   if (id === "desCost") {

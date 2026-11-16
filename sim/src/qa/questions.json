@@ -227,8 +227,8 @@
   "vehEstimate": {
     "estimate": {
       "beginner": "In the correction, what is $z$?",
-      "intermediate": "The prediction carries the last estimate forward with the thrust model. What does the gain $K$ add after that prediction?",
-      "advanced": "If you raise the gain, what happens to how closely the estimate follows the wave in the sensor?"
+      "intermediate": "The chart shows sensor error and estimate error from truth. What does raising the gain do to how the estimate error compares to the sensor wave?",
+      "advanced": "This scene uses a fixed gain $K$, not a Kalman gain from variances. What does Gain 0 leave the estimate doing, relative to the thrust model and the sensor?"
     },
     "eli5": {
       "beginner": "The sensor wiggles and the prediction uses the thrust. What does the estimate do with those two, and what does a harder gain do?"
