@@ -181,6 +181,8 @@ export type Knobs = {
   // Spring scene: initial height and rate at t = 0.
   x0: number;
   v0: number;
+  // Engine scene: 0 = step at need time, 1 = ask one τ early (lead the lag).
+  lead: number;
 };
 
 export const KNOBS: Knobs = {
@@ -223,6 +225,7 @@ export const KNOBS: Knobs = {
   method: 0,
   x0: 1,
   v0: 0,
+  lead: 0,
 };
 
 // Undamped spring. Mass 1 kg, stiffness 1 N/m, so one swing takes 2π seconds.
@@ -277,7 +280,8 @@ export type KnobKey =
   | "twist"
   | "method"
   | "x0"
-  | "v0";
+  | "v0"
+  | "lead";
 
 const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   dt: { min: 0.05, max: 0.5 },
@@ -326,6 +330,7 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   method: { min: 0, max: 1 },
   x0: { min: -1.5, max: 1.5 },
   v0: { min: -1.5, max: 1.5 },
+  lead: { min: 0, max: 1 },
 };
 
 export function clampNamed(key: KnobKey, value: number): number {
@@ -381,12 +386,12 @@ export const SCENES: {
     id: "engine",
     name: "The engine",
     title: "The engine",
-    lede: "The command jumps, and the pale line is what you asked for while the gold line is what the engine does. The engine cannot exceed 50 N. Height and rate follow from that thrust on a 2.5 kg vehicle. Drag the rocket to change the lag.",
-    opener: "The command is an input. The gold line is thrust the engine makes, capped at 50 N. Height and rate are the state. Ask me what a symbol means, or set a lag.",
+    lede: "The pale line is the command; the gold line is the thrust the engine makes, capped at 50 N. Lead asks one τ early so actual thrust is closer when you need it. Drag the rocket to change the lag.",
+    opener: "The command is an input. Lead asks early so the lagging engine is nearer the need. Height and rate follow actual thrust on a 2.5 kg vehicle.",
     live: ["actual", "command"],
     askable: ["actual", "command", "height", "rate", "accel"],
     chartTitle: "Command and actual",
-    visual: "The pale command is what you ask from the engine. The colored actual thrust lags behind it and clamps at 50 N. Motion follows from the thrust that actually exists on a 2.5 kg vehicle.",
+    visual: "Pale command vs gold actual thrust (ceiling 50 N). Lead mode steps the ask one lag-time early so F is farther along by the need mark.",
   },
   {
     id: "loopOpen",
@@ -954,17 +959,24 @@ function massRows(thrust: number): Row[] {
   return rows;
 }
 
-function engineRows(tau: number, ask: number): Row[] {
+function engineStepAt(tau: number, lead: number): number {
+  const lag = clampKnob("engine", tau);
+  if (lead >= 0.5) return Math.max(0, ASK_AT - lag);
+  return ASK_AT;
+}
+
+function engineRows(tau: number, ask: number, lead: number): Row[] {
   const rows: Row[] = [];
   const lag = clampKnob("engine", tau);
   const asked = clampNamed("ask", ask);
+  const stepAt = engineStepAt(tau, lead);
   const mass = 2.5;
   let thrust = 0;
   let velocity = 0;
   let height = 0;
   const step = 0.02;
   for (let t = 0; t <= durationOf("engine") + 1e-9; t += step) {
-    const command = t < ASK_AT ? 0 : asked;
+    const command = t < stepAt ? 0 : asked;
     thrust += ((command - thrust) / lag) * step;
     if (thrust > LIMIT) thrust = LIMIT;
     if (thrust < 0) thrust = 0;
@@ -1055,14 +1067,14 @@ function fromDescentSample(row: DescentSample): Row {
 }
 
 export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
-  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}|${knobs.schedule}|${knobs.twist}|${knobs.method}|${knobs.x0}|${knobs.v0}`;
+  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}|${knobs.schedule}|${knobs.twist}|${knobs.method}|${knobs.x0}|${knobs.v0}|${knobs.lead}`;
   if (rowCache && rowCache.key === key) return rowCache.rows;
 
   let rows: Row[];
   if (id === "state") rows = springRows(knobs.x0, knobs.v0);
   else if (id === "step") rows = stepRows(knobs.dt, knobs.method);
   else if (id === "mass") rows = massRows(knobs.thrust);
-  else if (id === "engine") rows = engineRows(knobs.tau, knobs.ask);
+  else if (id === "engine") rows = engineRows(knobs.tau, knobs.ask, knobs.lead);
   else if (isTurnScene(id)) rows = turnRows(id, knobs).map(fromTurnSample);
   else if (isVehicleScene(id)) rows = vehicleRows(id, knobs).map(fromVehicleSample);
   else if (isDescentScene(id)) rows = descentRows(id, knobs).map(fromDescentSample);
@@ -1487,9 +1499,20 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
     return [knob("thrust", "Thrust", knobs.thrust, LIMITS.thrust.min, LIMITS.thrust.max, 1, `${knobs.thrust.toFixed(0)} N`)];
   }
   if (id === "engine") {
+    const leading = knobs.lead >= 0.5;
     return [
       knob("ask", "Command", knobs.ask, LIMITS.ask.min, LIMITS.ask.max, 1, `${knobs.ask.toFixed(0)} N`, "ceiling 50 N"),
       knob("tau", "Lag", knobs.tau, LIMITS.tau.min, LIMITS.tau.max, 0.01, `${knobs.tau.toFixed(2)} s`),
+      knob(
+        "lead",
+        "Lead",
+        knobs.lead,
+        LIMITS.lead.min,
+        LIMITS.lead.max,
+        1,
+        leading ? "on" : "off",
+        leading ? `ask at ${engineStepAt(knobs.tau, 1).toFixed(2)} s (need ${ASK_AT.toFixed(1)} s)` : `ask at need ${ASK_AT.toFixed(1)} s`,
+      ),
     ];
   }
   if (id === "loopOpen") {
@@ -1708,7 +1731,15 @@ export type ChartMarker = { t: number; label: string };
 
 export function chartMarkers(id: SceneId, knobs: Knobs): ChartMarker[] {
   if (id === "mass") return [{ t: BURN, label: "tank empty" }];
-  if (id === "engine") return [{ t: ASK_AT, label: "command" }];
+  if (id === "engine") {
+    if (knobs.lead >= 0.5) {
+      return [
+        { t: engineStepAt(knobs.tau, knobs.lead), label: "lead ask" },
+        { t: ASK_AT, label: "need" },
+      ];
+    }
+    return [{ t: ASK_AT, label: "command" }];
+  }
   if (id === "loopOpen") return [{ t: 1, label: "extra thrust" }];
   if (id === "loopError") return [{ t: 2, label: "target step" }];
   if (id === "loopMode") return [{ t: 1.5, label: "target step" }];
@@ -1778,7 +1809,12 @@ export function chatBrief(id: SceneId, knobs: Knobs): string {
     return `${scene.title}. Thrust input is ${knobs.thrust.toFixed(0)} N until t = ${BURN} s, then zero. Dry mass ${DRY} kg, fuel ${FUEL} kg. Height and rate integrate acceleration. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "engine") {
-    return `${scene.title}. Command input steps to ${knobs.ask.toFixed(0)} N at ${ASK_AT} s. Lag is ${knobs.tau.toFixed(2)} s. Thrust is clamped to ${LIMIT} N on a 2.5 kg vehicle. Height and rate integrate thrust. Allowed chart columns: ${allowedList(id)}.`;
+    const stepAt = engineStepAt(knobs.tau, knobs.lead);
+    const leadNote =
+      knobs.lead >= 0.5
+        ? `Lead is on: command steps at ${stepAt.toFixed(2)} s (one τ early) so actual thrust is farther along by the need mark at ${ASK_AT} s.`
+        : `Lead is off: command steps at the need time ${ASK_AT} s.`;
+    return `${scene.title}. Command steps to ${knobs.ask.toFixed(0)} N. ${leadNote} Lag τ = ${knobs.tau.toFixed(2)} s. Thrust is clamped to ${LIMIT} N on a 2.5 kg vehicle. Height and rate integrate actual thrust. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "loopOpen") {
     return `${scene.title}. Hover thrust is ${LOOP_T0.toFixed(1)} N on a ${LOOP_M} kg rocket. Extra thrust ${knobs.extraThrust.toFixed(0)} N after 1 s with no feedback. Allowed chart columns: ${allowedList(id)}.`;

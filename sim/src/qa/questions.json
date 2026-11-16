@@ -43,12 +43,12 @@
     "lag": {
       "beginner": "Which symbol is the thrust the rocket actually feels, $u$ or $F$?",
       "intermediate": "A larger $\\tau$ makes the engine slower to close the gap. How does that appear between the command trace and the actual trace?",
-      "advanced": "If the command asks for more than $50\\,\\mathrm{N}$, what thrust does the vehicle feel?"
+      "advanced": "Turn Lead on. Where does the pale command step relative to the need mark, and why is gold actual thrust higher at that need time?"
     },
     "motion": {
       "beginner": "Which thrust enters $\\dot{v} = F/m - g$?",
       "intermediate": "Actual thrust lags the command. Why is the height late as well?",
-      "advanced": "If you increase the lag, what happens to the moment when the height starts to answer the new command?"
+      "advanced": "If you increase the lag with Lead on, what happens to the lead-ask mark, and what does that say about how far ahead a controller must ask?"
     },
     "eli5": {
       "beginner": "The command can jump immediately. What does the rocket feel while the engine is still catching up?"

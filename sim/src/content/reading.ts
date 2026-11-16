@@ -232,16 +232,16 @@ $v$ is vertical rate.`,
     threads: [
       plain(
         "The ask and the thrust",
-        ["A command can jump", "The vehicle feels the thrust the engine has made"],
+        ["A command can jump", "Lead asks early so actual thrust is nearer when you need it"],
         [
           "You can ask an engine for a new thrust in an instant. [The engine reaches that thrust on its own time, closing the gap faster when it is farther behind, and slower when its lag is longer](https://en.wikipedia.org/wiki/Time_constant). It also has a limit, so a request past that limit stays at the limit.",
-          "The vehicle feels the thrust the engine has already made. Height and speed follow that thrust, so the climb starts when the engine arrives.",
+          "The vehicle feels the thrust the engine has already made. If you need that thrust at a marked time, [you ask early](https://en.wikipedia.org/wiki/Feed_forward_(control)) by about one $\\tau$ (the Lead knob). By the need mark, gold actual thrust has already climbed through most of a time constant.",
         ],
       ),
       {
         id: "lag",
         title: "The engine has to catch up",
-        focus: ["Command and actual thrust are different", "Lag changes the vehicle state"],
+        focus: ["Command and actual thrust are different", "Lead shifts the ask one τ early"],
         segments: [
           {
             kind: "look",
@@ -262,22 +262,22 @@ $\tau$ is the lag time.`,
           {
             kind: "contrast",
             tex: String.raw`0 \le F \le 50`,
-            stake: "The command can ask for more than the engine can supply. The vehicle feels the clamped value.",
+            stake: "The command can ask for more than the engine can supply. The vehicle feels the clamped value. The Command aside marks the ceiling.",
           },
           {
             kind: "trace",
-            text: "The live chart keeps command and actual thrust together because their gap is the actuator story. Height and rate are the consequence.",
+            text: "With Lead off, the ask and the need share one mark. With Lead on, the ask moves one $\\tau$ earlier and a need mark stays at 0.4 s so you can compare gold thrust at that instant.",
           },
           {
             kind: "trace",
-            text: "When the command rises faster than actual thrust, the vehicle is already falling behind the plan. The state will show that delay after the engine has created it.",
+            text: "Flip Lead on and scrub to the need mark. Actual thrust sits higher than the naive step, because the engine has already been catching up.",
           },
         ],
       },
       {
         id: "motion",
         title: "The state follows actual thrust",
-        focus: ["Actual thrust drives acceleration", "Lag propagates into height and rate"],
+        focus: ["Actual thrust drives acceleration", "Leading the lag is what control owes the actuator"],
         segments: [
           {
             kind: "look",
@@ -290,7 +290,10 @@ $\tau$ is the lag time.`,
           {
             kind: "relation",
             tex: String.raw`\dot v = F/m - g \qquad \dot x = v`,
-            stake: "The same chain from the burn is still here. Actual thrust changes acceleration, acceleration changes rate, and rate changes height.",
+            stake: "The same chain from the burn is still here. Actual thrust changes acceleration, acceleration changes rate, and rate changes height. Mass is 2.5 kg.",
+            gloss: String.raw`$F$ is actual thrust.
+$m$ is 2.5 kg.
+$g$ is gravity.`,
           },
           {
             kind: "trace",
@@ -298,7 +301,7 @@ $\tau$ is the lag time.`,
           },
           {
             kind: "trace",
-            text: "That lateness is what control has to respect. A perfect command sent too late is still too late.",
+            text: "That lateness is what the next chapter's loop has to respect. A perfect command sent at the need time is still late once the engine is in the way; Lead is the first fix.",
           },
         ],
       },
