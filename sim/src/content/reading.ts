@@ -1382,33 +1382,40 @@ $t_f$ is the time left.`,
   desMiss: {
     threads: [
       plain(
-        "The fuel runs out on the way",
-        ["Thrust stops when the budget is gone", "Speed left at the pad is a miss"],
+        "When no soft landing exists",
+        ["Soft landing needs |rate| ≤ 0.5 m/s at the pad", "Fuel-out and a hard ceiling are two ways to miss"],
         [
-          "Fuel is a budget, not a force you can keep spending. The landing wants thrust the whole way down. [Each newton of thrust spends a little of that budget](https://en.wikipedia.org/wiki/Tsiolkovsky_rocket_equation).",
-          "When the budget hits zero the thrust stops and gravity keeps the fall. Reaching the pad with speed still on the vehicle is a miss. Enough fuel lets the speed die as the height arrives.",
+          "A soft landing here means the vehicle reaches the pad with $|\\dot z| \\le 0.5\\,\\mathrm{m/s}$. Faster than that is a miss. Fuel is one way to fail: [each newton of thrust spends budget](https://en.wikipedia.org/wiki/Tsiolkovsky_rocket_equation), and when the tank is empty thrust is gone.",
+          "The other way is [infeasibility](https://en.wikipedia.org/wiki/Feasible_region): the Cause knob sets a ceiling of 18 N that cannot kill this fall from 45 m / −3 m/s. Status reads INFEASIBLE because no thrust history under that bound meets the soft-landing speed.",
         ],
       ),
       {
         id: "budget",
         title: "Thrust spends the budget",
-        focus: ["Fuel falls in proportion to thrust", "An empty budget sets thrust to zero"],
+        focus: ["Fuel-out is a miss when impact speed exceeds 0.5 m/s", "A hard ceiling is INFEASIBLE"],
         segments: [
           {
             kind: "look",
-            text: "The vehicle starts 45 m up, falling at 3 m/s. The rate trace freezes at the speed it had when the height reached the pad.",
+            text: "Start 45 m up at −3 m/s. Cause = fuel uses the Fuel knob. Cause = ceiling locks T ≤ 18 N with ample fuel.",
           },
           {
             kind: "relation",
             tex: String.raw`\dot m_f = -T / v_e`,
-            stake: "m_f is the fuel still left, in kilograms. T is thrust. v_e is the exhaust speed, 280 m/s. A larger thrust empties the budget faster. At zero fuel the thrust is zero for the rest of the flight.",
+            stake: "In fuel mode, m_f is the budget left. At zero fuel the thrust is zero for the rest of the flight. Soft landing still needs $|\\dot z| \\le 0.5\\,\\mathrm{m/s}$ at the pad.",
             gloss: String.raw`$m_f$ is fuel left.
 $T$ is thrust.
-$v_e$ is exhaust speed.`,
+$v_e$ is exhaust speed, $280\,\mathrm{m/s}$.`,
+          },
+          {
+            kind: "contrast",
+            tex: String.raw`| \dot z(t_f) | \le 0.5`,
+            stake: "That is the touchdown-speed criterion. Status soft / miss / INFEASIBLE is judged from the rate when height first hits the pad.",
+            gloss: String.raw`$t_f$ is touchdown.
+$0.5\,\mathrm{m/s}$ is the soft limit in this scene.`,
           },
           {
             kind: "trace",
-            text: "A budget of 0.4 kg reaches the pad still moving fast. A budget near 0.7 kg arrives with the speed nearly gone, and what is left in the tank stays unused.",
+            text: "Fuel 0.4 kg → miss. Fuel near 0.7 kg → soft. Flip Cause to ceiling → INFEASIBLE with impact still fast.",
           },
         ],
       },

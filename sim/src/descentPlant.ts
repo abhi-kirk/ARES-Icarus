@@ -49,7 +49,7 @@ export function costGains(weight: number, spend = 1): { kp: number; kd: number }
 let cache: { key: string; rows: DescentSample[] } | null = null;
 
 export function descentRows(id: DescentId, knobs: Knobs): DescentSample[] {
-  const key = `${id}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}`;
+  const key = `${id}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.cause}`;
   if (cache && cache.key === key) return cache.rows;
   const rows = integrate(id, knobs);
   cache = { key, rows };
@@ -96,7 +96,11 @@ export function descentBrief(id: DescentId, knobs: Knobs): string {
   if (id === "desReplan") {
     return `Replanning (MPC-style). A sideways gust of ${knobs.gust.toFixed(1)} m/s hits at 2.2 s. Live guidance recomputes from the current state each step, with thrust capped at ${REPLAN_TMAX} N and a ${REPLAN_CONE_DEG}° glide cone from vertical. Large gusts can saturate those limits and miss. The dashed downrange is the plan from before the gust.`;
   }
-  return `Runs that do not land. Fuel budget ${knobs.fuel.toFixed(2)} kg, exhaust speed ${280} m/s. Thrust stops when the budget is gone.`;
+  const outcome = missOutcome(knobs);
+  if (knobs.cause >= 0.5) {
+    return `Runs that do not land (INFEASIBLE mode). Thrust ceiling ${MISS_HARD_CEILING} N on ${MASS} kg cannot meet soft landing (|rate| ≤ ${TOUCH_SPEED} m/s at the pad) from 45 m / −3 m/s. Status ${outcome.status}, impact ${outcome.impactRate.toFixed(2)} m/s.`;
+  }
+  return `Runs that do not land (fuel mode). Fuel budget ${knobs.fuel.toFixed(2)} kg, exhaust 280 m/s. Soft landing needs |rate| ≤ ${TOUCH_SPEED} m/s at the pad. Status ${outcome.status}, impact ${outcome.impactRate.toFixed(2)} m/s.`;
 }
 
 function integrate(id: DescentId, knobs: Knobs): DescentSample[] {
@@ -106,7 +110,25 @@ function integrate(id: DescentId, knobs: Knobs): DescentSample[] {
   if (id === "desScvx") return scvxRows(knobs.pass);
   if (id === "desGusto") return gustoRows(knobs.region);
   if (id === "desReplan") return replanRows(knobs.gust);
-  return missRows(knobs.fuel);
+  return missRows(knobs.fuel, knobs.cause);
+}
+
+/** Soft-landing speed limit at the pad (m/s). Faster is a miss. */
+export const TOUCH_SPEED = 0.5;
+/** Ceiling that cannot soft-land the miss-scene start state (teaching INFEASIBLE). */
+export const MISS_HARD_CEILING = 18;
+
+export type MissStatus = "soft" | "miss" | "infeasible";
+
+export function missOutcome(knobs: Knobs): { status: MissStatus; impactRate: number; touchLimit: number } {
+  const rows = descentRows("desMiss", knobs);
+  const end = rows[rows.length - 1];
+  const impactRate = end.rate;
+  const soft = Math.abs(impactRate) <= TOUCH_SPEED;
+  if (knobs.cause >= 0.5) {
+    return { status: soft ? "soft" : "infeasible", impactRate, touchLimit: TOUCH_SPEED };
+  }
+  return { status: soft ? "soft" : "miss", impactRate, touchLimit: TOUCH_SPEED };
 }
 
 function costRows(weight: number, spend: number): DescentSample[] {
@@ -457,11 +479,14 @@ function clampThrustCap(
   return { tx: tx * scale, tz: tz * scale, mag: used };
 }
 
-function missRows(fuel: number): DescentSample[] {
+function missRows(fuel: number, cause: number): DescentSample[] {
   const exhaust = 280;
+  const infeasible = cause >= 0.5;
+  const ceiling = infeasible ? MISS_HARD_CEILING : TMAX;
   let z = 45;
   let vz = -3;
-  let left = fuel;
+  // Infeasible mode: plenty of fuel; the ceiling alone forbids a soft landing.
+  let left = infeasible ? 2 : fuel;
   let hit = false;
   const rows: DescentSample[] = [];
   for (let t = 0; t <= 8 + 1e-9; t += STEP) {
@@ -469,7 +494,7 @@ function missRows(fuel: number): DescentSample[] {
     if (!hit && left > 0) {
       const leftTime = Math.max(0.4, 8 - t);
       const az = guidanceAccel(z, vz, leftTime);
-      thrust = Math.min(TMAX, Math.max(0, MASS * (az + G)));
+      thrust = Math.min(ceiling, Math.max(0, MASS * (az + G)));
       const need = (thrust / exhaust) * STEP;
       if (need > left) {
         thrust = 0;
@@ -482,10 +507,11 @@ function missRows(fuel: number): DescentSample[] {
     if (!hit) {
       vz += (thrust / MASS - G) * STEP;
       z += vz * STEP;
-      const held = holdPad(z, vz);
-      z = held.height;
-      vz = held.rate;
-      if (z <= 0) hit = true;
+      if (z <= 0) {
+        // Freeze height and keep the impact rate so soft vs miss is readable.
+        z = 0;
+        hit = true;
+      }
     }
   }
   return rows;

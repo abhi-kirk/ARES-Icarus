@@ -32,7 +32,10 @@ import {
   descentDuration,
   descentRows,
   gustoInfo,
+  missOutcome,
+  MISS_HARD_CEILING,
   scvxPassInfo,
+  TOUCH_SPEED,
   type DescentId,
   type DescentSample,
 } from "./descentPlant";
@@ -195,6 +198,8 @@ export type Knobs = {
   v0: number;
   // Engine scene: 0 = step at need time, 1 = ask one τ early (lead the lag).
   lead: number;
+  // Miss scene: 0 = fuel budget miss, 1 = low-ceiling INFEASIBLE.
+  cause: number;
 };
 
 export const KNOBS: Knobs = {
@@ -238,6 +243,7 @@ export const KNOBS: Knobs = {
   x0: 1,
   v0: 0,
   lead: 0,
+  cause: 0,
 };
 
 // Undamped spring. Mass 1 kg, stiffness 1 N/m, so one swing takes 2π seconds.
@@ -293,7 +299,8 @@ export type KnobKey =
   | "method"
   | "x0"
   | "v0"
-  | "lead";
+  | "lead"
+  | "cause";
 
 const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   dt: { min: 0.05, max: 0.5 },
@@ -345,6 +352,7 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   x0: { min: -1.5, max: 1.5 },
   v0: { min: -1.5, max: 1.5 },
   lead: { min: 0, max: 1 },
+  cause: { min: 0, max: 1 },
 };
 
 export function clampNamed(key: KnobKey, value: number): number {
@@ -697,12 +705,12 @@ export const SCENES: {
     id: "desMiss",
     name: "Runs that do not land",
     title: "Runs that do not land",
-    lede: "Fuel is a budget. When it runs out the thrust stops, and a vehicle that reaches the pad still moving has missed the landing.",
-    opener: "Height is the fall. Rate is the speed, and it stays at the impact speed once the pad is reached. Drag the rocket to change the fuel.",
+    lede: "A soft landing needs |rate| ≤ 0.5 m/s at the pad. Fuel-out or a ceiling too low both miss; Cause switches those two failure modes.",
+    opener: "Status is soft, miss, or INFEASIBLE. Drag the rocket to change the fuel, or flip Cause to a hard ceiling.",
     live: ["height", "rate"],
     askable: ["height", "rate", "thrust"],
     chartTitle: "Height and rate",
-    visual: "The rocket falls. A short fuel budget reaches the pad with speed left.",
+    visual: "Fuel-out leaves speed at the pad. A low ceiling is INFEASIBLE: no soft landing exists under that thrust bound.",
   },
 ];
 
@@ -1081,7 +1089,7 @@ function fromDescentSample(row: DescentSample): Row {
 }
 
 export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
-  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}|${knobs.schedule}|${knobs.twist}|${knobs.method}|${knobs.x0}|${knobs.v0}|${knobs.lead}`;
+  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}|${knobs.schedule}|${knobs.twist}|${knobs.method}|${knobs.x0}|${knobs.v0}|${knobs.lead}|${knobs.cause}`;
   if (rowCache && rowCache.key === key) return rowCache.rows;
 
   let rows: Row[];
@@ -1473,6 +1481,17 @@ export function readout(id: SceneId, t: number, knobs: Knobs): ReadoutLine[] {
       { name: "Rate", text: `${row.rate.toFixed(1)} m/s`, column: "rate" },
     ];
   }
+  if (id === "desMiss") {
+    const outcome = missOutcome(knobs);
+    const status =
+      outcome.status === "infeasible" ? "INFEASIBLE" : outcome.status === "soft" ? "soft" : "miss";
+    return [
+      { name: "Time", text: `${t.toFixed(2)} s` },
+      { name: "Height", text: `${row.height.toFixed(1)} m`, column: "height" },
+      { name: "Rate", text: `${row.rate.toFixed(1)} m/s`, column: "rate" },
+      { name: "Status", text: `${status} · |v|≤${TOUCH_SPEED}` },
+    ];
+  }
   if (isTurnScene(id) || isVehicleScene(id) || isDescentScene(id)) {
     const live = sceneById(id).live;
     return [
@@ -1767,7 +1786,27 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
       : `ok · T≤40 N · cone 12°`;
     return [knob("gust", "Gust", knobs.gust, LIMITS.gust.min, LIMITS.gust.max, 0.5, `${knobs.gust.toFixed(1)} m/s`, aside)];
   }
-  if (id === "desMiss") return [knob("fuel", "Fuel", knobs.fuel, LIMITS.fuel.min, LIMITS.fuel.max, 0.05, `${knobs.fuel.toFixed(2)} kg`)];
+  if (id === "desMiss") {
+    const hard = knobs.cause >= 0.5;
+    const outcome = missOutcome(knobs);
+    const status =
+      outcome.status === "infeasible" ? "INFEASIBLE" : outcome.status === "soft" ? "soft" : "miss";
+    return [
+      knob(
+        "cause",
+        "Cause",
+        knobs.cause,
+        LIMITS.cause.min,
+        LIMITS.cause.max,
+        1,
+        hard ? "ceiling" : "fuel",
+        hard ? `T≤${MISS_HARD_CEILING} N · ${status}` : `${status} · |v|≤${TOUCH_SPEED} m/s`,
+      ),
+      ...(hard
+        ? []
+        : [knob("fuel", "Fuel", knobs.fuel, LIMITS.fuel.min, LIMITS.fuel.max, 0.05, `${knobs.fuel.toFixed(2)} kg`)]),
+    ];
+  }
   return [];
 }
 
@@ -1854,6 +1893,22 @@ export function chartMarkers(id: SceneId, knobs: Knobs): ChartMarker[] {
     const end = rows[rows.length - 1];
     if (Math.abs(end.downrange) > 1.2 || (end.height < 0.5 && Math.abs(end.rate) > 0.8)) {
       markers.push({ t: end.t, label: "miss" });
+    }
+    return markers;
+  }
+  if (id === "desMiss") {
+    const rows = rowsFor(id, knobs);
+    const markers: ChartMarker[] = [];
+    if (knobs.cause < 0.5) {
+      const empty = rows.find((row, index) => index > 0 && row.reference <= 1e-6 && rows[index - 1].reference > 1e-6);
+      if (empty) markers.push({ t: empty.t, label: "fuel out" });
+    }
+    const touch = rows.find((row) => row.height <= 1e-3);
+    const outcome = missOutcome(knobs);
+    if (touch) {
+      const label =
+        outcome.status === "infeasible" ? "INFEASIBLE" : outcome.status === "soft" ? "soft" : "miss";
+      markers.push({ t: touch.t, label });
     }
     return markers;
   }

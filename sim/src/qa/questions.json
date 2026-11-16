@@ -316,9 +316,9 @@
   },
   "desMiss": {
     "budget": {
-      "beginner": "In $\\dot m_f = -T / v_e$, what does $v_e$ name?",
-      "intermediate": "The fuel budget runs out before the pad. What happens to the thrust, and what does the rate do when the height arrives?",
-      "advanced": "You add fuel until the arrival speed is nearly gone. What happens to the fuel that is still left at the pad?"
+      "beginner": "What speed limit at the pad counts as a soft landing in this scene?",
+      "intermediate": "The fuel budget runs out before the pad. What happens to the thrust, and how does Status decide miss vs soft?",
+      "advanced": "Flip Cause to ceiling. Why does Status read INFEASIBLE rather than a fuel miss?"
     },
     "eli5": {
       "beginner": "The landing spends fuel to kill the fall. What is left on the vehicle if the fuel runs out early?"
