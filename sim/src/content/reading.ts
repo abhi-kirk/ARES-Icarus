@@ -1235,33 +1235,33 @@ $v$ is the speed.`,
   desGusto: {
     threads: [
       plain(
-        "One step, only so far",
-        ["The correction has a limited length", "A short step stays on the bad fall"],
+        "Hard trust, merit accept",
+        ["Each iterate stays inside a hard trust region", "A bad trial shrinks Δ; a good one can grow it"],
         [
-          "GuSTO takes one correction from a weak first push. The correction is the thrust the guidance wants, and it is allowed to change the old thrust only up to [a distance called the trust region](https://arxiv.org/abs/1903.00155).",
-          "A short region leaves the rocket close to the first fall. A region long enough to hold the whole correction reaches the pad. The dashed height is the first push, before any of that step.",
+          "GuSTO starts from a weak first push and iterates. Each step linearizes about the path just flown, takes a hard trust-limited correction, and keeps the step only when a merit test (end-height error) improves. [There is no virtual control; feasibility is enforced by the trust region and the accept/reject rule](https://arxiv.org/abs/1903.00155).",
+          "A modest starting Δ can walk toward the pad. A huge starting Δ trusts a local model that is wrong far from the path, so the trial overshoots and is rejected. The dashed height is the weak first push.",
         ],
       ),
       {
         id: "region",
-        title: "The correction is shortened to the region",
-        focus: ["The new thrust stays within the trust radius of the old one", "The radius is the knob"],
+        title: "Why a huge region can fail",
+        focus: ["Δ is a hard cap on the thrust step", "Merit accepts or shrinks", "Too large a step trusts a bad local model"],
         segments: [
           {
             kind: "look",
-            text: "The first push is 14 N straight up, under the weight of the 2 kg vehicle. The guidance thrust points at the pad. The flown thrust is that guidance thrust, pulled back toward 14 N when the step is longer than the region.",
+            text: "The first push is 14 N straight up, under the weight of the 2 kg vehicle. Drag the trust knob. The solid height is after a few GuSTO iterates. The dashed height is that first push.",
           },
           {
             kind: "relation",
             tex: String.raw`\|T_{\mathrm{new}} - T_{\mathrm{old}}\| \le \Delta`,
-            stake: "Δ is the trust region in newtons. T_old is the weak push. T_new is what flies. When the guidance step is longer than Δ, it is shortened to length Δ and the direction is kept.",
+            stake: "Δ is the trust region in newtons. The local pad-aim about the flown path proposes T_new. If the trial end-height error is worse than the current flight, GuSTO rejects the step and shrinks Δ.",
             gloss: String.raw`$\Delta$ is the trust region.
-$T_{\mathrm{old}}$ is the first push.
-$T_{\mathrm{new}}$ is the thrust that flies.`,
+$T_{\mathrm{old}}$ is the thrust on this iterate.
+$T_{\mathrm{new}}$ is the trial thrust.`,
           },
           {
             kind: "trace",
-            text: "A region of 1 N falls well through the pad. A region of 3 N is a short miss. A region of 6 N meets the pad, and a larger region has no further step to take.",
+            text: "A starting region near 2–3 N improves the fall toward the pad. A starting region of 8 N takes a huge step on a bad local model, overshoots, and the merit test rejects it. The aside counts accepts and rejects.",
           },
         ],
       },

@@ -19,6 +19,7 @@ import {
   descentBrief,
   descentDuration,
   descentRows,
+  gustoInfo,
   scvxPassInfo,
   type DescentId,
   type DescentSample,
@@ -624,12 +625,12 @@ export const SCENES: {
     id: "desGusto",
     name: "GuSTO",
     title: "GuSTO",
-    lede: "One correction may move the thrust only a limited distance from the weak first push. A small trust region leaves the fall. A larger one reaches the pad.",
-    opener: "Height is the corrected path. The dashed line is the first push. Drag the rocket to change the trust region.",
+    lede: "GuSTO iterates with a hard trust region and a merit test. A modest Δ improves the fall. A huge Δ trusts a bad local model and can overshoot or be rejected.",
+    opener: "Height is after the GuSTO iterations. The dashed line is the weak first push. Drag the rocket to change the starting trust region.",
     live: ["height", "reference"],
     askable: ["height", "reference", "downrange", "thrust"],
     chartTitle: "Corrected path and the first push",
-    visual: "The rocket flies the thrust that was allowed to move inside the trust region.",
+    visual: "The rocket flies the accepted iterates. The aside shows end error, final Δ, and accept/reject counts.",
   },
   {
     id: "desReplan",
@@ -1505,7 +1506,15 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
       : undefined;
     return [knob("pass", "Pass", knobs.pass, LIMITS.pass.min, LIMITS.pass.max, 1, `${Math.round(knobs.pass)}`, aside)];
   }
-  if (id === "desGusto") return [knob("region", "Trust", knobs.region, LIMITS.region.min, LIMITS.region.max, 0.5, `${knobs.region.toFixed(1)} N`)];
+  if (id === "desGusto") {
+    // Force the GuSTO iterate so the aside matches the knob.
+    descentRows("desGusto", knobs);
+    const info = gustoInfo();
+    const aside = info
+      ? `err ${info.error.toFixed(2)} m · Δ ${info.radius.toFixed(1)} N · ${info.accepts}↑ ${info.rejects}↓`
+      : undefined;
+    return [knob("region", "Trust", knobs.region, LIMITS.region.min, LIMITS.region.max, 0.5, `${knobs.region.toFixed(1)} N`, aside)];
+  }
   if (id === "desReplan") return [knob("gust", "Gust", knobs.gust, LIMITS.gust.min, LIMITS.gust.max, 0.5, `${knobs.gust.toFixed(1)} m/s`)];
   if (id === "desMiss") return [knob("fuel", "Fuel", knobs.fuel, LIMITS.fuel.min, LIMITS.fuel.max, 0.05, `${knobs.fuel.toFixed(2)} kg`)];
   return [];

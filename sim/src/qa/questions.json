@@ -297,8 +297,8 @@
   "desGusto": {
     "region": {
       "beginner": "What does $\\Delta$ limit?",
-      "intermediate": "The trust region grows from 1 N to 6 N. What happens to the height at the end of the flight?",
-      "advanced": "Past the region that already holds the whole correction, the path stops changing. Why is there no further step?"
+      "intermediate": "Compare a starting trust of about 2 N with one of 8 N. What happens to the end height, and what do the accept/reject counts on the aside show?",
+      "advanced": "GuSTO uses a hard trust region and a merit test, with no virtual control. Why can a larger starting $\\Delta$ make the first trial worse than a modest one?"
     },
     "eli5": {
       "beginner": "The correction from the weak first push can only be so long. What does a short trust region leave the rocket doing?"

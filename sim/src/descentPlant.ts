@@ -84,10 +84,14 @@ export function descentBrief(id: DescentId, knobs: Knobs): string {
     const detail = info
       ? ` End height ${info.error.toFixed(2)} m, trust radius ${info.radius.toFixed(1)} N${info.accepted ? "" : " (step rejected)"}.`
       : "";
-    return `Successive convexification. Pass ${Math.round(knobs.pass)} of 5: fly, linearize along the path, solve a pad-aiming subproblem, limit the thrust step by a trust region, add virtual vertical slack, then accept or shrink.${detail}`;
+    return `Successive convexification. Pass ${Math.round(knobs.pass)} of 5: fly, solve a pad-aiming subproblem, limit the thrust step by a trust region, add virtual vertical slack, then accept or shrink.${detail}`;
   }
   if (id === "desGusto") {
-    return `GuSTO. The thrust may move at most ${knobs.region.toFixed(1)} N from the weak first push. The dashed height is that first push.`;
+    const info = gustoInfo();
+    const detail = info
+      ? ` End height ${info.error.toFixed(2)} m after ${info.accepts} accept / ${info.rejects} reject, final Δ ${info.radius.toFixed(1)} N.`
+      : "";
+    return `GuSTO. Start from a weak push with trust radius ${knobs.region.toFixed(1)} N. Each iteration linearizes about the flown path, takes a hard trust-limited step, and accepts or shrinks on a merit test (end-height error). No virtual control.${detail}`;
   }
   if (id === "desReplan") {
     return `Replanning. A sideways gust of ${knobs.gust.toFixed(1)} m/s hits at 2.2 s. The dashed downrange is the plan from before the gust.`;
@@ -295,26 +299,78 @@ function virtualVertical(leftover: number, count: number): number[] {
   return Array(count).fill(per);
 }
 
+export type GustoInfo = { error: number; radius: number; accepts: number; rejects: number };
+
+let gustoInfoCache: GustoInfo | null = null;
+
+export function gustoInfo(): GustoInfo | null {
+  return gustoInfoCache;
+}
+
 function gustoRows(trust: number): DescentSample[] {
+  const count = Math.round(8 / STEP);
   const guessUp = 14;
-  const solved = guidanceProfile(12, 30, 0, -2);
-  const tx: number[] = [];
-  const tz: number[] = [];
-  for (let i = 0; i < solved.tx.length; i += 1) {
-    const errorX = solved.tx[i];
-    const errorZ = solved.tz[i] - guessUp;
-    const error = Math.hypot(errorX, errorZ) || 1;
-    const scale = Math.min(1, trust / error);
-    tx.push(errorX * scale);
-    tz.push(guessUp + errorZ * scale);
+  let tx = Array(count).fill(0);
+  let tz = Array(count).fill(guessUp);
+  let radius = Math.max(0.75, trust);
+  let accepts = 0;
+  let rejects = 0;
+
+  // A few GuSTO iterations: linearize about the flown path, hard trust step, merit accept/reject.
+  for (let iter = 0; iter < 3; iter += 1) {
+    const flown = flyProfile(tx, tz, 12, 30, 0, -2, false);
+    const error = flown[flown.length - 1].height;
+    // Local pad-aim about the flown states (open-loop). Far from the path this model is wrong.
+    const local = retargetAlong(flown);
+    const stepped = trustStep(tx, tz, local.tx, local.tz, radius);
+    const trial = flyProfile(stepped.tx, stepped.tz, 12, 30, 0, -2, false);
+    const trialError = trial[trial.length - 1].height;
+    if (Math.abs(trialError) < Math.abs(error) - 0.05) {
+      tx = stepped.tx;
+      tz = stepped.tz;
+      radius = Math.min(10, radius * 1.15);
+      accepts += 1;
+    } else {
+      radius = Math.max(0.75, radius * 0.55);
+      rejects += 1;
+    }
   }
-  const flown = flyProfile(tx, tz, 12, 30, 0, -2);
-  const guess = flyProfile(Array(tx.length).fill(0), Array(tz.length).fill(guessUp), 12, 30, 0, -2);
+
+  const flown = flyProfile(tx, tz, 12, 30, 0, -2, false);
+  const guess = flyProfile(Array(count).fill(0), Array(count).fill(guessUp), 12, 30, 0, -2, false);
+  gustoInfoCache = {
+    error: flown[flown.length - 1].height,
+    radius,
+    accepts,
+    rejects,
+  };
   return flown.map((row, i) => {
     const copy = { ...row };
     copy.reference = guess[i].height;
     return copy;
   });
+}
+
+/** Open-loop pad-aim using ZEM/ZEV at each flown sample (local model about that path). */
+function retargetAlong(flown: DescentSample[]): { tx: number[]; tz: number[] } {
+  const tx: number[] = [];
+  const tz: number[] = [];
+  const n = flown.length - 1;
+  for (let i = 0; i < n; i += 1) {
+    const row = flown[i];
+    const prev = i > 0 ? flown[i - 1] : row;
+    const vx = i > 0 ? (row.downrange - prev.downrange) / STEP : 0;
+    const left = Math.max(0.45, 8 - row.t);
+    let dtx = MASS * guidanceAccel(row.downrange, vx, left);
+    let dtz = MASS * (guidanceAccel(row.height, row.rate, left) + G);
+    const magnitude = Math.hypot(dtx, dtz) || 1;
+    const used = Math.min(TMAX, Math.max(0, magnitude));
+    dtx *= used / magnitude;
+    dtz *= used / magnitude;
+    tx.push(dtx);
+    tz.push(dtz);
+  }
+  return { tx, tz };
 }
 
 function replanRows(gust: number): DescentSample[] {
