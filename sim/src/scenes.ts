@@ -1,6 +1,6 @@
 // Rocket Dynamics. One clock per scene. Each scene has a claim, a knob you can drag, and chart columns.
 
-import { loopRowAt, loopRowsFor, LOOP_LIMIT, LOOP_M, LOOP_T0 } from "./loopPlant";
+import { loopRowAt, loopRowsFor, LOOP_LIMIT, LOOP_M, LOOP_SAMPLE_DELAY_MARK, LOOP_T0 } from "./loopPlant";
 import { turnAt, turnBrief, turnDuration, turnRows, type TurnId, type TurnSample } from "./turnPlant";
 import { vehicleAt, vehicleBrief, vehicleDuration, vehicleRows, type VehicleId, type VehicleSample } from "./vehiclePlant";
 import { costGains, descentAt, descentBrief, descentDuration, descentRows, type DescentId, type DescentSample } from "./descentPlant";
@@ -1333,7 +1333,16 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
   if (id === "loopSample") {
     return [
       knob("dt", "Sample", knobs.dt, LIMITS.dt.min, LIMITS.dt.max, 0.01, `${knobs.dt.toFixed(2)} s`),
-      knob("tau", "Delay", knobs.tau, LIMITS.tau.min, LIMITS.tau.max, 0.01, `${knobs.tau.toFixed(2)} s`),
+      knob(
+        "tau",
+        "Delay",
+        knobs.tau,
+        LIMITS.tau.min,
+        LIMITS.tau.max,
+        0.01,
+        `${knobs.tau.toFixed(2)} s`,
+        `mark ~${LOOP_SAMPLE_DELAY_MARK.toFixed(2)} s`,
+      ),
     ];
   }
   if (id === "turnFrames") return [knob("yaw", "Yaw", knobs.yaw, LIMITS.yaw.min, LIMITS.yaw.max, 1, `${knobs.yaw.toFixed(0)}°`)];
@@ -1457,7 +1466,7 @@ export function chatBrief(id: SceneId, knobs: Knobs): string {
     return `${scene.title}. Coupling ${knobs.coupling.toFixed(2)} from hidden mode into height. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "loopSample") {
-    return `${scene.title}. Sample time ${knobs.dt.toFixed(2)} s and measurement delay ${knobs.tau.toFixed(2)} s versus continuous control. Allowed chart columns: ${allowedList(id)}.`;
+    return `${scene.title}. Sample time ${knobs.dt.toFixed(2)} s and measurement delay ${knobs.tau.toFixed(2)} s versus continuous PID (Kp 12, Ki 4, Kd 15). Delay near ${LOOP_SAMPLE_DELAY_MARK.toFixed(2)} s starts to pull discrete away from continuous. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (isTurnScene(id)) return turnBrief(id, knobs);
   if (isVehicleScene(id)) return vehicleBrief(id, knobs);

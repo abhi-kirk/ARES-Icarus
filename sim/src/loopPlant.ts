@@ -215,6 +215,9 @@ function simulateHidden(coupling: number, end: number, step: number): LoopRow[] 
   return rows;
 }
 
+/** Delay above this starts to pull discrete away from continuous on this plant. */
+export const LOOP_SAMPLE_DELAY_MARK = 0.25;
+
 function simulateSample(sampleDt: number, delay: number, end: number, step: number): LoopRow[] {
   const rows: LoopRow[] = [];
   let hC = 0;
@@ -226,8 +229,11 @@ function simulateSample(sampleDt: number, delay: number, end: number, step: numb
   let heldThrust = LOOP_T0;
   let nextSample = 0;
   const history: { t: number; h: number }[] = [];
+  // PID, not PI: without Kd the continuous reference itself is unstable
+  // (s³ + (Kp/m)s + Ki/m has a right-half root), so discrete can never track it.
   const kp = 12;
   const ki = 4;
+  const kd = 15;
 
   for (let t = 0; t <= end + 1e-9; t += step) {
     const ref = refStep(t, 1, 1.5);
@@ -235,7 +241,7 @@ function simulateSample(sampleDt: number, delay: number, end: number, step: numb
 
     const errorC = ref - hC;
     integralC += errorC * step;
-    const thrustC = clampThrust(LOOP_T0 + kp * errorC + ki * integralC);
+    const thrustC = clampThrust(LOOP_T0 + kp * errorC + ki * integralC - kd * vC);
     const accelC = thrustC / LOOP_M - LOOP_G;
 
     let measured = hD;
@@ -250,7 +256,7 @@ function simulateSample(sampleDt: number, delay: number, end: number, step: numb
     if (t + 1e-9 >= nextSample) {
       const errorD = ref - measured;
       integralD += errorD * sampleDt;
-      heldThrust = clampThrust(LOOP_T0 + kp * errorD + ki * integralD);
+      heldThrust = clampThrust(LOOP_T0 + kp * errorD + ki * integralD - kd * vD);
       nextSample += sampleDt;
     }
     const accelD = heldThrust / LOOP_M - LOOP_G;

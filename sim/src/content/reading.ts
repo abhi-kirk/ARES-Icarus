@@ -550,8 +550,8 @@ $\Delta F$ is the extra thrust knob.`,
           },
           {
             kind: "relation",
-            tex: String.raw`F = F_0 + K_p e + K_i\!\int e\,dt`,
-            stake: "Continuous feedback updates as the error changes.",
+            tex: String.raw`F = F_0 + K_p e + K_i\!\int e\,dt - K_d \dot x`,
+            stake: "Continuous feedback updates as the error changes. The rate term keeps the always-updating loop from ringing away.",
           },
           {
             kind: "contrast",
