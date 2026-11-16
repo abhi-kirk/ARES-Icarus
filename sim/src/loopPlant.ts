@@ -130,13 +130,15 @@ function simulateEquilibrium(perturb: number, end: number, step: number): LoopRo
   let hL = perturb;
   let vL = 0;
   const kp = 14;
-  const linearAccel = -kp / LOOP_M;
+  // Linear plant about hover: ẍ = −(Kp/m) x. Keep A = −Kp/m and multiply by height,
+  // not by the error (0 − x), or the two signs cancel and the linear trace runs away.
+  const linearA = -kp / LOOP_M;
   for (let t = 0; t <= end + 1e-9; t += step) {
     const ref = 0;
     const errorN = ref - hN;
     const thrustN = clampThrust(LOOP_T0 + kp * errorN);
     const accelN = thrustN / LOOP_M - LOOP_G;
-    const accelL = linearAccel * (ref - hL);
+    const accelL = linearA * hL;
 
     const row = blank(t);
     row.nonlinear = hN;
