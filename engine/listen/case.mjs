@@ -1,5 +1,5 @@
 // Same case the page is allowed to send. Knob fields are copied and clamped.
-// Timestep, gust, and the other gains stay at the nominal landing.
+// Timestep and the other gains stay at the nominal landing.
 // Keep the ranges in step with sim/src/flight/case.ts.
 
 const KNOBS = {
@@ -9,7 +9,11 @@ const KNOBS = {
   fuel: { min: 50, max: 1200 },
   wind: { min: -15, max: 15 },
   pad: { min: -4, max: 4 },
+  gust: { min: 0, max: 20 },
   gain: { min: 0.02, max: 0.5 },
+  // Floor is stored in newtons on the case; the page scrubber is in kN.
+  floor: { min: 0, max: 15000 },
+  cone: { min: 5, max: 90 },
 };
 
 const NOMINAL = {
@@ -39,6 +43,9 @@ const NOMINAL = {
     initial_fuel: 600.0,
     max_ref_accel_vertical: 1.5,
     max_ref_accel_horizontal: 3.0,
+    thrust_min: 0.0,
+    thrust_max: 25000.0,
+    pointing_cone_deg: 90.0,
     use_rerun: false,
     rerun_spawn_viewer: false,
     rerun_save_rrd: false,
@@ -66,12 +73,18 @@ export function caseFromRequest(body) {
     const fuel = finite(sim.initial_fuel);
     const wind = finite(sim.wind_x_velocity);
     const pad = finite(sim.initial_pad_x_velocity);
+    const gust = finite(sim.gust_magnitude);
+    const floor = finite(sim.thrust_min);
+    const cone = finite(sim.pointing_cone_deg);
     if (height !== null) next.simulation.initial_z_pos = height;
     if (offset !== null) next.simulation.initial_x_pos = offset;
     if (descent !== null) next.simulation.initial_z_velocity = descent;
     if (fuel !== null) next.simulation.initial_fuel = fuel;
     if (wind !== null) next.simulation.wind_x_velocity = wind;
     if (pad !== null) next.simulation.initial_pad_x_velocity = pad;
+    if (gust !== null) next.simulation.gust_magnitude = gust;
+    if (floor !== null) next.simulation.thrust_min = floor;
+    if (cone !== null) next.simulation.pointing_cone_deg = cone;
   }
   const gain = finite(body?.outer_pid_vertical_position?.gains?.kp);
   if (gain !== null) next.outer_pid_vertical_position.gains.kp = gain;
@@ -82,6 +95,9 @@ export function caseFromRequest(body) {
   next.simulation.initial_fuel = clamp(next.simulation.initial_fuel, KNOBS.fuel.min, KNOBS.fuel.max);
   next.simulation.wind_x_velocity = clamp(next.simulation.wind_x_velocity, KNOBS.wind.min, KNOBS.wind.max);
   next.simulation.initial_pad_x_velocity = clamp(next.simulation.initial_pad_x_velocity, KNOBS.pad.min, KNOBS.pad.max);
+  next.simulation.gust_magnitude = clamp(next.simulation.gust_magnitude, KNOBS.gust.min, KNOBS.gust.max);
+  next.simulation.thrust_min = clamp(next.simulation.thrust_min, KNOBS.floor.min, KNOBS.floor.max);
+  next.simulation.pointing_cone_deg = clamp(next.simulation.pointing_cone_deg, KNOBS.cone.min, KNOBS.cone.max);
   next.outer_pid_vertical_position.gains.kp = clamp(
     next.outer_pid_vertical_position.gains.kp,
     KNOBS.gain.min,

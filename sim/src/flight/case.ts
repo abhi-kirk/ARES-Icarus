@@ -30,13 +30,27 @@ export type FlightCase = {
     initial_fuel: number;
     max_ref_accel_vertical: number;
     max_ref_accel_horizontal: number;
+    // Actuator bounds on the assembled thrust vector. Newtons and degrees.
+    thrust_min: number;
+    thrust_max: number;
+    pointing_cone_deg: number;
     use_rerun: boolean;
     rerun_spawn_viewer: boolean;
     rerun_save_rrd: boolean;
   };
 };
 
-export type KnobKey = "height" | "offset" | "descent" | "fuel" | "wind" | "pad" | "gust" | "gain";
+export type KnobKey =
+  | "height"
+  | "offset"
+  | "descent"
+  | "fuel"
+  | "wind"
+  | "pad"
+  | "gust"
+  | "gain"
+  | "floor"
+  | "cone";
 
 export type KnobSpec = {
   key: KnobKey;
@@ -56,6 +70,9 @@ export const KNOBS: KnobSpec[] = [
   { key: "pad", label: "Barge", min: -4, max: 4, step: 0.1, unit: "m/s" },
   { key: "gust", label: "Gust", min: 0, max: 20, step: 0.5, unit: "m/s" },
   { key: "gain", label: "Gain", min: 0.02, max: 0.5, step: 0.01, unit: "" },
+  // Floor in kN for the scrubber; written to the case as newtons.
+  { key: "floor", label: "Floor", min: 0, max: 15, step: 0.5, unit: "kN" },
+  { key: "cone", label: "Cone", min: 5, max: 90, step: 1, unit: "°" },
 ];
 
 export const NOMINAL_CASE: FlightCase = {
@@ -85,6 +102,9 @@ export const NOMINAL_CASE: FlightCase = {
     initial_fuel: 600.0,
     max_ref_accel_vertical: 1.5,
     max_ref_accel_horizontal: 3.0,
+    thrust_min: 0.0,
+    thrust_max: 25000.0,
+    pointing_cone_deg: 90.0,
     use_rerun: false,
     rerun_spawn_viewer: false,
     rerun_save_rrd: false,
@@ -111,6 +131,8 @@ export function readKnob(flight: FlightCase, key: KnobKey): number {
   if (key === "wind") return flight.simulation.wind_x_velocity;
   if (key === "pad") return flight.simulation.initial_pad_x_velocity;
   if (key === "gust") return flight.simulation.gust_magnitude;
+  if (key === "floor") return flight.simulation.thrust_min / 1000;
+  if (key === "cone") return flight.simulation.pointing_cone_deg;
   return flight.outer_pid_vertical_position.gains.kp;
 }
 
@@ -122,6 +144,8 @@ function writeKnob(flight: FlightCase, key: KnobKey, value: number): void {
   else if (key === "wind") flight.simulation.wind_x_velocity = value;
   else if (key === "pad") flight.simulation.initial_pad_x_velocity = value;
   else if (key === "gust") flight.simulation.gust_magnitude = value;
+  else if (key === "floor") flight.simulation.thrust_min = value * 1000;
+  else if (key === "cone") flight.simulation.pointing_cone_deg = value;
   else flight.outer_pid_vertical_position.gains.kp = value;
 }
 
@@ -147,6 +171,8 @@ export function caseFromRequest(body: unknown): FlightCase {
     const wind = finite(sim.wind_x_velocity);
     const pad = finite(sim.initial_pad_x_velocity);
     const gust = finite(sim.gust_magnitude);
+    const floorN = finite(sim.thrust_min);
+    const cone = finite(sim.pointing_cone_deg);
     if (height !== null) writeKnob(next, "height", height);
     if (offset !== null) writeKnob(next, "offset", offset);
     if (descent !== null) writeKnob(next, "descent", descent);
@@ -154,6 +180,8 @@ export function caseFromRequest(body: unknown): FlightCase {
     if (wind !== null) writeKnob(next, "wind", wind);
     if (pad !== null) writeKnob(next, "pad", pad);
     if (gust !== null) writeKnob(next, "gust", gust);
+    if (floorN !== null) writeKnob(next, "floor", floorN / 1000);
+    if (cone !== null) writeKnob(next, "cone", cone);
   }
   const gain = finite(raw.outer_pid_vertical_position?.gains?.kp);
   if (gain !== null) writeKnob(next, "gain", gain);

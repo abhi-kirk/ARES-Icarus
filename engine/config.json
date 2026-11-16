@@ -49,6 +49,9 @@
         "initial_fuel": 600.0,
         "max_ref_accel_vertical": 1.5,
         "max_ref_accel_horizontal": 3.0,
+        "thrust_min": 0.0,
+        "thrust_max": 25000.0,
+        "pointing_cone_deg": 90.0,
         "use_rerun": true,
         "rerun_spawn_viewer": true,
         "rerun_save_rrd": true

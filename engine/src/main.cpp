@@ -42,21 +42,24 @@ int main() {
     HorizontalGuidance guidance_h(config);
     guidance_h.initialize(state, pad_position_init, pad_velocity_init);
 
-    // Vertical velocity controller: inner loop (velocity -> force/thrust)
+    // Vertical velocity controller: inner loop (velocity -> force/thrust).
+    // Gains are scaled by the case thrust ceiling so anti-windup meets the
+    // same bound the thrust clamp uses after the force is assembled.
+    const double thrust_ceil = config.simulation.thrust_max;
     const PIDSpec vel_spec{
-        config.pid.kp_v_vel * MAX_THRUST,
-        config.pid.ki_v_vel * MAX_THRUST,
-        config.pid.kd_v_vel * MAX_THRUST,
-        0.0, MAX_THRUST
+        config.pid.kp_v_vel * thrust_ceil,
+        config.pid.ki_v_vel * thrust_ceil,
+        config.pid.kd_v_vel * thrust_ceil,
+        0.0, thrust_ceil
     };
     Controller vel_ctrl(config.simulation.timestep_inner, vel_spec);
 
     // Horizontal velocity controller
     const PIDSpec vel_spec_h{
-        config.pid.kp_h_vel * MAX_THRUST,
-        config.pid.ki_h_vel * MAX_THRUST,
-        config.pid.kd_h_vel * MAX_THRUST,
-        -MAX_THRUST, MAX_THRUST
+        config.pid.kp_h_vel * thrust_ceil,
+        config.pid.ki_h_vel * thrust_ceil,
+        config.pid.kd_h_vel * thrust_ceil,
+        -thrust_ceil, thrust_ceil
     };
     Controller vel_ctrl_h_x(config.simulation.timestep_inner_h, vel_spec_h);
     Controller vel_ctrl_h_y(config.simulation.timestep_inner_h, vel_spec_h);

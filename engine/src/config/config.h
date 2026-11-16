@@ -48,6 +48,13 @@ struct SimConfig {
     double pad_drift_vx;
     double pad_drift_vy;
 
+    // Actuator bounds on the assembled thrust vector [Fx, Fy, Fz].
+    // thrust_min / thrust_max are newtons. pointing_cone_deg is the max
+    // tilt from vertical (90 means the cone does not cut).
+    double thrust_min = 0.0;
+    double thrust_max = 25000.0;
+    double pointing_cone_deg = 90.0;
+
     bool use_rerun          = false;
     bool rerun_spawn_viewer = true;
     bool rerun_save_rrd     = true;

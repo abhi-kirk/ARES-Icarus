@@ -4,6 +4,7 @@
 #endif
 #include "dynamics/constants.h"
 #include "dynamics/state_indices.h"
+#include "gnc/control/thrust_limits.h"
 
 #include <algorithm>
 #include <cmath>
@@ -98,7 +99,7 @@ void Simulator::run(
         const double feedforward = (MASS_DRY + state[FUEL]) * GRAVITY;
 
         // Vertical inner loop: velocity in z-direction -> thrust in z-direction
-        const double Fz = vel_ctrl.compute(state[VEL_Z], ref_vel_z, feedforward);
+        double Fz = vel_ctrl.compute(state[VEL_Z], ref_vel_z, feedforward);
 
         // Horizontal loops run at timestep_inner_h (slower than the sim step).
         // guidance_h.compute() is gated here so its internal iteration counter
@@ -109,7 +110,16 @@ void Simulator::run(
             Fy = vel_ctrl_h_y.compute(state[VEL_Y], ref_vel_xy[1]);
         }
 
-        // Assemble control input
+        // Actuator limits on the assembled force: pointing cone, then
+        // magnitude floor and ceiling. The PID may still ask for more;
+        // the plant only feels what survives this clamp.
+        apply_thrust_limits(
+            Fx, Fy, Fz,
+            cfg.thrust_min,
+            cfg.thrust_max,
+            cfg.pointing_cone_deg
+        );
+
         ControlInput control(3);
         control << Fx, Fy, Fz;
 

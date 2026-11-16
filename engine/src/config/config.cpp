@@ -54,6 +54,13 @@ bool apply_config(const json& j, Config& config) {
         config.simulation.max_ref_accel_h      = j["simulation"].value("max_ref_accel_horizontal", 2.0);
 
         config.simulation.initial_fuel       = j["simulation"]["initial_fuel"];
+
+        // Defaults match the old open limits so a case that omits these
+        // fields still flies the Phase 2 landing.
+        config.simulation.thrust_min         = j["simulation"].value("thrust_min", 0.0);
+        config.simulation.thrust_max         = j["simulation"].value("thrust_max", 25000.0);
+        config.simulation.pointing_cone_deg  = j["simulation"].value("pointing_cone_deg", 90.0);
+
         config.simulation.use_rerun          = j["simulation"].value("use_rerun", false);
         config.simulation.rerun_spawn_viewer = j["simulation"].value("rerun_spawn_viewer", true);
         config.simulation.rerun_save_rrd     = j["simulation"].value("rerun_save_rrd", true);

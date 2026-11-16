@@ -24,7 +24,7 @@ const TAPES: { key: KnobKey; span: number; tick: number }[] = [
 const FIGURES: { title: string; keys: KnobKey[] }[] = [
   { title: "Initial", keys: ["offset", "fuel"] },
   { title: "Sea", keys: ["wind", "pad", "gust"] },
-  { title: "Guidance", keys: ["gain"] },
+  { title: "Guidance", keys: ["gain", "floor", "cone"] },
 ];
 
 const SIDE_MIN = 260;
