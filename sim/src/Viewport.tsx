@@ -28,6 +28,7 @@ import {
   type SceneId,
   type Knobs,
 } from "./scenes";
+import { vehicleAt } from "./vehiclePlant";
 import { getKnobs, getScene, getTime, setKnob, setTime, useKnobs, useScene } from "./sceneStore";
 import { unlock } from "./sound";
 
@@ -574,9 +575,11 @@ function VehicleWorldMarks() {
     const reach = Math.max(span.max - span.min, 1);
     const x = (pose.drift / reach) * 1.1;
     const y = viewY(pose.height, id, knobs) + NOZZLE_LIFT;
-    if (wind.current) {
+    if (wind.current && id === "vehWind") {
+      // Relative wind in the climb plane: side W, down the path −v (nose stays vertical).
+      const climb = Math.max(vehicleAt(id, getTime(), knobs).rate, 0);
       wind.current.position.set(x + 0.42, y + 0.4, 0.2);
-      aimArrow(wind.current, 1, 0, 0, 0.45 + knobs.wind / 30);
+      aimArrow(wind.current, knobs.wind, -climb, 0, 0.45 + knobs.wind / 30 + climb / 80);
     }
     if (nose) {
       const tilt = (knobs.lean * Math.PI) / 180;

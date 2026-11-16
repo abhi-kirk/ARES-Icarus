@@ -587,12 +587,12 @@ export const SCENES: {
     id: "vehWind",
     name: "Wind",
     title: "Wind",
-    lede: "The nose stays vertical while the wind comes from the side. Angle of attack is the angle between the nose and the oncoming air, and the same crosswind becomes a smaller angle as the climb gets faster.",
-    opener: "Rate is the climb speed. Attack is the angle of the air relative to the nose. Drag the rocket to change the wind.",
-    live: ["rate", "attack"],
-    askable: ["rate", "attack", "height"],
-    chartTitle: "Speed and attack",
-    visual: "The pale arrow is the wind. The rocket climbs through it, nose up.",
+    lede: "The nose stays vertical. Attack is arctan(W/v): 90° at liftoff, then falling as climb speed grows. A teaching side load also drifts the vehicle downrange.",
+    opener: "Attack is the air angle on the nose. Drift is the teaching side load. Drag the rocket to change the wind.",
+    live: ["attack", "downrange"],
+    askable: ["rate", "attack", "height", "downrange"],
+    chartTitle: "Attack and downrange",
+    visual: "Pale wind arrow. Attack starts near 90° and falls. Downrange grows from the side load.",
   },
   {
     id: "vehEstimate",
@@ -1465,6 +1465,14 @@ export function readout(id: SceneId, t: number, knobs: Knobs): ReadoutLine[] {
       { name: "a_y", text: `${noseClimbAccel(knobs.lean).toFixed(2)} m/s²` },
     ];
   }
+  if (id === "vehWind") {
+    return [
+      { name: "Time", text: `${t.toFixed(2)} s` },
+      { name: "Attack", text: `${row.attack.toFixed(1)}°`, column: "attack" },
+      { name: "Downrange", text: `${row.downrange.toFixed(1)} m`, column: "downrange" },
+      { name: "Rate", text: `${row.rate.toFixed(1)} m/s`, column: "rate" },
+    ];
+  }
   if (isTurnScene(id) || isVehicleScene(id) || isDescentScene(id)) {
     const live = sceneById(id).live;
     return [
@@ -1648,7 +1656,21 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
         : `a_y ${ay.toFixed(2)} · a_x ${noseSideAccel(knobs.lean).toFixed(2)} · θ* ${breakEven.toFixed(1)}°`;
     return [knob("lean", "Tilt", knobs.lean, LIMITS.lean.min, LIMITS.lean.max, 1, `${knobs.lean.toFixed(0)}°`, aside)];
   }
-  if (id === "vehWind") return [knob("wind", "Wind", knobs.wind, LIMITS.wind.min, LIMITS.wind.max, 1, `${knobs.wind.toFixed(0)} m/s`)];
+  if (id === "vehWind") {
+    const side = 0.1 * knobs.wind;
+    return [
+      knob(
+        "wind",
+        "Wind",
+        knobs.wind,
+        LIMITS.wind.min,
+        LIMITS.wind.max,
+        1,
+        `${knobs.wind.toFixed(0)} m/s`,
+        `a_x ${side.toFixed(2)} m/s² · α→90° at liftoff`,
+      ),
+    ];
+  }
   if (id === "vehEstimate") {
     return [
       knob("trust", "Gain", knobs.trust, LIMITS.trust.min, LIMITS.trust.max, 0.1, knobs.trust.toFixed(1), "fixed-gain filter"),

@@ -29,6 +29,8 @@ const G = ASCENT_G;
 const DEG = 180 / Math.PI;
 const NOSE_THRUST = 50;
 const CLIMB_THRUST = 45;
+// Teaching side load: crosswind produces a constant sideways accel so drift is visible.
+const WIND_SIDE_PER_MS = 0.1;
 
 export function ascentWeight(): number {
   return ASCENT_MASS * ASCENT_G;
@@ -178,7 +180,8 @@ export function vehicleBrief(id: VehicleId, knobs: Knobs): string {
     return `Thrust along the nose. Thrust ${NOSE_THRUST} N on a ${MASS} kg vehicle, tilted ${knobs.lean.toFixed(0)}° from vertical. a_y = ${(NOSE_THRUST / MASS).toFixed(2)} cosθ − g = ${ay.toFixed(2)} m/s². a_x = ${(NOSE_THRUST / MASS).toFixed(2)} sinθ = ${ax.toFixed(2)} m/s². Break-even a_y=0 at θ* = ${breakEven.toFixed(1)}°. Gold arrow is thrust; pale arrows are the vertical and side shares. Allowed chart columns: height, downrange, rate, pitch.`;
   }
   if (id === "vehWind") {
-    return `Wind. The climb uses ${CLIMB_THRUST} N on ${MASS} kg. Wind is ${knobs.wind.toFixed(0)} m/s across the path. Attack is the angle between the nose and the air. Allowed chart columns: rate, attack, height.`;
+    const side = WIND_SIDE_PER_MS * knobs.wind;
+    return `Wind. Climb uses ${CLIMB_THRUST} N on ${MASS} kg (nose stays vertical). Wind W = ${knobs.wind.toFixed(0)} m/s. Attack α = arctan(W/v); at v = 0, α = 90° (no silent clamp). Side load a_x = ${WIND_SIDE_PER_MS}·W = ${side.toFixed(2)} m/s² is a teaching stand-in so drift appears (not full aero/weathercock). Allowed chart columns: rate, attack, height, downrange.`;
   }
   if (id === "vehEstimate") {
     return `Sensors and an estimate. Fixed-gain filter (not Kalman). Truth is the ${CLIMB_THRUST} N climb. The sensor adds a ${knobs.noise.toFixed(1)} m wave. Gain ${knobs.trust.toFixed(1)}. Chart live series are errors from truth. Allowed chart columns: height, estimate, measured, rate.`;
@@ -249,8 +252,11 @@ function sample(id: VehicleId, t: number, knobs: Knobs, pose: Pose): VehicleSamp
     const accel = CLIMB_THRUST / MASS - G;
     row.rate = accel * t;
     row.height = 0.5 * accel * t * t;
-    const speed = Math.max(row.rate, 1);
-    row.attack = Math.atan(knobs.wind / speed) * DEG;
+    // atan2(W, v): at liftoff v = 0 and W > 0 gives α = 90°.
+    row.attack = Math.atan2(knobs.wind, Math.max(row.rate, 0)) * DEG;
+    const sideAccel = WIND_SIDE_PER_MS * knobs.wind;
+    row.downrange = 0.5 * sideAccel * t * t;
+    row.drift = row.downrange;
     row.flame = 0.75;
     return row;
   }

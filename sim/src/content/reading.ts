@@ -961,29 +961,36 @@ $mg/T$ is weight over thrust.`,
     threads: [
       plain(
         "The angle the air arrives at",
-        ["Attack is the angle between the nose and the oncoming air", "The same crosswind is a smaller angle on a faster climb"],
+        ["Attack starts at 90° when climb speed is zero", "A teaching side load drifts the vehicle downrange"],
         [
-          "[Angle of attack is the angle between where the nose points and where the air is coming from](https://en.wikipedia.org/wiki/Angle_of_attack). Here the nose stays vertical and the wind comes from the side, so the air meets the nose at an angle.",
-          "[The climb also makes its own wind, straight down the path](https://en.wikipedia.org/wiki/Relative_wind), and that part grows as the vehicle goes faster. The sideways wind stays the size you set. A faster climb makes the sideways wind a smaller share of the air the nose meets, so the angle shrinks. The wind knob is that sideways speed.",
+          "[Angle of attack is the angle between where the nose points and where the air is coming from](https://en.wikipedia.org/wiki/Angle_of_attack). Here the nose stays vertical and the wind comes from the side, so at liftoff ($v=0$) the air is pure crosswind and $\\alpha=90^\\circ$.",
+          "[The climb also makes its own wind along the path](https://en.wikipedia.org/wiki/Relative_wind). As $v$ grows, the same $W$ is a smaller share of the relative wind, so $\\alpha$ falls. A teaching side load $a_x \\propto W$ also pushes the vehicle downrange so the wind is not only an angle on a chart.",
         ],
       ),
       {
         id: "wind",
         title: "Air across the nose",
-        focus: ["Wind is sideways air", "Attack falls as climb speed rises"],
+        focus: ["α = arctan(W/v) with no silent speed floor", "Drift grows with wind"],
         segments: [
-          { kind: "look", text: "The pale arrow is the wind. The nose stays vertical, so the air meets it from the side." },
+          { kind: "look", text: "The pale arrow is the wind. The nose stays vertical. At t = 0 the attack readout is 90° whenever W > 0." },
           {
             kind: "relation",
             tex: String.raw`\alpha = \arctan(W / v)`,
-            stake: "The tangent of the attack angle is the sideways wind divided by the climb speed. Arctangent turns that ratio back into an angle. A larger $W$ raises the angle. A larger $v$ lowers it, because the same sideways wind is a smaller share of a faster climb.",
+            stake: "Implemented as $\\mathrm{atan2}(W,v)$. When $v=0$ and $W>0$, $\\alpha=90^\\circ$. A larger $W$ raises the whole attack curve. A larger $v$ lowers $\\alpha$.",
             gloss: String.raw`$W$ is the wind.
 $v$ is the climb rate.
 $\alpha$ is the angle of attack.`,
           },
           {
+            kind: "relation",
+            tex: String.raw`a_x = 0.1\,W`,
+            stake: "Teaching side load only: enough that downrange grows with wind. Real weathercocking and aero loads are richer; this scene keeps the nose fixed and shows that a crosswind can move the vehicle.",
+            gloss: String.raw`$a_x$ is sideways acceleration.
+$W$ is wind in m/s.`,
+          },
+          {
             kind: "trace",
-            text: "The climb uses 45 N on 2 kg, so the rate trace is a straight rise. The attack trace starts wide, while the climb is slow, and falls as that rate grows. Raise the wind and the whole attack trace lifts.",
+            text: "Attack starts near 90° and falls as rate climbs. Raise the wind and both the attack curve and the downrange drift grow.",
           },
         ],
       },

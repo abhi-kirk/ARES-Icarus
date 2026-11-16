@@ -217,8 +217,8 @@
   "vehWind": {
     "wind": {
       "beginner": "In $\\alpha = \\arctan(W/v)$, which symbol is the wind?",
-      "intermediate": "The nose stays vertical while the climb speeds up. Why does the attack angle fall?",
-      "advanced": "If you raise the wind speed and leave the climb rate alone, what happens to the attack angle?"
+      "intermediate": "At liftoff the climb rate is zero and $W>0$. What is $\\alpha$, and why is there no silent speed floor?",
+      "advanced": "Raise the wind. What happens to the attack curve and to the downrange drift, and what is the teaching side load doing?"
     },
     "eli5": {
       "beginner": "A crosswind meets a nose that points straight up. Why does that angle get smaller as the climb gets faster?"
