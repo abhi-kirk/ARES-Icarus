@@ -29,6 +29,11 @@ const MASS = 2;
 const TMAX = 55;
 const VE = 220;
 
+function holdPad(height: number, rate: number): { height: number; rate: number } {
+  if (height >= 0) return { height, rate };
+  return { height: 0, rate: Math.max(rate, 0) };
+}
+
 export function descentDuration(id: DescentId): number {
   if (id === "desCost") return 6;
   return 8;
@@ -106,6 +111,9 @@ function costRows(weight: number): DescentSample[] {
     rows.push(sample(t, height, rate, 0, thrust, thrust, 0, 0, thrust, thrust));
     rate += applied * STEP;
     height += rate * STEP;
+    const held = holdPad(height, rate);
+    height = held.height;
+    rate = held.rate;
   }
   return rows;
 }
@@ -160,6 +168,9 @@ function lossRows(floor: number): DescentSample[] {
     vz += (command.tz / MASS - G) * STEP;
     x += vx * STEP;
     z += vz * STEP;
+    const held = holdPad(z, vz);
+    z = held.height;
+    vz = held.rate;
   }
   return rows;
 }
@@ -235,10 +246,16 @@ function replanRows(gust: number): DescentSample[] {
     vz += (live.tz / MASS - G) * STEP;
     x += vx * STEP;
     z += vz * STEP;
+    const held = holdPad(z, vz);
+    z = held.height;
+    vz = held.rate;
     oldVx += (old.tx / MASS) * STEP;
     oldVz += (old.tz / MASS - G) * STEP;
     oldX += oldVx * STEP;
     oldZ += oldVz * STEP;
+    const heldOld = holdPad(oldZ, oldVz);
+    oldZ = heldOld.height;
+    oldVz = heldOld.rate;
   }
   return rows;
 }
@@ -268,10 +285,10 @@ function missRows(fuel: number): DescentSample[] {
     if (!hit) {
       vz += (thrust / MASS - G) * STEP;
       z += vz * STEP;
-      if (z <= 0) {
-        z = 0;
-        hit = true;
-      }
+      const held = holdPad(z, vz);
+      z = held.height;
+      vz = held.rate;
+      if (z <= 0) hit = true;
     }
   }
   return rows;
@@ -331,6 +348,9 @@ function flyProfile(tx: number[], tz: number[], x0: number, z0: number, vx0: num
     vz += (tz[i] / mass - G) * STEP;
     x += vx * STEP;
     z += vz * STEP;
+    const held = holdPad(z, vz);
+    z = held.height;
+    vz = held.rate;
     mass = Math.max(1.4, mass - magnitude / VE * STEP);
   }
   const last = rows[rows.length - 1];

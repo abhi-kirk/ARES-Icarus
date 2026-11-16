@@ -54,6 +54,11 @@ function clampThrust(value: number): number {
   return Math.min(LOOP_LIMIT, Math.max(0, value));
 }
 
+function holdPad(height: number, rate: number): { height: number; rate: number } {
+  if (height >= 0) return { height, rate };
+  return { height: 0, rate: Math.max(rate, 0) };
+}
+
 function integrateOpen(thrustExtra: number, end: number, step: number): LoopRow[] {
   const rows: LoopRow[] = [];
   let h = 0;
@@ -290,8 +295,14 @@ function simulateSample(sampleDt: number, delay: number, end: number, step: numb
 
     vC += accelC * step;
     hC += vC * step;
+    const heldC = holdPad(hC, vC);
+    hC = heldC.height;
+    vC = heldC.rate;
     vD += accelD * step;
     hD += vD * step;
+    const heldD = holdPad(hD, vD);
+    hD = heldD.height;
+    vD = heldD.rate;
   }
   return rows;
 }

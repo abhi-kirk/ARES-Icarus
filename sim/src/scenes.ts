@@ -830,6 +830,12 @@ function stairPoints(dt: number, until: number): [number, number][] {
   return points;
 }
 
+/** Pad contact: the rocket sits on the ground instead of falling through it. */
+function holdPad(height: number, rate: number): { height: number; rate: number } {
+  if (height >= 0) return { height, rate };
+  return { height: 0, rate: Math.max(rate, 0) };
+}
+
 function massRows(thrust: number): Row[] {
   const rows: Row[] = [];
   const force = clampKnob("mass", thrust);
@@ -850,6 +856,9 @@ function massRows(thrust: number): Row[] {
     rows.push(row);
     velocity += accel * step;
     height += velocity * step;
+    const held = holdPad(height, velocity);
+    height = held.height;
+    velocity = held.rate;
   }
   return rows;
 }
@@ -878,6 +887,9 @@ function engineRows(tau: number, ask: number): Row[] {
     rows.push(row);
     velocity += accel * step;
     height += velocity * step;
+    const held = holdPad(height, velocity);
+    height = held.height;
+    velocity = held.rate;
   }
   return rows;
 }
