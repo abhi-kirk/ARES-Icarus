@@ -1407,7 +1407,20 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
   if (id === "turnSpin") return [knob("rate", "Spin", knobs.rate, LIMITS.rate.min, LIMITS.rate.max, 1, `${knobs.rate.toFixed(0)}°/s`)];
   if (id === "turnInertia") return [knob("inertia", "Inertia", knobs.inertia, LIMITS.inertia.min, LIMITS.inertia.max, 0.1, `${knobs.inertia.toFixed(1)} kg·m²`)];
   if (id === "turnGimbal") return [knob("gimbal", "Gimbal", knobs.gimbal, LIMITS.gimbal.min, LIMITS.gimbal.max, 0.5, `${knobs.gimbal.toFixed(1)}°`)];
-  if (id === "turnAir") return [knob("margin", "Margin", knobs.margin, LIMITS.margin.min, LIMITS.margin.max, 0.1, `${knobs.margin.toFixed(1)} cal`)];
+  if (id === "turnAir") {
+    return [
+      knob(
+        "margin",
+        "Margin",
+        knobs.margin,
+        LIMITS.margin.min,
+        LIMITS.margin.max,
+        0.1,
+        `${knobs.margin.toFixed(1)} cal`,
+        knobs.margin < 0 ? "unstable" : "restoring",
+      ),
+    ];
+  }
   if (id === "turnSlosh") return [knob("slosh", "Swing", knobs.slosh, LIMITS.slosh.min, LIMITS.slosh.max, 1, `${knobs.slosh.toFixed(0)}°`)];
   if (id === "vehAscent") return [knob("lift", "Thrust", knobs.lift, LIMITS.lift.min, LIMITS.lift.max, 1, `${knobs.lift.toFixed(0)} N`)];
   if (id === "vehNose") return [knob("lean", "Tilt", knobs.lean, LIMITS.lean.min, LIMITS.lean.max, 1, `${knobs.lean.toFixed(0)}°`)];
@@ -1478,6 +1491,11 @@ export function chartMarkers(id: SceneId, knobs: Knobs): ChartMarker[] {
   if (id === "turnGimbal") return [{ t: 1.5, label: "gimbal holds" }];
   if (id === "turnLock" && knobs.pitch >= 90) return [{ t: durationOf(id), label: "nose vertical" }];
   if (id === "turnQuat") return [{ t: durationOf(id) * (90 / knobs.tumble), label: "nose vertical" }];
+  if (id === "turnAir" && knobs.margin < 0) {
+    const rows = rowsFor(id, knobs);
+    const tumble = rows.find((row) => Math.abs(row.attack) >= 179.5);
+    return [{ t: tumble ? tumble.t : 0, label: "unstable" }];
+  }
   if (id === "vehGuide") return [{ t: 2, label: "kickover" }];
   if (id === "vehAuto") return [{ t: 0.4, label: "pitch command" }];
   if (id === "desReplan") return [{ t: 2.2, label: "gust" }];

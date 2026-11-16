@@ -55,12 +55,18 @@ export function turnRows(id: TurnId, knobs: Knobs): TurnSample[] {
   const rows: TurnSample[] = [];
   let attack = 12 / DEG;
   let attackRate = 0;
+  // Negative margin runs away; stop at a full tumble so the chart stays readable.
+  const attackLimit = Math.PI;
   for (let t = 0; t <= end + 1e-9; t += STEP) {
     rows.push(sample(id, t, knobs, attack));
     if (id === "turnAir") {
       const accel = -knobs.margin * 2.25 * attack;
       attackRate += accel * STEP;
       attack += attackRate * STEP;
+      if (Math.abs(attack) > attackLimit) {
+        attack = Math.sign(attack) * attackLimit;
+        attackRate = 0;
+      }
     }
   }
   cache = { key, rows };
@@ -198,7 +204,11 @@ export function turnBrief(id: TurnId, knobs: Knobs): string {
     return `Gimbal. One nozzle tilts to ${knobs.gimbal.toFixed(1)} degrees over 1.5 s and holds. Thrust is ${THRUST} N and the lever to the center of mass is ${LEVER} m. Side force and moment both come from sin(gimbal). Allowed chart columns: side, moment, pitch.`;
   }
   if (id === "turnAir") {
-    return `Air. Static margin ${knobs.margin.toFixed(2)} calibers. Positive margin puts the center of pressure behind the center of mass, so the moment opposes angle of attack. Allowed chart columns: attack, moment.`;
+    const stability =
+      knobs.margin < 0
+        ? "Negative margin is unstable: attack grows until a ±180° tumble stop."
+        : "Positive margin puts the center of pressure behind the center of mass, so the moment opposes angle of attack.";
+    return `Air. Static margin ${knobs.margin.toFixed(2)} calibers. ${stability} Allowed chart columns: attack, moment.`;
   }
   return `Slosh. Fuel burns from 1.5 kg toward empty. The slug swings with amplitude ${knobs.slosh.toFixed(0)} degrees, and offset is the lateral shift of the vehicle center of mass. Allowed chart columns: fill, offset.`;
 }
