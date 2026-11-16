@@ -1126,12 +1126,12 @@ $r$ is the weight on thrust.`,
         segments: [
           {
             kind: "look",
-            text: "The vehicle starts 24 m downrange and 36 m up. The pale lines are the cone at the angle you set.",
+            text: "The vehicle starts 4 m downrange and 36 m up, inside an 8° cone. The pale wall on the chart is the allowed |x| at the current height.",
           },
           {
             kind: "relation",
             tex: String.raw`|x| \le z \tan\theta`,
-            stake: "x is downrange and z is height. θ is the cone angle. At a given height the vehicle may sit no farther from the pad than the height times the tangent of that angle. Past the wall, a sideways acceleration pushes it back in.",
+            stake: "x is downrange and z is height. θ is the cone angle from vertical. At a given height the vehicle may sit no farther from the pad than the height times the tangent of that angle. Past the wall, a sideways acceleration pushes it back in, and the chart marks outside cone.",
             gloss: String.raw`$\theta$ is the cone angle.
 $x$ is downrange.
 $z$ is height.`,
@@ -1139,12 +1139,12 @@ $z$ is height.`,
           {
             kind: "relation",
             tex: String.raw`6 \le \|T\| \le 55`,
-            stake: "T is the thrust vector in newtons. The floor keeps a push on the engine, and the ceiling is as hard as this engine pushes. The cone is the knob. The thrust bounds stay put.",
+            stake: "T is the thrust vector in newtons. The floor keeps a push on the engine, and the ceiling is as hard as this engine pushes. The cone is the knob. The thrust bounds stay put (see the Cone aside).",
             gloss: String.raw`$\|T\|$ is the size of the thrust.`,
           },
           {
             kind: "trace",
-            text: "A 10° cone has pulled the vehicle back toward the pad by two seconds. A 35° cone still has it well out to the side at that same moment. Both end near the pad, inside their own walls.",
+            text: "A 10° cone pulls the vehicle toward the wall early. A 35° cone leaves more room, so downrange stays well inside the pale wall. Opening past about 35° does not change the path further.",
           },
         ],
       },

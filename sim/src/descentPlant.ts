@@ -72,7 +72,7 @@ export function descentBrief(id: DescentId, knobs: Knobs): string {
     return `A cost that makes a gain. Height weight q = ${knobs.care.toFixed(2)}, control weight r = ${knobs.spend.toFixed(2)}, so kp = ${gains.kp.toFixed(2)} and kd = ${gains.kd.toFixed(2)}. Mass ${MASS} kg. Thrust floors at 0 N. The ground is not in the cost.`;
   }
   if (id === "desPath") {
-    return `A path under constraints. Glide cone ${knobs.cone.toFixed(0)} degrees from the pad. Thrust stays between 6 N and ${TMAX} N.`;
+    return `A path under constraints. Start at downrange ${PATH_X0} m, height ${PATH_Z0} m (inside an 8° cone). Glide cone ${knobs.cone.toFixed(0)} degrees from vertical. Thrust stays between ${PATH_T_FLOOR} N and ${TMAX} N. reference is the cone wall |x| ≤ z tan θ.`;
   }
   if (id === "desLoss") {
     return `Lossless convexification. Thrust floor ${knobs.floor.toFixed(0)} N, ceiling ${TMAX} N. The flown magnitude is lifted onto the floor when the command falls inside the hole.`;
@@ -119,10 +119,15 @@ function costRows(weight: number, spend: number): DescentSample[] {
   return rows;
 }
 
+/** Start inside the tightest cone (8°): |x| ≤ z tan 8° ≈ 5.1 m at z = 36. */
+const PATH_X0 = 4;
+const PATH_Z0 = 36;
+const PATH_T_FLOOR = 6;
+
 function pathRows(coneDeg: number): DescentSample[] {
   const wall = Math.tan((coneDeg * Math.PI) / 180);
-  let x = 24;
-  let z = 36;
+  let x = PATH_X0;
+  let z = PATH_Z0;
   let vx = 1;
   let vz = -2;
   const rows: DescentSample[] = [];
@@ -135,7 +140,8 @@ function pathRows(coneDeg: number): DescentSample[] {
       const outward = x === 0 ? 1 : Math.sign(x);
       ax += -outward * (3 + 2 * excess);
     }
-    const command = clampThrust(MASS * ax, MASS * (az + G), 6);
+    const command = clampThrust(MASS * ax, MASS * (az + G), PATH_T_FLOOR);
+    // reference = cone wall half-width so the chart can show |x| against the wall
     rows.push(sample(t, z, vz, x, command.mag, command.mag, limit, command.tx, command.tz, command.mag));
     vx += (command.tx / MASS) * STEP;
     vz += (command.tz / MASS - G) * STEP;

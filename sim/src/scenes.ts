@@ -277,7 +277,8 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   hold: { min: 2, max: 14 },
   care: { min: 0.05, max: 4 },
   spend: { min: 0.25, max: 4 },
-  cone: { min: 8, max: 40 },
+  // Above ~35° the wall is wider than the path needs, so further opening does nothing.
+  cone: { min: 8, max: 35 },
   floor: { min: 0, max: 24 },
   pass: { min: 1, max: 5 },
   region: { min: 1, max: 8 },
@@ -580,12 +581,12 @@ export const SCENES: {
     id: "desPath",
     name: "A path under constraints",
     title: "A path under constraints",
-    lede: "Thrust stays between a floor and a ceiling, and the vehicle has to remain inside a cone that opens from the pad. A tight cone puts the path on the wall.",
-    opener: "Height and downrange are the path. Drag the rocket to change the cone.",
-    live: ["height", "downrange"],
-    askable: ["height", "downrange", "thrust", "rate"],
-    chartTitle: "Height and downrange",
-    visual: "The pale lines are the cone. The rocket stays inside them.",
+    lede: "Thrust stays between 6 N and 55 N, and the vehicle has to remain inside a cone that opens from the pad. A tight cone puts the path on the wall.",
+    opener: "Downrange is the path. The pale wall is the cone limit. Drag the rocket to change the cone.",
+    live: ["downrange", "reference"],
+    askable: ["height", "downrange", "reference", "thrust", "rate"],
+    chartTitle: "Downrange and cone wall",
+    visual: "Downrange is the vehicle. The pale wall is |x| = z tan θ. Outside that wall is a cone violation.",
   },
   {
     id: "desLoss",
@@ -1448,7 +1449,20 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
       knob("spend", "Weight r", knobs.spend, LIMITS.spend.min, LIMITS.spend.max, 0.05, knobs.spend.toFixed(2), "thrust cost"),
     ];
   }
-  if (id === "desPath") return [knob("cone", "Cone", knobs.cone, LIMITS.cone.min, LIMITS.cone.max, 1, `${knobs.cone.toFixed(0)}°`)];
+  if (id === "desPath") {
+    return [
+      knob(
+        "cone",
+        "Cone",
+        knobs.cone,
+        LIMITS.cone.min,
+        LIMITS.cone.max,
+        1,
+        `${knobs.cone.toFixed(0)}°`,
+        "T 6–55 N",
+      ),
+    ];
+  }
   if (id === "desLoss") return [knob("floor", "Floor", knobs.floor, LIMITS.floor.min, LIMITS.floor.max, 1, `${knobs.floor.toFixed(0)} N`)];
   if (id === "desScvx") return [knob("pass", "Pass", knobs.pass, LIMITS.pass.min, LIMITS.pass.max, 1, `${Math.round(knobs.pass)}`)];
   if (id === "desGusto") return [knob("region", "Trust", knobs.region, LIMITS.region.min, LIMITS.region.max, 0.5, `${knobs.region.toFixed(1)} N`)];
@@ -1506,6 +1520,11 @@ export function chartMarkers(id: SceneId, knobs: Knobs): ChartMarker[] {
     if (rows[0].thrust > 0.05) return [];
     const lift = rows.find((row) => row.thrust > 0.05);
     return [{ t: lift ? lift.t : 0, label: "thrust floor" }];
+  }
+  if (id === "desPath") {
+    const rows = rowsFor(id, knobs);
+    const outside = rows.find((row) => Math.abs(row.downrange) > row.reference + 0.05);
+    return outside ? [{ t: outside.t, label: "outside cone" }] : [];
   }
   if (id === "vehGuide") return [{ t: 2, label: "kickover" }];
   if (id === "vehAuto") return [{ t: 0.4, label: "pitch command" }];
