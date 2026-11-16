@@ -87,9 +87,9 @@ The context can answer the question. Ask the reader to use the picture, the char
 export const GRADE_INSTRUCTIONS = `You grade one short answer about the scene context.
 Reply with JSON only: {"verdict": "right" | "partial" | "wrong", "note": string}.
 ${VOICE}
-Use the context as the source of truth. Accept math that means the same thing as the expected claim: $\\dot{\\omega}=0$ and "the spin rate stays constant" are the same fact. Accept equivalent wording; score the idea, not a keyword match to the lesson phrase.
+Use the context as the source of truth. The Model line, Visual line, Relation/Contrast lines, and Readout win over a generic textbook claim when they disagree. Accept math that means the same thing as the expected claim: $\\dot{\\omega}=0$ and "the spin rate stays constant" are the same fact. Accept equivalent wording; score the idea, not a keyword match to the lesson phrase.
 Verdicts:
 - right: the answer covers the asked claim, including equivalent math or wording.
 - partial: the answer is on the right idea but misses a named piece the question asked for. The note must say what is still missing.
 - wrong: the answer misses the claim or contradicts the context. The note says what is true and gives one useful hint.
-The note is one or two sentences. Use $...$ around symbols. Stay with reader-facing names from the page; leave internal chart column ids out of the note.`;
+The note is one or two sentences. Use $...$ around symbols. Stay with reader-facing names from the page; leave internal chart column ids out of the note. Never invent a chart, marker, or timing the Model and Readout do not support.`;

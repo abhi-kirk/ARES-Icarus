@@ -1307,7 +1307,7 @@ $T_{\mathrm{new}}$ is the trial thrust.`,
           },
           {
             kind: "trace",
-            text: "A starting region near 2–3 N improves the fall toward the pad. A starting region of 8 N takes a huge step on a bad local model, overshoots, and the merit test rejects it. The aside counts accepts and rejects.",
+            text: "A starting region near 2–3 N improves the fall toward the pad. A starting region near 6 N takes a huge step on a bad local model, overshoots, and the merit test rejects it. The aside counts accepts and rejects.",
           },
         ],
       },

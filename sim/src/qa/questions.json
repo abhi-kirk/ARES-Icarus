@@ -297,7 +297,7 @@
   "desGusto": {
     "region": {
       "beginner": "What does $\\Delta$ limit?",
-      "intermediate": "Compare a starting trust of about 2 N with one of 8 N. What happens to the end height, and what do the accept/reject counts on the aside show?",
+      "intermediate": "Compare a starting trust of about 2 N with one of 6 N. What happens to the end height, and what do the accept/reject counts on the aside show?",
       "advanced": "GuSTO uses a hard trust region and a merit test, with no virtual control. Why can a larger starting $\\Delta$ make the first trial worse than a modest one?"
     },
     "eli5": {

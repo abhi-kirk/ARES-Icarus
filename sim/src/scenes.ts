@@ -306,9 +306,11 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   // Below ~12 N the guidance command already sits above the floor, so those settings match.
   floor: { min: 12, max: 28 },
   pass: { min: 1, max: 5 },
-  region: { min: 1, max: 8 },
+  // Above ~6 N the first GuSTO trial tends to reject the same way; keep the interesting band.
+  region: { min: 1, max: 6 },
   gust: { min: 0, max: 14 },
-  fuel: { min: 0.2, max: 1.2 },
+  // Near 0.7 kg arrival speed is already nearly gone; more fuel only sits unused.
+  fuel: { min: 0.2, max: 0.75 },
 };
 
 export function clampNamed(key: KnobKey, value: number): number {
@@ -364,12 +366,12 @@ export const SCENES: {
     id: "engine",
     name: "The engine",
     title: "The engine",
-    lede: "The command jumps, and the pale line is what you asked for while the gold line is what the engine does. Height and rate follow from that thrust. Drag the rocket to change the lag.",
-    opener: "The command is an input. The gold line is thrust the engine makes. Height and rate are the state. Ask me what a symbol means, or set a lag.",
+    lede: "The command jumps, and the pale line is what you asked for while the gold line is what the engine does. The engine cannot exceed 50 N. Height and rate follow from that thrust on a 2.5 kg vehicle. Drag the rocket to change the lag.",
+    opener: "The command is an input. The gold line is thrust the engine makes, capped at 50 N. Height and rate are the state. Ask me what a symbol means, or set a lag.",
     live: ["actual", "command"],
     askable: ["actual", "command", "height", "rate", "accel"],
     chartTitle: "Command and actual",
-    visual: "The pale command is what you ask from the engine. The colored actual thrust lags behind it, and motion follows from the thrust that actually exists.",
+    visual: "The pale command is what you ask from the engine. The colored actual thrust lags behind it and clamps at 50 N. Motion follows from the thrust that actually exists on a 2.5 kg vehicle.",
   },
   {
     id: "loopOpen",
@@ -1410,7 +1412,7 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
   }
   if (id === "engine") {
     return [
-      knob("ask", "Command", knobs.ask, LIMITS.ask.min, LIMITS.ask.max, 1, `${knobs.ask.toFixed(0)} N`),
+      knob("ask", "Command", knobs.ask, LIMITS.ask.min, LIMITS.ask.max, 1, `${knobs.ask.toFixed(0)} N`, "ceiling 50 N"),
       knob("tau", "Lag", knobs.tau, LIMITS.tau.min, LIMITS.tau.max, 0.01, `${knobs.tau.toFixed(2)} s`),
     ];
   }
@@ -1691,7 +1693,7 @@ export function chatBrief(id: SceneId, knobs: Knobs): string {
     return `${scene.title}. Thrust input is ${knobs.thrust.toFixed(0)} N until t = ${BURN} s, then zero. Dry mass ${DRY} kg, fuel ${FUEL} kg. Height and rate integrate acceleration. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "engine") {
-    return `${scene.title}. Command input steps to ${knobs.ask.toFixed(0)} N at ${ASK_AT} s. Lag is ${knobs.tau.toFixed(2)} s. Thrust is clamped to ${LIMIT} N. Height and rate integrate thrust. Allowed chart columns: ${allowedList(id)}.`;
+    return `${scene.title}. Command input steps to ${knobs.ask.toFixed(0)} N at ${ASK_AT} s. Lag is ${knobs.tau.toFixed(2)} s. Thrust is clamped to ${LIMIT} N on a 2.5 kg vehicle. Height and rate integrate thrust. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "loopOpen") {
     return `${scene.title}. Hover thrust is ${LOOP_T0.toFixed(1)} N on a ${LOOP_M} kg rocket. Extra thrust ${knobs.extraThrust.toFixed(0)} N after 1 s with no feedback. Allowed chart columns: ${allowedList(id)}.`;
