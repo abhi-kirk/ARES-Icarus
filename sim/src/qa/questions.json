@@ -197,8 +197,8 @@
   "vehAscent": {
     "ascent": {
       "beginner": "In $a = T/m - g$, what has to be true of $T/m$ for the vehicle to speed upward?",
-      "intermediate": "The rate climbs in a straight line and the height bends upward. Why does the height bend?",
-      "advanced": "If you raise the thrust, what happens to the rate at the same time?"
+      "intermediate": "Mass is $2\\,\\mathrm{kg}$ and $g=9.81\\,\\mathrm{m/s^2}$. What is the weight, and what does $T/W$ mean?",
+      "advanced": "Lower thrust below the weight so $T/W < 1$. What do height and rate do, and why?"
     },
     "eli5": {
       "beginner": "What has to be true of the thrust, compared with the weight, for the vehicle to speed upward? What does the height do with that speed?"

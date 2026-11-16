@@ -22,11 +22,21 @@ export type VehicleSample = {
 };
 
 const STEP = 0.02;
-const MASS = 2;
-const G = 9.81;
+export const ASCENT_MASS = 2;
+export const ASCENT_G = 9.81;
+const MASS = ASCENT_MASS;
+const G = ASCENT_G;
 const DEG = 180 / Math.PI;
 const NOSE_THRUST = 50;
 const CLIMB_THRUST = 45;
+
+export function ascentWeight(): number {
+  return ASCENT_MASS * ASCENT_G;
+}
+
+export function ascentTw(thrust: number): number {
+  return thrust / ascentWeight();
+}
 
 export function vehicleDuration(id: VehicleId): number {
   if (id === "vehGuide" || id === "vehAuto") return 8;
@@ -141,7 +151,9 @@ export function vehicleAt(id: VehicleId, t: number, knobs: Knobs): VehicleSample
 
 export function vehicleBrief(id: VehicleId, knobs: Knobs): string {
   if (id === "vehAscent") {
-    return `Ascent. Mass ${MASS} kg. Thrust ${knobs.lift.toFixed(0)} N. Height and rate come from thrust over mass, minus gravity. Allowed chart columns: height, rate, accel, thrust.`;
+    const weight = ascentWeight();
+    const tw = ascentTw(knobs.lift);
+    return `Ascent. Mass ${MASS} kg, g = ${G} m/s², weight ${weight.toFixed(1)} N. Thrust ${knobs.lift.toFixed(0)} N (T/W = ${tw.toFixed(2)}). a = T/m − g. If T ≤ weight the vehicle stays on the pad. Allowed chart columns: height, rate, accel, thrust.`;
   }
   if (id === "vehNose") {
     return `Thrust along the nose. Thrust ${NOSE_THRUST} N on a ${MASS} kg vehicle, tilted ${knobs.lean.toFixed(0)} degrees from vertical. Height and downrange integrate the two components. Allowed chart columns: height, downrange, rate, pitch.`;
@@ -176,8 +188,15 @@ function sample(id: VehicleId, t: number, knobs: Knobs, pose: Pose): VehicleSamp
     const accel = knobs.lift / MASS - G;
     row.accel = accel;
     row.thrust = knobs.lift;
-    row.rate = accel * t;
-    row.height = 0.5 * accel * t * t;
+    row.mass = MASS;
+    // Starts at rest on the pad. Thrust at or below weight never leaves.
+    if (accel <= 0) {
+      row.rate = 0;
+      row.height = 0;
+    } else {
+      row.rate = accel * t;
+      row.height = 0.5 * accel * t * t;
+    }
     row.flame = knobs.lift / 70;
     return row;
   }

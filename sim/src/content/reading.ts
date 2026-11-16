@@ -868,37 +868,45 @@ Positive $\sigma$ puts the center of pressure behind the center of mass.`,
     threads: [
       plain(
         "Push against weight",
-        ["Thrust above weight speeds the vehicle upward", "Height is that speed accumulated"],
+        ["Thrust above weight speeds the vehicle upward", "T/W below 1 stays on the pad"],
         [
-          "Thrust is a push along the climb. Weight is gravity pulling the vehicle down. [When the push per kilogram is stronger than gravity, the vehicle speeds upward](https://en.wikipedia.org/wiki/Newton%27s_laws_of_motion). When they match, the speed holds. When the push is weaker, the vehicle slows.",
-          "The mass stays fixed in this climb, so a steady thrust makes a steady acceleration. Speed then climbs in a straight line, and [height is that speed added up](https://en.wikipedia.org/wiki/Equations_of_motion), which is why the height bends upward: later seconds add a speed the vehicle has already gained. The thrust knob is the push.",
+          "Thrust is a push along the climb. Weight is $mg$: here $m=2\\,\\mathrm{kg}$ and $g=9.81\\,\\mathrm{m/s^2}$, so weight is $19.6\\,\\mathrm{N}$. [When the push per kilogram is stronger than gravity, the vehicle speeds upward](https://en.wikipedia.org/wiki/Newton%27s_laws_of_motion). The readout $T/W$ is thrust over that weight.",
+          "The mass stays fixed in this climb, so a steady thrust makes a steady acceleration. Speed then climbs in a straight line, and [height is that speed added up](https://en.wikipedia.org/wiki/Equations_of_motion). Drop thrust to or below weight and the vehicle never leaves the pad.",
         ],
       ),
       {
         id: "ascent",
         title: "Off the pad",
-        focus: ["Thrust per mass minus gravity is the acceleration", "Height is half of acceleration times time squared"],
+        focus: ["Thrust per mass minus gravity is the acceleration", "T/W = 1 is the break-even"],
         segments: [
-          { kind: "look", text: "The flame stays on and the rocket leaves the pad. The mass stays at 2 kg, so the thrust knob is the only thing that changes the acceleration." },
+          { kind: "look", text: "The flame stays on. Mass is 2 kg, so the thrust knob alone sets acceleration. The Thrust aside shows T/W and the 19.6 N weight." },
           {
             kind: "relation",
             tex: String.raw`a = T/m - g`,
-            stake: "$T/m$ is the push per kilogram. Subtracting $g$ takes the weight off that push. What remains is a constant acceleration for as long as the thrust holds.",
+            stake: "$T/m$ is the push per kilogram. Subtracting $g$ takes the weight off that push. Upward is positive. When $T \\le mg$, $a \\le 0$ and the pad hold keeps height and rate at zero.",
             gloss: String.raw`$T$ is thrust.
 $m$ is $2\,\mathrm{kg}$.
-$g$ is $9.81\,\mathrm{m/s^2}$.`,
+$g$ is $9.81\,\mathrm{m/s^2}$.
+Weight is $mg = 19.6\,\mathrm{N}$.`,
           },
           {
             kind: "contrast",
             tex: String.raw`v = at \qquad h = \tfrac{1}{2}at^{2}`,
-            stake: "Speed is that acceleration times time, so the rate trace is a straight line whose slope is $a$. Height adds the speed up, which for a constant acceleration is half of $a$ times time squared, and that is the upward bend.",
+            stake: "When $a>0$, speed is that acceleration times time, so the rate trace is a straight line whose slope is $a$. Height adds the speed up, which for a constant acceleration is half of $a$ times time squared.",
             gloss: String.raw`$v$ is the climb rate.
 $h$ is height.
 $t$ is the clock.`,
           },
           {
+            kind: "relation",
+            tex: String.raw`T/W = T/(mg)`,
+            stake: "Thrust-to-weight above 1 climbs. Equal to 1 holds. Below 1 never leaves the pad from rest.",
+            gloss: String.raw`$W$ is weight $mg$.
+$T/W$ is the live readout.`,
+          },
+          {
             kind: "trace",
-            text: "Raise the thrust and both the slope of the rate and the bend of the height get steeper. Lower it toward the weight and the climb flattens.",
+            text: "Raise thrust and the rate slope steepens. Lower it through 19.6 N and the climb flattens to a sit on the pad.",
           },
         ],
       },

@@ -12,7 +12,16 @@ import {
   LOOP_T0,
 } from "./loopPlant";
 import { turnAt, turnBrief, turnDuration, turnRows, type TurnId, type TurnSample } from "./turnPlant";
-import { vehicleAt, vehicleBrief, vehicleDuration, vehicleRows, type VehicleId, type VehicleSample } from "./vehiclePlant";
+import {
+  ascentTw,
+  ascentWeight,
+  vehicleAt,
+  vehicleBrief,
+  vehicleDuration,
+  vehicleRows,
+  type VehicleId,
+  type VehicleSample,
+} from "./vehiclePlant";
 import {
   costGains,
   descentAt,
@@ -306,7 +315,8 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   twist: { min: -45, max: 45 },
   margin: { min: -1, max: 1.5 },
   slosh: { min: 4, max: 35 },
-  lift: { min: 25, max: 70 },
+  // Below weight (~19.6 N on 2 kg) the ascent stays on the pad; keep that case reachable.
+  lift: { min: 10, max: 70 },
   lean: { min: 0, max: 40 },
   wind: { min: 0, max: 25 },
   trust: { min: 0, max: 6 },
@@ -551,12 +561,12 @@ export const SCENES: {
     id: "vehAscent",
     name: "Ascent",
     title: "Ascent",
-    lede: "Thrust above the vehicle's weight lifts it off the pad. The mass stays fixed, so a steady thrust is a steady acceleration, and height is that speed accumulated.",
-    opener: "Height and rate come from one thrust on a fixed mass. Drag the rocket to change the thrust.",
+    lede: "Mass is 2 kg, so weight is 19.6 N. Thrust above that weight lifts off; at or below it the vehicle stays on the pad. T/W is thrust over weight.",
+    opener: "Height and rate come from one thrust on a fixed mass. Watch T/W. Drag the rocket to change the thrust.",
     live: ["height", "rate"],
     askable: ["height", "rate", "accel", "thrust"],
     chartTitle: "Height and rate",
-    visual: "The rocket leaves the pad. The flame is the thrust, and the climb is the height.",
+    visual: "The flame is the thrust. T/W above 1 climbs; T/W at or below 1 stays on the pad.",
   },
   {
     id: "vehNose",
@@ -1434,6 +1444,15 @@ export function readout(id: SceneId, t: number, knobs: Knobs): ReadoutLine[] {
       { name: "Command", text: `${row.command.toFixed(0)} N`, column: "command" },
     ];
   }
+  if (id === "vehAscent") {
+    const tw = ascentTw(knobs.lift);
+    return [
+      { name: "Time", text: `${t.toFixed(2)} s` },
+      { name: "Height", text: `${row.height.toFixed(1)} m`, column: "height" },
+      { name: "Rate", text: `${row.rate.toFixed(1)} m/s`, column: "rate" },
+      { name: "T/W", text: tw.toFixed(2) },
+    ];
+  }
   if (isTurnScene(id) || isVehicleScene(id) || isDescentScene(id)) {
     const live = sceneById(id).live;
     return [
@@ -1592,7 +1611,22 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
     ];
   }
   if (id === "turnSlosh") return [knob("slosh", "Swing", knobs.slosh, LIMITS.slosh.min, LIMITS.slosh.max, 1, `${knobs.slosh.toFixed(0)}°`)];
-  if (id === "vehAscent") return [knob("lift", "Thrust", knobs.lift, LIMITS.lift.min, LIMITS.lift.max, 1, `${knobs.lift.toFixed(0)} N`)];
+  if (id === "vehAscent") {
+    const weight = ascentWeight();
+    const tw = ascentTw(knobs.lift);
+    return [
+      knob(
+        "lift",
+        "Thrust",
+        knobs.lift,
+        LIMITS.lift.min,
+        LIMITS.lift.max,
+        1,
+        `${knobs.lift.toFixed(0)} N`,
+        `T/W ${tw.toFixed(2)} · weight ${weight.toFixed(1)} N`,
+      ),
+    ];
+  }
   if (id === "vehNose") return [knob("lean", "Tilt", knobs.lean, LIMITS.lean.min, LIMITS.lean.max, 1, `${knobs.lean.toFixed(0)}°`)];
   if (id === "vehWind") return [knob("wind", "Wind", knobs.wind, LIMITS.wind.min, LIMITS.wind.max, 1, `${knobs.wind.toFixed(0)} m/s`)];
   if (id === "vehEstimate") {
