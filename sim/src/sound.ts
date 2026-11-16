@@ -111,7 +111,7 @@ function follow(): void {
   const spring = scene === "state" || scene === "step";
 
   if (spring) {
-    const speed = scene === "state" ? Math.abs(springRate(time)) : Math.abs(steppedRate(time, knobs.dt));
+    const speed = scene === "state" ? Math.abs(springRate(time)) : Math.abs(steppedRate(time, knobs.dt, knobs.method));
     const heard = Math.min(1.4, speed);
     aim(airGain.gain, heard * heard * 0.2);
     aim(rumbleGain.gain, 0);

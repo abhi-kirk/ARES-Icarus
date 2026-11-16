@@ -17,8 +17,8 @@
   "step": {
     "step": {
       "beginner": "In the height update, what is $\\Delta t$?",
-      "intermediate": "The update keeps the height and rate from the start of the step. Why does a longer step let the gold mass leave the wire box?",
-      "advanced": "If you lengthen the step, what happens to the gap between the stepped height and the true height?"
+      "intermediate": "Explicit Euler keeps both height and rate from the start of the step. Why does a longer $\\Delta t$ grow the gap to the wire box?",
+      "advanced": "Explicit Euler grows the mechanical energy $E=\\tfrac12 v^2+\\tfrac12 x^2$. What does that do to the gold phase orbit, and how does semi-implicit Euler differ?"
     },
     "eli5": {
       "beginner": "Why does a longer pause between updates let the gold mass leave the true swing?"

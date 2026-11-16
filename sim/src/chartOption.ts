@@ -1,5 +1,19 @@
 import type { EChartsOption } from "echarts";
-import { axisOf, chartMarkers, columnLabel, columnUnit, durationOf, plotOf, rowsFor, sceneById, type Column, type Knobs, type SceneId } from "./scenes";
+import {
+  axisOf,
+  chartMarkers,
+  columnLabel,
+  columnUnit,
+  durationOf,
+  plotOf,
+  rowsFor,
+  sceneById,
+  springHeight,
+  springRate,
+  type Column,
+  type Knobs,
+  type SceneId,
+} from "./scenes";
 
 const GOLD = "#e2a43a";
 const INK = "#d7ded8";
@@ -65,9 +79,13 @@ export function liveDomain(scene: SceneId, time: number): number {
 
 export function liveOption(scene: SceneId, knobs: Knobs, time: number): EChartsOption {
   const spec = sceneById(scene);
-  // Spring: the lesson names a phase loop. Draw rate against height with a moving state dot.
+  // Spring and step: phase loops. The step scene overlays the numerical orbit
+  // (spiraling under explicit Euler) on the true ellipse.
   if (scene === "state") {
     return phaseOption(scene, knobs, "height", ["rate"], spec.chartTitle, time);
+  }
+  if (scene === "step") {
+    return stepPhaseOption(knobs, spec.chartTitle, time);
   }
   return option(scene, spec.live, knobs, time, spec.chartTitle, time, true, liveDomain(scene, time), true);
 }
@@ -395,4 +413,103 @@ function padValues(values: number[]): [number, number] {
   lo -= span * 0.08;
   hi += span * 0.08;
   return [lo, hi];
+}
+
+function stepPhaseOption(knobs: Knobs, title: string, mark: number): EChartsOption {
+  const rows = rowsFor("step", knobs);
+  const current = rows.reduce((chosen, row) => (row.t <= mark + 1e-9 ? row : chosen), rows[0]);
+  const truth: [number, number][] = [];
+  const end = durationOf("step");
+  for (let t = 0; t <= end + 1e-9; t += 0.02) {
+    truth.push([springHeight(t), springRate(t)]);
+  }
+  const stepped = rows.map((row) => [row.height, row.rate] as [number, number]);
+  const xValues = [...truth.map((point) => point[0]), ...stepped.map((point) => point[0])];
+  const yValues = [...truth.map((point) => point[1]), ...stepped.map((point) => point[1])];
+  const xAxis = padValues(xValues);
+  const yAxis = padValues(yValues);
+
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    title: {
+      text: title,
+      left: 8,
+      top: 4,
+      textStyle: { color: INK, fontSize: 13, fontWeight: 500, fontFamily: "Barlow, Helvetica Neue, sans-serif" },
+    },
+    legend: {
+      left: 8,
+      top: 26,
+      textStyle: { color: INK, fontFamily: "Fragment Mono, monospace", fontSize: 11, fontWeight: 700 },
+      itemWidth: 26,
+      itemHeight: 5,
+      itemGap: 18,
+    },
+    grid: { left: 52, right: 16, top: 48, bottom: 36 },
+    tooltip: {
+      trigger: "item",
+      confine: true,
+      backgroundColor: PANEL,
+      borderColor: GRID,
+      borderWidth: 1,
+      padding: [8, 10],
+      textStyle: { color: INK, fontFamily: "Fragment Mono, monospace", fontSize: 11 },
+    },
+    xAxis: {
+      type: "value",
+      min: xAxis[0],
+      max: xAxis[1],
+      name: "Height (m)",
+      nameLocation: "middle",
+      nameGap: 24,
+      nameTextStyle: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 11 },
+      axisLine: { lineStyle: { color: GRID } },
+      axisTick: { show: false },
+      axisLabel: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 10 },
+      splitLine: { lineStyle: { color: GRID } },
+    },
+    yAxis: {
+      type: "value",
+      min: yAxis[0],
+      max: yAxis[1],
+      name: "Rate (m/s)",
+      nameLocation: "middle",
+      nameGap: 36,
+      nameTextStyle: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 11 },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 10 },
+      splitLine: { lineStyle: { color: GRID } },
+    },
+    color: [...STAGE_DATA_COLORS],
+    series: [
+      {
+        name: "True ellipse",
+        type: "line" as const,
+        showSymbol: false,
+        data: truth,
+        color: MUTED,
+        itemStyle: { color: MUTED },
+        lineStyle: { color: MUTED, width: MUTED_LINE_WIDTH, type: "dashed" },
+      },
+      {
+        name: "Step orbit",
+        type: "line" as const,
+        showSymbol: false,
+        data: stepped,
+        color: GOLD,
+        itemStyle: { color: GOLD },
+        lineStyle: { color: GOLD, width: DATA_LINE_WIDTH, type: "solid" },
+      },
+      {
+        name: "Current state",
+        type: "scatter" as const,
+        symbolSize: 8,
+        data: [[current.height, current.rate]],
+        color: GOLD,
+        itemStyle: { color: GOLD },
+      },
+    ],
+  };
 }

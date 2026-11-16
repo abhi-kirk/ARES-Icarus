@@ -176,6 +176,8 @@ export type Knobs = {
   noise: number;
   schedule: number;
   twist: number;
+  // Step scene: 0 = explicit Euler, 1 = semi-implicit Euler.
+  method: number;
 };
 
 export const KNOBS: Knobs = {
@@ -215,6 +217,7 @@ export const KNOBS: Knobs = {
   noise: 12,
   schedule: 1,
   twist: 10,
+  method: 0,
 };
 
 // Undamped spring. Mass 1 kg, stiffness 1 N/m, so one swing takes 2π seconds.
@@ -265,7 +268,8 @@ export type KnobKey =
   | "fuel"
   | "noise"
   | "schedule"
-  | "twist";
+  | "twist"
+  | "method";
 
 const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   dt: { min: 0.05, max: 0.5 },
@@ -311,6 +315,7 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   gust: { min: 0, max: 14 },
   // Near 0.7 kg arrival speed is already nearly gone; more fuel only sits unused.
   fuel: { min: 0.2, max: 0.75 },
+  method: { min: 0, max: 1 },
 };
 
 export function clampNamed(key: KnobKey, value: number): number {
@@ -344,12 +349,12 @@ export const SCENES: {
     id: "step",
     name: "The step",
     title: "The step",
-    lede: "The spring force sets the rate, and each step adds that rate times the time step, then holds the new height. The wire box is the true height and the gold mass is the step, so dragging the gold mass changes the step size.",
+    lede: "Explicit Euler holds the old height and rate for a whole Δt, then jumps. That freezes a stale force, so mechanical energy grows and the gold orbit spirals out. Semi-implicit updates the rate first, then the height, and stays closer to the wire box.",
     opener: "The gold mass is one step at a time. The wire box is the true height. Ask me what a symbol means, or set a step.",
     live: ["stepped", "truth"],
     askable: ["stepped", "truth", "height", "rate"],
-    chartTitle: "Step and truth",
-    visual: "The gold mass is the explicit Euler step. The wire box is the true spring height, so their gap is the numerical error.",
+    chartTitle: "Phase orbit: true and stepped",
+    visual: "Phase: gold is the numerical orbit, pale is the true ellipse. Explicit Euler spirals out as energy grows. Semi-implicit stays nearer the wire box.",
   },
   {
     id: "mass",
@@ -813,7 +818,7 @@ function springRows(): Row[] {
   return rows;
 }
 
-// Explicit Euler on the spring, held between steps. Both updates use the old state.
+// Explicit Euler: both updates use the old state, so energy grows.
 function eulerStep(height: number, rate: number, step: number): { height: number; rate: number } {
   const accel = -SPRING_K * height;
   return {
@@ -822,13 +827,33 @@ function eulerStep(height: number, rate: number, step: number): { height: number
   };
 }
 
-function eulerHold(t: number, dt: number): { height: number; rate: number } {
+// Semi-implicit (symplectic) Euler: rate first, then height with the new rate.
+function semiImplicitStep(height: number, rate: number, step: number): { height: number; rate: number } {
+  const accel = -SPRING_K * height;
+  const nextRate = rate + step * accel;
+  return {
+    height: height + step * nextRate,
+    rate: nextRate,
+  };
+}
+
+function integratorStep(
+  height: number,
+  rate: number,
+  step: number,
+  method: number,
+): { height: number; rate: number } {
+  if (method >= 0.5) return semiImplicitStep(height, rate, step);
+  return eulerStep(height, rate, step);
+}
+
+function eulerHold(t: number, dt: number, method = 0): { height: number; rate: number } {
   let height = 1;
   let rate = 0;
   let tau = 0;
   const step = clampKnob("step", dt);
   while (tau + step <= t + 1e-9) {
-    const next = eulerStep(height, rate, step);
+    const next = integratorStep(height, rate, step, method);
     height = next.height;
     rate = next.rate;
     tau += step;
@@ -836,15 +861,19 @@ function eulerHold(t: number, dt: number): { height: number; rate: number } {
   return { height, rate };
 }
 
-export function steppedHeight(t: number, dt: number): number {
-  return eulerHold(t, dt).height;
+export function steppedHeight(t: number, dt: number, method = 0): number {
+  return eulerHold(t, dt, method).height;
 }
 
-export function steppedRate(t: number, dt: number): number {
-  return eulerHold(t, dt).rate;
+export function steppedRate(t: number, dt: number, method = 0): number {
+  return eulerHold(t, dt, method).rate;
 }
 
-function stairPoints(dt: number, until: number): [number, number][] {
+function springEnergy(height: number, rate: number): number {
+  return 0.5 * SPRING_M * rate * rate + 0.5 * SPRING_K * height * height;
+}
+
+function stairPoints(dt: number, until: number, method = 0): [number, number][] {
   const step = clampKnob("step", dt);
   const end = Math.min(until, durationOf("step"));
   const points: [number, number][] = [[0, 1]];
@@ -854,7 +883,7 @@ function stairPoints(dt: number, until: number): [number, number][] {
   while (tau + step <= end + 1e-9) {
     const nextTime = tau + step;
     points.push([nextTime, height]);
-    const next = eulerStep(height, rate, step);
+    const next = integratorStep(height, rate, step, method);
     points.push([nextTime, next.height]);
     height = next.height;
     rate = next.rate;
@@ -862,6 +891,22 @@ function stairPoints(dt: number, until: number): [number, number][] {
   }
   if (end > tau + 1e-6) points.push([end, height]);
   return points;
+}
+
+function stepRows(dt: number, method: number): Row[] {
+  const rows: Row[] = [];
+  const sample = 0.02;
+  for (let t = 0; t <= durationOf("step") + 1e-9; t += sample) {
+    const held = eulerHold(t, dt, method);
+    const row = blank(t);
+    row.height = held.height;
+    row.rate = held.rate;
+    row.truth = springHeight(t);
+    row.stepped = held.height;
+    row.accel = springEnergy(held.height, held.rate);
+    rows.push(row);
+  }
+  return rows;
 }
 
 /** Pad contact: the rocket sits on the ground instead of falling through it. */
@@ -998,11 +1043,12 @@ function fromDescentSample(row: DescentSample): Row {
 }
 
 export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
-  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}|${knobs.schedule}|${knobs.twist}`;
+  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}|${knobs.schedule}|${knobs.twist}|${knobs.method}`;
   if (rowCache && rowCache.key === key) return rowCache.rows;
 
   let rows: Row[];
-  if (id === "state" || id === "step") rows = springRows();
+  if (id === "state") rows = springRows();
+  else if (id === "step") rows = stepRows(knobs.dt, knobs.method);
   else if (id === "mass") rows = massRows(knobs.thrust);
   else if (id === "engine") rows = engineRows(knobs.tau, knobs.ask);
   else if (isTurnScene(id)) rows = turnRows(id, knobs).map(fromTurnSample);
@@ -1048,7 +1094,7 @@ export function bodyAt(id: SceneId, t: number, knobs: Knobs): BodyDraw {
     return still(height, height, 0);
   }
   if (id === "step") {
-    return still(steppedHeight(t, knobs.dt), springHeight(t), 0);
+    return still(steppedHeight(t, knobs.dt, knobs.method), springHeight(t), 0);
   }
   if (isTurnScene(id)) {
     const sample = turnAt(id, t, knobs);
@@ -1188,7 +1234,7 @@ export function visualContext(id: SceneId): string {
 }
 
 export function seriesPoints(id: SceneId, column: Column, knobs: Knobs, until: number): [number, number][] {
-  if (id === "step" && column === "stepped") return stairPoints(knobs.dt, until);
+  if (id === "step" && column === "stepped") return stairPoints(knobs.dt, until, knobs.method);
   const rows = rowsFor(id, knobs).filter((row) => row.t <= until + 1e-9);
   // Estimate scene: chart sensor and estimate as errors from truth so the wave is visible.
   const points = rows.map((row) => {
@@ -1333,10 +1379,12 @@ export function readout(id: SceneId, t: number, knobs: Knobs): ReadoutLine[] {
     ];
   }
   if (id === "step") {
+    const held = eulerHold(t, knobs.dt, knobs.method);
     return [
       { name: "Time", text: `${t.toFixed(2)} s` },
-      { name: "Step", text: `${steppedHeight(t, knobs.dt).toFixed(2)} m`, column: "stepped" },
+      { name: "Step", text: `${held.height.toFixed(2)} m`, column: "stepped" },
       { name: "True", text: `${springHeight(t).toFixed(2)} m`, column: "truth" },
+      { name: "Energy", text: `${springEnergy(held.height, held.rate).toFixed(2)} J` },
     ];
   }
   const row = rowAt(rowsFor(id, knobs), t);
@@ -1405,7 +1453,11 @@ function knob(
 
 export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
   if (id === "step") {
-    return [knob("dt", "Step", knobs.dt, LIMITS.dt.min, LIMITS.dt.max, 0.05, `${knobs.dt.toFixed(2)} s`)];
+    const semi = knobs.method >= 0.5;
+    return [
+      knob("dt", "Step", knobs.dt, LIMITS.dt.min, LIMITS.dt.max, 0.05, `${knobs.dt.toFixed(2)} s`),
+      knob("method", "Method", knobs.method, LIMITS.method.min, LIMITS.method.max, 1, semi ? "semi" : "Euler", semi ? "rate then height" : "explicit Euler"),
+    ];
   }
   if (id === "mass") {
     return [knob("thrust", "Thrust", knobs.thrust, LIMITS.thrust.min, LIMITS.thrust.max, 1, `${knobs.thrust.toFixed(0)} N`)];
@@ -1606,7 +1658,7 @@ export function viewSpan(id: SceneId, knobs: Knobs): { min: number; max: number 
   if (id === "step") {
     let min = -1;
     let max = 1;
-    for (const point of stairPoints(knobs.dt, durationOf("step"))) {
+    for (const point of stairPoints(knobs.dt, durationOf("step"), knobs.method)) {
       min = Math.min(min, point[1]);
       max = Math.max(max, point[1]);
     }
@@ -1688,7 +1740,10 @@ function allowedList(id: SceneId): string {
 export function chatBrief(id: SceneId, knobs: Knobs): string {
   const scene = sceneById(id);
   if (id === "state") return `${scene.title}. Undamped spring, mass ${SPRING_M} kg, stiffness ${SPRING_K} N/m. Height from rest is cos(t) meters. Rate is -sin(t) meters per second. Acceleration is −height. The live chart is a phase loop of rate against height. Allowed chart columns: ${allowedList(id)}.`;
-  if (id === "step") return `${scene.title}. True height is cos(t). Stepped height is explicit Euler of the spring force with dt = ${knobs.dt.toFixed(2)} s. Allowed chart columns: ${allowedList(id)}.`;
+  if (id === "step") {
+    const method = knobs.method >= 0.5 ? "semi-implicit Euler (rate then height)" : "explicit Euler (both updates from the old state)";
+    return `${scene.title}. True height is cos(t). Stepped height uses ${method} with dt = ${knobs.dt.toFixed(2)} s on a unit spring (m=k=1). Explicit Euler grows mechanical energy and the phase orbit spirals out; semi-implicit stays nearer the true ellipse. Allowed chart columns: ${allowedList(id)}.`;
+  }
   if (id === "mass") {
     return `${scene.title}. Thrust input is ${knobs.thrust.toFixed(0)} N until t = ${BURN} s, then zero. Dry mass ${DRY} kg, fuel ${FUEL} kg. Height and rate integrate acceleration. Allowed chart columns: ${allowedList(id)}.`;
   }

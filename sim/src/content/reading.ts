@@ -97,30 +97,30 @@ $t$ is the slider time.`,
   step: {
     threads: [
       plain(
-        "A short promise, then a jump",
-        ["A step holds the current height and rate", "A longer step trusts a stale rate for longer"],
+        "Explicit Euler and a growing orbit",
+        ["Both updates use the old state", "That freezes a stale force, so energy grows"],
         [
-          "A computer follows a smooth swing by making a short promise. It takes the height and the speed it has right now, [holds them for a moment, and jumps to a new height](https://en.wikipedia.org/wiki/Euler_method). The true spring keeps curving during that moment.",
-          "A short moment stays close to the true swing, because the speed is still the speed of that moment. A long moment keeps a stale speed, and the computed mass walks away from the real one. The step length is the knob that sets how long each promise lasts.",
+          "This scene uses [explicit Euler](https://en.wikipedia.org/wiki/Euler_method): both the new rate and the new height are written from the values at the start of the step. The force is frozen for a whole $\\Delta t$, so the gold mass keeps a push that the true spring has already changed.",
+          "On an undamped spring that frozen force adds mechanical energy. The pale ellipse is the true orbit. The gold path spirals out as energy grows. Semi-implicit Euler updates the rate first, then the height with that new rate, and stays nearer the ellipse. The Method knob switches those two updates.",
         ],
       ),
       {
         id: "step",
         title: "The computed mass waits",
-        focus: ["Explicit Euler uses the old state", "Larger step size increases visible error"],
+        focus: ["Explicit Euler uses the old state", "Energy growth spirals the phase orbit"],
         segments: [
           {
             kind: "look",
-            text: "The gold mass is the computed value. The wire box keeps following the smooth spring, so any gap is the cost of holding a step too long.",
+            text: "The gold mass is the numerical orbit. The wire box follows the true spring. On the chart, pale is the closed ellipse and gold is the stepped orbit.",
           },
           {
             kind: "look",
-            text: "Each update takes the current state as a short promise and keeps that promise until the next sample.",
+            text: "Explicit Euler holds both height and rate from the start of the step. Semi-implicit updates rate first, then height.",
           },
           {
             kind: "relation",
             tex: String.raw`v_{n+1} = v_n - \Delta t\,x_n`,
-            stake: "The new rate is the old rate plus acceleration times the step. For this spring the acceleration is the negative of the height, so the update subtracts $\\Delta t$ times the height it had at the start.",
+            stake: "Explicit Euler: the new rate still uses the old height. For this spring the acceleration is $-x$, so the update subtracts $\\Delta t$ times the height at the start of the step.",
             gloss: String.raw`$n$ is the current step.
 $\Delta t$ is the step length.
 $x_n$ is height at the start of the step.
@@ -129,15 +129,19 @@ $v_n$ is rate at the start of the step.`,
           {
             kind: "relation",
             tex: String.raw`x_{n+1} = x_n + \Delta t\,v_n`,
-            stake: "The new height trusts the old rate for the whole step. A larger $\\Delta t$ makes that trust last longer, and the gold mass drifts from the wire box, which keeps the true spring.",
+            stake: "Explicit Euler also trusts the old rate for the whole step. Semi-implicit would use $v_{n+1}$ here instead. A larger $\\Delta t$ makes either promise last longer.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`E = \tfrac12 v^2 + \tfrac12 x^2`,
+            stake: "For this unit spring, energy is kinetic plus potential. Explicit Euler grows $E$ each step, so the phase orbit spirals out. The Energy readout tracks that growth.",
+            gloss: String.raw`$E$ is mechanical energy.
+$x$ is height.
+$v$ is rate.`,
           },
           {
             kind: "trace",
-            text: "The stepped trace leaves the true spring when the held value has left the motion it is approximating.",
-          },
-          {
-            kind: "trace",
-            text: "A shorter step makes each guess shorter, so the force law gets more chances to correct the path.",
+            text: "Lengthen the step on Explicit Euler and the gold spiral opens. Switch Method to semi and the orbit stays closer to the pale ellipse.",
           },
         ],
       },
