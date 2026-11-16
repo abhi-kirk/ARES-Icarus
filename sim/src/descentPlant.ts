@@ -94,7 +94,7 @@ export function descentBrief(id: DescentId, knobs: Knobs): string {
     return `GuSTO. Start from a weak push with trust radius ${knobs.region.toFixed(1)} N. Each iteration linearizes about the flown path, takes a hard trust-limited step, and accepts or shrinks on a merit test (end-height error). No virtual control.${detail}`;
   }
   if (id === "desReplan") {
-    return `Replanning. A sideways gust of ${knobs.gust.toFixed(1)} m/s hits at 2.2 s. The dashed downrange is the plan from before the gust.`;
+    return `Replanning (MPC-style). A sideways gust of ${knobs.gust.toFixed(1)} m/s hits at 2.2 s. Live guidance recomputes from the current state each step, with thrust capped at ${REPLAN_TMAX} N and a ${REPLAN_CONE_DEG}° glide cone from vertical. Large gusts can saturate those limits and miss. The dashed downrange is the plan from before the gust.`;
   }
   return `Runs that do not land. Fuel budget ${knobs.fuel.toFixed(2)} kg, exhaust speed ${280} m/s. Thrust stops when the budget is gone.`;
 }
@@ -373,8 +373,13 @@ function retargetAlong(flown: DescentSample[]): { tx: number[]; tz: number[] } {
   return { tx, tz };
 }
 
+const REPLAN_TMAX = 40;
+const REPLAN_CONE_DEG = 12;
+const REPLAN_GUST_AT = 2.2;
+
 function replanRows(gust: number): DescentSample[] {
-  let x = 8;
+  // Start inside the 12° cone: wall at 36 m is about 7.7 m.
+  let x = 6;
   let z = 36;
   let vx = 0;
   let vz = -1;
@@ -385,12 +390,14 @@ function replanRows(gust: number): DescentSample[] {
   let kicked = false;
   const rows: DescentSample[] = [];
   for (let t = 0; t <= 8 + 1e-9; t += STEP) {
-    if (!kicked && t >= 2.2) {
+    if (!kicked && t >= REPLAN_GUST_AT) {
       vx += gust;
       kicked = true;
     }
-    const live = guidanceThrust(x, z, vx, vz, t);
-    const old = guidanceThrust(oldX, oldZ, oldVx, oldVz, t);
+    // Live plan: recompute from the state you have now (MPC-style), inside thrust and cone limits.
+    const live = replanThrust(x, z, vx, vz, t);
+    // Old plan: same limits, but the state never felt the gust.
+    const old = replanThrust(oldX, oldZ, oldVx, oldVz, t);
     rows.push(sample(t, z, vz, x, live.mag, live.mag, oldX, live.tx, live.tz, live.mag));
     vx += (live.tx / MASS) * STEP;
     vz += (live.tz / MASS - G) * STEP;
@@ -408,6 +415,46 @@ function replanRows(gust: number): DescentSample[] {
     oldVz = heldOld.rate;
   }
   return rows;
+}
+
+/** Pad-aim with a hard thrust ceiling and a hard tilt cone from vertical. */
+function replanThrust(
+  x: number,
+  z: number,
+  vx: number,
+  vz: number,
+  t: number,
+): { tx: number; tz: number; mag: number } {
+  const left = Math.max(0.4, 8 - t);
+  const ax = guidanceAccel(x, vx, left);
+  const az = guidanceAccel(z, vz, left);
+  let thr = clampThrustCap(MASS * ax, MASS * (az + G), 4, REPLAN_TMAX);
+  const cone = (REPLAN_CONE_DEG * Math.PI) / 180;
+  const tilt = Math.atan2(Math.abs(thr.tx), Math.max(1e-6, Math.abs(thr.tz)));
+  if (tilt > cone && thr.mag > 1e-8) {
+    const sign = thr.tx >= 0 ? 1 : -1;
+    thr = {
+      tx: sign * thr.mag * Math.sin(cone),
+      tz: Math.sign(thr.tz || 1) * thr.mag * Math.cos(cone),
+      mag: thr.mag,
+    };
+  }
+  return thr;
+}
+
+function clampThrustCap(
+  tx: number,
+  tz: number,
+  floor: number,
+  ceiling: number,
+): { tx: number; tz: number; mag: number } {
+  const magnitude = Math.hypot(tx, tz);
+  const used = Math.min(ceiling, Math.max(floor, magnitude));
+  if (magnitude < 1e-8) {
+    return { tx: 0, tz: used, mag: used };
+  }
+  const scale = used / magnitude;
+  return { tx: tx * scale, tz: tz * scale, mag: used };
 }
 
 function missRows(fuel: number): DescentSample[] {
@@ -442,13 +489,6 @@ function missRows(fuel: number): DescentSample[] {
     }
   }
   return rows;
-}
-
-function guidanceThrust(x: number, z: number, vx: number, vz: number, t: number): { tx: number; tz: number; mag: number } {
-  const left = Math.max(0.4, 8 - t);
-  const ax = guidanceAccel(x, vx, left);
-  const az = guidanceAccel(z, vz, left);
-  return clampThrust(MASS * ax, MASS * (az + G), 4);
 }
 
 function guidanceAccel(position: number, rate: number, timeLeft: number): number {

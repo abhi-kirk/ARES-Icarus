@@ -636,12 +636,12 @@ export const SCENES: {
     id: "desReplan",
     name: "Replanning",
     title: "Replanning",
-    lede: "A gust changes the sideways speed, and the plan from the start no longer fits. A new plan, computed from the state after the gust, brings the vehicle back to the pad.",
-    opener: "Downrange is the new plan. The dashed line is the plan from before the gust. Drag the rocket to change the gust.",
+    lede: "A gust changes the sideways speed. Guidance recomputes from the state you have now (MPC-style), inside a thrust ceiling and a glide cone. A modest gust recovers. A large one saturates the limits and misses.",
+    opener: "Downrange is the live plan. The dashed line is the plan from before the gust. Drag the rocket to change the gust.",
     live: ["downrange", "reference"],
-    askable: ["downrange", "reference", "height", "rate"],
+    askable: ["downrange", "reference", "height", "rate", "thrust"],
     chartTitle: "New plan and the old one",
-    visual: "The rocket is kicked sideways at 2.2 seconds and steers back.",
+    visual: "Gust at 2.2 s. Thrust ≤ 40 N, cone 12° from vertical. Large gusts can miss the pad.",
   },
   {
     id: "desMiss",
@@ -1515,7 +1515,15 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
       : undefined;
     return [knob("region", "Trust", knobs.region, LIMITS.region.min, LIMITS.region.max, 0.5, `${knobs.region.toFixed(1)} N`, aside)];
   }
-  if (id === "desReplan") return [knob("gust", "Gust", knobs.gust, LIMITS.gust.min, LIMITS.gust.max, 0.5, `${knobs.gust.toFixed(1)} m/s`)];
+  if (id === "desReplan") {
+    const rows = descentRows("desReplan", knobs);
+    const end = rows[rows.length - 1];
+    const missed = Math.abs(end.downrange) > 1.2 || (end.height < 0.5 && Math.abs(end.rate) > 0.8);
+    const aside = missed
+      ? `miss · |x| ${Math.abs(end.downrange).toFixed(1)} m · T≤40 N · cone 12°`
+      : `ok · T≤40 N · cone 12°`;
+    return [knob("gust", "Gust", knobs.gust, LIMITS.gust.min, LIMITS.gust.max, 0.5, `${knobs.gust.toFixed(1)} m/s`, aside)];
+  }
   if (id === "desMiss") return [knob("fuel", "Fuel", knobs.fuel, LIMITS.fuel.min, LIMITS.fuel.max, 0.05, `${knobs.fuel.toFixed(2)} kg`)];
   return [];
 }
@@ -1582,7 +1590,18 @@ export function chartMarkers(id: SceneId, knobs: Knobs): ChartMarker[] {
   }
   if (id === "vehGuide") return [{ t: 2, label: "kickover" }];
   if (id === "vehAuto") return [{ t: 0.4, label: "pitch command" }];
-  if (id === "desReplan") return [{ t: 2.2, label: "gust" }];
+  if (id === "desReplan") {
+    const markers: ChartMarker[] = [{ t: 2.2, label: "gust" }];
+    const rows = rowsFor(id, knobs);
+    const cone = (12 * Math.PI) / 180;
+    const outside = rows.find((row) => Math.abs(row.downrange) > row.height * Math.tan(cone) + 0.05);
+    if (outside) markers.push({ t: outside.t, label: "outside cone" });
+    const end = rows[rows.length - 1];
+    if (Math.abs(end.downrange) > 1.2 || (end.height < 0.5 && Math.abs(end.rate) > 0.8)) {
+      markers.push({ t: end.t, label: "miss" });
+    }
+    return markers;
+  }
   if (id === "loopSample") {
     const markers: ChartMarker[] = [{ t: 1, label: "target step" }];
     for (let t = knobs.dt; t < durationOf(id) - 1e-9; t += knobs.dt) {

@@ -1271,32 +1271,32 @@ $T_{\mathrm{new}}$ is the trial thrust.`,
     threads: [
       plain(
         "The plan is for the state you have",
-        ["A gust changes the sideways speed", "The new plan starts from the state after the gust"],
+        ["A gust changes the sideways speed", "Limits can make a recovery impossible"],
         [
-          "A plan is a thrust that would reach the pad from the state at the start. [It keeps being recomputed as the clock runs, from whatever state the vehicle has now](https://en.wikipedia.org/wiki/Model_predictive_control).",
-          "At 2.2 seconds a sideways gust changes the speed. The plan from before that gust keeps its old downrange, drawn dashed. The vehicle follows the new plan and comes back to the pad. A larger gust swings farther out before the return.",
+          "A plan is a thrust that would reach the pad from the state you have now. [Recomputing that plan as the clock runs is the idea behind model predictive control](https://en.wikipedia.org/wiki/Model_predictive_control).",
+          "At 2.2 seconds a sideways gust changes the speed. The live plan turns to cancel it, but thrust stays at or under 40 N and the tilt stays inside a 12° cone from vertical. The dashed downrange is the plan that never felt the gust. A large gust saturates those limits and misses the pad.",
         ],
       ),
       {
         id: "gust",
-        title: "The same guidance, from the new speed",
-        focus: ["The gust is added to sideways speed", "Each plan uses the time still left"],
+        title: "Replan inside the limits",
+        focus: ["The gust is added to sideways speed", "Thrust and cone caps bind on large gusts", "A miss means the limits were not enough"],
         segments: [
           {
             kind: "look",
-            text: "Downrange is the path after the gust. The dashed line is the path the old plan still believes, the one that never felt the gust.",
+            text: "Downrange is the live plan after the gust. The dashed line is the old plan. Markers call out the gust, an outside-cone moment, and a miss when the end is off the pad.",
           },
           {
             kind: "relation",
             tex: String.raw`a = -6r/t_f^{2} - 4v/t_f`,
-            stake: "The acceleration is rebuilt from the distance and the speed the vehicle has now, and from the time left. After the gust, v includes the new sideways speed, so the thrust turns to take that speed back out.",
+            stake: "The acceleration is rebuilt from the distance and the speed the vehicle has now, and from the time left. After the gust, v includes the new sideways speed. The commanded thrust is then clipped to 40 N and to the 12° cone.",
             gloss: String.raw`$r$ is the distance still to the pad.
 $v$ is the speed, gust included.
 $t_f$ is the time left.`,
           },
           {
             kind: "trace",
-            text: "With no gust the two downrange lines stay together. A gust of 6 m/s has the new path near 9 m at four seconds while the old plan is near 4 m. Both are back at the pad by the end.",
+            text: "A gust of 6 m/s recovers under the limits. A gust of 14 m/s drives the vehicle outside the cone, saturates thrust, and ends off the pad. Replanning helps only while the limits still have room.",
           },
         ],
       },

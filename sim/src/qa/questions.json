@@ -307,8 +307,8 @@
   "desReplan": {
     "gust": {
       "beginner": "What does the gust change at 2.2 seconds?",
-      "intermediate": "At four seconds the new downrange and the dashed line disagree. Which one felt the gust, and where do they both end?",
-      "advanced": "The acceleration is rebuilt from the speed the vehicle has now. What does that speed include just after the gust?"
+      "intermediate": "Compare a 6 m/s gust with a 14 m/s gust. Which one recovers under the thrust and cone limits, and what does the aside show on the large one?",
+      "advanced": "Guidance recomputes from the state after the gust, but thrust is capped and tilt is cone-limited. Why can replanning still miss the pad?"
     },
     "eli5": {
       "beginner": "A sideways gust hits, and the old plan was for the speed from before it. What does the new plan do with the vehicle?"
