@@ -11,9 +11,11 @@ const KNOBS = {
   pad: { min: -4, max: 4 },
   gust: { min: 0, max: 20 },
   gain: { min: 0.02, max: 0.5 },
-  // Floor is stored in newtons on the case; the page scrubber is in kN.
+  // Floor / ceiling are stored in newtons on the case; the page scrubber is in kN.
   floor: { min: 0, max: 15000 },
+  ceiling: { min: 12000, max: 25000 },
   cone: { min: 5, max: 90 },
+  glide: { min: 5, max: 90 },
 };
 
 const NOMINAL = {
@@ -46,6 +48,8 @@ const NOMINAL = {
     thrust_min: 0.0,
     thrust_max: 25000.0,
     pointing_cone_deg: 90.0,
+    glide_cone_deg: 90.0,
+    glide_pull: 0.5,
     use_rerun: false,
     rerun_spawn_viewer: false,
     rerun_save_rrd: false,
@@ -75,7 +79,9 @@ export function caseFromRequest(body) {
     const pad = finite(sim.initial_pad_x_velocity);
     const gust = finite(sim.gust_magnitude);
     const floor = finite(sim.thrust_min);
+    const ceiling = finite(sim.thrust_max);
     const cone = finite(sim.pointing_cone_deg);
+    const glide = finite(sim.glide_cone_deg);
     if (height !== null) next.simulation.initial_z_pos = height;
     if (offset !== null) next.simulation.initial_x_pos = offset;
     if (descent !== null) next.simulation.initial_z_velocity = descent;
@@ -84,7 +90,9 @@ export function caseFromRequest(body) {
     if (pad !== null) next.simulation.initial_pad_x_velocity = pad;
     if (gust !== null) next.simulation.gust_magnitude = gust;
     if (floor !== null) next.simulation.thrust_min = floor;
+    if (ceiling !== null) next.simulation.thrust_max = ceiling;
     if (cone !== null) next.simulation.pointing_cone_deg = cone;
+    if (glide !== null) next.simulation.glide_cone_deg = glide;
   }
   const gain = finite(body?.outer_pid_vertical_position?.gains?.kp);
   if (gain !== null) next.outer_pid_vertical_position.gains.kp = gain;
@@ -97,7 +105,12 @@ export function caseFromRequest(body) {
   next.simulation.initial_pad_x_velocity = clamp(next.simulation.initial_pad_x_velocity, KNOBS.pad.min, KNOBS.pad.max);
   next.simulation.gust_magnitude = clamp(next.simulation.gust_magnitude, KNOBS.gust.min, KNOBS.gust.max);
   next.simulation.thrust_min = clamp(next.simulation.thrust_min, KNOBS.floor.min, KNOBS.floor.max);
+  next.simulation.thrust_max = clamp(next.simulation.thrust_max, KNOBS.ceiling.min, KNOBS.ceiling.max);
+  if (next.simulation.thrust_min > next.simulation.thrust_max) {
+    next.simulation.thrust_min = next.simulation.thrust_max;
+  }
   next.simulation.pointing_cone_deg = clamp(next.simulation.pointing_cone_deg, KNOBS.cone.min, KNOBS.cone.max);
+  next.simulation.glide_cone_deg = clamp(next.simulation.glide_cone_deg, KNOBS.glide.min, KNOBS.glide.max);
   next.outer_pid_vertical_position.gains.kp = clamp(
     next.outer_pid_vertical_position.gains.kp,
     KNOBS.gain.min,

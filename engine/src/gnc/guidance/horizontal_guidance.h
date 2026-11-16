@@ -29,6 +29,8 @@ private:
 
     double max_ref_accel_;
     double dt_inner_;
+    double glide_cone_deg_;
+    double glide_pull_;
 
     int outer_loop_divider_;
     int iteration_ = 0;

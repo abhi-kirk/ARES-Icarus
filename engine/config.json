@@ -52,6 +52,8 @@
         "thrust_min": 0.0,
         "thrust_max": 25000.0,
         "pointing_cone_deg": 90.0,
+        "glide_cone_deg": 90.0,
+        "glide_pull": 0.5,
         "use_rerun": true,
         "rerun_spawn_viewer": true,
         "rerun_save_rrd": true

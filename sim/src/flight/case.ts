@@ -34,6 +34,8 @@ export type FlightCase = {
     thrust_min: number;
     thrust_max: number;
     pointing_cone_deg: number;
+    // Approach corridor from the pad. Degrees from vertical; 90 is open.
+    glide_cone_deg: number;
     use_rerun: boolean;
     rerun_spawn_viewer: boolean;
     rerun_save_rrd: boolean;
@@ -50,7 +52,9 @@ export type KnobKey =
   | "gust"
   | "gain"
   | "floor"
-  | "cone";
+  | "ceiling"
+  | "cone"
+  | "glide";
 
 export type KnobSpec = {
   key: KnobKey;
@@ -70,9 +74,11 @@ export const KNOBS: KnobSpec[] = [
   { key: "pad", label: "Barge", min: -4, max: 4, step: 0.1, unit: "m/s" },
   { key: "gust", label: "Gust", min: 0, max: 20, step: 0.5, unit: "m/s" },
   { key: "gain", label: "Gain", min: 0.02, max: 0.5, step: 0.01, unit: "" },
-  // Floor in kN for the scrubber; written to the case as newtons.
+  // Floor / ceiling in kN for the scrubber; written to the case as newtons.
   { key: "floor", label: "Floor", min: 0, max: 15, step: 0.5, unit: "kN" },
-  { key: "cone", label: "Cone", min: 5, max: 90, step: 1, unit: "°" },
+  { key: "ceiling", label: "Ceiling", min: 12, max: 25, step: 0.5, unit: "kN" },
+  { key: "cone", label: "Tilt", min: 5, max: 90, step: 1, unit: "°" },
+  { key: "glide", label: "Glide", min: 5, max: 90, step: 1, unit: "°" },
 ];
 
 export const NOMINAL_CASE: FlightCase = {
@@ -105,6 +111,7 @@ export const NOMINAL_CASE: FlightCase = {
     thrust_min: 0.0,
     thrust_max: 25000.0,
     pointing_cone_deg: 90.0,
+    glide_cone_deg: 90.0,
     use_rerun: false,
     rerun_spawn_viewer: false,
     rerun_save_rrd: false,
@@ -132,7 +139,9 @@ export function readKnob(flight: FlightCase, key: KnobKey): number {
   if (key === "pad") return flight.simulation.initial_pad_x_velocity;
   if (key === "gust") return flight.simulation.gust_magnitude;
   if (key === "floor") return flight.simulation.thrust_min / 1000;
+  if (key === "ceiling") return flight.simulation.thrust_max / 1000;
   if (key === "cone") return flight.simulation.pointing_cone_deg;
+  if (key === "glide") return flight.simulation.glide_cone_deg;
   return flight.outer_pid_vertical_position.gains.kp;
 }
 
@@ -145,7 +154,9 @@ function writeKnob(flight: FlightCase, key: KnobKey, value: number): void {
   else if (key === "pad") flight.simulation.initial_pad_x_velocity = value;
   else if (key === "gust") flight.simulation.gust_magnitude = value;
   else if (key === "floor") flight.simulation.thrust_min = value * 1000;
+  else if (key === "ceiling") flight.simulation.thrust_max = value * 1000;
   else if (key === "cone") flight.simulation.pointing_cone_deg = value;
+  else if (key === "glide") flight.simulation.glide_cone_deg = value;
   else flight.outer_pid_vertical_position.gains.kp = value;
 }
 
@@ -172,7 +183,9 @@ export function caseFromRequest(body: unknown): FlightCase {
     const pad = finite(sim.initial_pad_x_velocity);
     const gust = finite(sim.gust_magnitude);
     const floorN = finite(sim.thrust_min);
+    const ceilingN = finite(sim.thrust_max);
     const cone = finite(sim.pointing_cone_deg);
+    const glide = finite(sim.glide_cone_deg);
     if (height !== null) writeKnob(next, "height", height);
     if (offset !== null) writeKnob(next, "offset", offset);
     if (descent !== null) writeKnob(next, "descent", descent);
@@ -181,13 +194,19 @@ export function caseFromRequest(body: unknown): FlightCase {
     if (pad !== null) writeKnob(next, "pad", pad);
     if (gust !== null) writeKnob(next, "gust", gust);
     if (floorN !== null) writeKnob(next, "floor", floorN / 1000);
+    if (ceilingN !== null) writeKnob(next, "ceiling", ceilingN / 1000);
     if (cone !== null) writeKnob(next, "cone", cone);
+    if (glide !== null) writeKnob(next, "glide", glide);
   }
   const gain = finite(raw.outer_pid_vertical_position?.gains?.kp);
   if (gain !== null) writeKnob(next, "gain", gain);
 
   for (const spec of KNOBS) {
     writeKnob(next, spec.key, clamp(readKnob(next, spec.key), spec.min, spec.max));
+  }
+  // Floor cannot sit above the ceiling after both knobs are clamped.
+  if (next.simulation.thrust_min > next.simulation.thrust_max) {
+    next.simulation.thrust_min = next.simulation.thrust_max;
   }
   return next;
 }
@@ -196,6 +215,9 @@ export function withKnob(flight: FlightCase, key: KnobKey, value: number): Fligh
   const next: FlightCase = structuredClone(flight);
   const spec = specFor(key);
   writeKnob(next, key, clamp(value, spec.min, spec.max));
+  if (next.simulation.thrust_min > next.simulation.thrust_max) {
+    next.simulation.thrust_min = next.simulation.thrust_max;
+  }
   return next;
 }
 

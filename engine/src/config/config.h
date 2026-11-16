@@ -55,6 +55,12 @@ struct SimConfig {
     double thrust_max = 25000.0;
     double pointing_cone_deg = 90.0;
 
+    // Approach corridor from the pad: horizontal range may sit no farther
+    // than height * tan(glide_cone_deg). 90 means guidance ignores the wall.
+    // glide_pull is extra inward ref velocity (m/s) per meter outside the wall.
+    double glide_cone_deg = 90.0;
+    double glide_pull = 0.5;
+
     bool use_rerun          = false;
     bool rerun_spawn_viewer = true;
     bool rerun_save_rrd     = true;
