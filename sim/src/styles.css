@@ -1200,7 +1200,7 @@ body {
 
 .chat-chip.is-meta {
   cursor: default;
-  color: var(--muted, #6a645c);
+  color: var(--muted);
   border-style: dashed;
 }
 

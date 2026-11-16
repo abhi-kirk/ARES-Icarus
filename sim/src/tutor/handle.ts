@@ -5,10 +5,13 @@ import { renderLessonContext } from "../lessonContext";
 import { buildChatInstructions, buildChatUserMessage, GRADE_INSTRUCTIONS, QUESTION_INSTRUCTIONS } from "./prompts";
 import type { ChatRequest, GradeResponse, QuestionResponse, TutorRequest } from "./types";
 
+/** Room for model, notation sheet, and one thread without cutting mid-equation. */
+const CONTEXT_CHARS = 4800;
+
 async function question(key: string, level: NonNullable<ReturnType<typeof levelById>>, body: TutorRequest): Promise<Response> {
   if (body.op !== "question") return Response.json({ error: "Unknown request" }, { status: 400 });
   const previous = body.previous ? clip(body.previous, 400) : "(none yet)";
-  const user = `Scene context:\n${clip(renderLessonContext(body.context), 2200)}\n\nLevel: ${level.label}\nAim: ${level.aim}\nAlready asked, so write a different question: ${previous}`;
+  const user = `Scene context:\n${clip(renderLessonContext(body.context), CONTEXT_CHARS)}\n\nLevel: ${level.label}\nAim: ${level.aim}\nAlready asked, so write a different question: ${previous}`;
   const raw = await grokText(key, QUESTION_INSTRUCTIONS, user, "low");
   const parsed = readJson(raw) as Partial<QuestionResponse>;
   if (!parsed.prompt) return Response.json({ error: "Grok did not return a question" }, { status: 502 });
@@ -18,7 +21,7 @@ async function question(key: string, level: NonNullable<ReturnType<typeof levelB
 async function grade(key: string, level: NonNullable<ReturnType<typeof levelById>>, body: TutorRequest): Promise<Response> {
   if (body.op !== "grade") return Response.json({ error: "Unknown request" }, { status: 400 });
   if (!body.question || !body.answer?.trim()) return Response.json({ error: "Missing question or answer" }, { status: 400 });
-  const user = `Scene context:\n${clip(renderLessonContext(body.context), 2200)}\n\nLevel: ${level.label}\nQuestion: ${clip(body.question, 500)}\nThe reader answered: ${clip(body.answer, 1000)}`;
+  const user = `Scene context:\n${clip(renderLessonContext(body.context), CONTEXT_CHARS)}\n\nLevel: ${level.label}\nQuestion: ${clip(body.question, 500)}\nThe reader answered: ${clip(body.answer, 1000)}`;
   const raw = await grokText(key, GRADE_INSTRUCTIONS, user, "low");
   const parsed = readJson(raw) as Partial<GradeResponse> & { correct?: boolean };
   const verdict = gradeVerdict(parsed);
@@ -65,7 +68,7 @@ export async function handleChat(request: Request, key: string | undefined): Pro
   const card = body.question?.trim() ? clip(body.question, 500) : "None yet.";
   const instructions = buildChatInstructions();
   const user = buildChatUserMessage({
-    context: clip(renderLessonContext(body.context), 2200),
+    context: clip(renderLessonContext(body.context), CONTEXT_CHARS),
     time: body.t ?? 0,
     cardQuestion: card,
     readerMessage: clip(body.text ?? "", 800),

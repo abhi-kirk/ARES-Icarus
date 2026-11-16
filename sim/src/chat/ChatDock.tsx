@@ -34,6 +34,14 @@ function toStored(messages: Message[]): StoredMessage[] {
     .map(({ role, text, chart, failed, actions }) => ({ role, text, chart, failed, actions }));
 }
 
+/** Keep Ask jump-to times inside the open scene's horizon. */
+function clampActionTime(raw: number | null | undefined, horizon: number): number | undefined {
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return undefined;
+  if (raw < 0) return 0;
+  if (raw > horizon) return horizon;
+  return raw;
+}
+
 export function ChatDock({
   open,
   onClose,
@@ -127,13 +135,6 @@ export function ChatDock({
       const controller = new AbortController();
       abortRef.current = controller;
 
-      function clampActionTime(raw: number | null | undefined): number | undefined {
-        if (typeof raw !== "number" || !Number.isFinite(raw)) return undefined;
-        if (raw < 0) return 0;
-        if (raw > horizon) return horizon;
-        return raw;
-      }
-
       try {
         const data = await postChatStream(
           { text, t: sendTime, context: lessonContext(scene, sendKnobs, sendTime), question },
@@ -153,55 +154,39 @@ export function ChatDock({
             : undefined;
         const chart = modelChart ?? localChart;
         const replyText = data.text || streamedRef.current || "I could not read that reply.";
+        const moved = clampActionTime(data.t, horizon);
         const actions: Message["actions"] = {};
-        const moved = clampActionTime(data.t);
         if (moved !== undefined) actions.time = moved;
         if (chart) actions.chart = chart;
-
         if (moved !== undefined) setTime(moved);
-
         patchAssistant({ text: replyText, chart, pending: false, failed: false, actions });
-        setLiveText("");
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
-          const stopped = streamedRef.current.trim() || "Stopped.";
-          patchAssistant({ text: stopped, pending: false, failed: false });
-          setLiveText("");
+          patchAssistant({ text: streamedRef.current.trim() || "Stopped.", pending: false, failed: false });
         } else {
+          const offline = localTurn(text, sendTime, scene, sendKnobs, question);
           const streamed = streamedRef.current.trim();
-          if (streamed) {
-            const offline = localTurn(text, sendTime, scene, sendKnobs, question);
-            const moved = clampActionTime(offline.time);
-            patchAssistant({
-              text: streamed,
-              chart: offline.chart,
-              pending: false,
-              failed: true,
-              actions: moved !== undefined || offline.chart ? { time: moved, chart: offline.chart } : undefined,
-            });
-          } else {
-            const offline = localTurn(text, sendTime, scene, sendKnobs, question);
-            const message =
-              offline.text !== spec.opener
-                ? offline.text
-                : error instanceof Error
-                  ? error.message
-                  : "Grok did not answer. Try again.";
-            if (offline.knob) setKnob(offline.knob.key, offline.knob.value);
-            const moved = clampActionTime(offline.time);
-            if (moved !== undefined) setTime(moved);
-            patchAssistant({
-              text: message,
-              chart: offline.chart,
-              pending: false,
-              failed: true,
-              actions: moved !== undefined || offline.chart ? { time: moved, chart: offline.chart } : undefined,
-            });
-          }
-          setLiveText("");
+          const message = streamed
+            ? streamed
+            : offline.text !== spec.opener
+              ? offline.text
+              : error instanceof Error
+                ? error.message
+                : "Grok did not answer. Try again.";
+          if (!streamed && offline.knob) setKnob(offline.knob.key, offline.knob.value);
+          const moved = clampActionTime(offline.time, horizon);
+          if (!streamed && moved !== undefined) setTime(moved);
+          patchAssistant({
+            text: message,
+            chart: offline.chart,
+            pending: false,
+            failed: true,
+            actions: moved !== undefined || offline.chart ? { time: moved, chart: offline.chart } : undefined,
+          });
         }
       }
 
+      setLiveText("");
       abortRef.current = null;
       setSending(false);
     },

@@ -2,7 +2,6 @@ import { readingFor, type Thread } from "./reading";
 import {
   chartColumns,
   chatBrief,
-  columnLabel,
   columnName,
   readout,
   sceneById,
@@ -10,7 +9,7 @@ import {
   type Knobs,
   type SceneId,
 } from "./scenes";
-import { notationBlock } from "./tutor/notation";
+import { NOTATION_SHEET } from "./tutor/notation";
 
 export type LessonContext = {
   sceneId: SceneId;
@@ -20,7 +19,7 @@ export type LessonContext = {
   visual: string;
   time: number;
   readout: string[];
-  columns: { id: string; name: string; label: string }[];
+  columns: { id: string; name: string }[];
   block?: {
     id: string;
     title: string;
@@ -70,7 +69,6 @@ export function lessonContext(scene: SceneId, knobs: Knobs, time: number, blockI
     columns: chartColumns(scene).map((column) => ({
       id: column,
       name: columnName(column),
-      label: columnLabel(column),
     })),
     block: threadContext(thread),
   };
@@ -86,7 +84,7 @@ export function renderLessonContext(context: LessonContext): string {
     `Slider time: ${context.time.toFixed(2)} s`,
     `Readout: ${context.readout.join(", ")}`,
     `Allowed chart columns (API id → reader name): ${context.columns.map((item) => `${item.id} → ${item.name}`).join(", ")}. In prose and grade notes, use the reader name. Use the API id only inside chart.y / chart.x.`,
-    notationBlock(),
+    NOTATION_SHEET,
   ];
 
   if (context.block) {
