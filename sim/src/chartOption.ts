@@ -65,6 +65,10 @@ export function liveDomain(scene: SceneId, time: number): number {
 
 export function liveOption(scene: SceneId, knobs: Knobs, time: number): EChartsOption {
   const spec = sceneById(scene);
+  // Spring: the lesson names a phase loop. Draw rate against height with a moving state dot.
+  if (scene === "state") {
+    return phaseOption(scene, knobs, "height", ["rate"], spec.chartTitle, time);
+  }
   return option(scene, spec.live, knobs, time, spec.chartTitle, time, true, liveDomain(scene, time), true);
 }
 

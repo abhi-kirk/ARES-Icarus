@@ -334,9 +334,9 @@ export const SCENES: {
     lede: "A mass hangs from a spring with the damper open. Its height from the rest point is the state, and the rate is how fast that height is changing.",
     opener: "Height from the rest point is the state. The rate is how fast that height changes. Ask me about a symbol, or tell me a time.",
     live: ["height", "rate"],
-    askable: ["height", "rate"],
-    chartTitle: "Height and rate",
-    visual: "The mass shows height from the rest point. The live chart shows height and rate against time, and the phase chart plots rate against height.",
+    askable: ["height", "rate", "accel"],
+    chartTitle: "Rate against height",
+    visual: "The mass shows height from the rest point. The live chart is a phase loop: rate against height, with a gold dot at the current state.",
   },
   {
     id: "step",
@@ -355,10 +355,10 @@ export const SCENES: {
     title: "The burn",
     lede: "Thrust stays on while the tank empties, and at four seconds the tank is empty so the thrust stops. Height and rate come from integrating acceleration. Drag the rocket to change the thrust input.",
     opener: "Height and rate are the state. Thrust is an input until the tank is empty. Ask me what a symbol means, or set a thrust.",
-    live: ["height", "rate"],
+    live: ["accel", "rate"],
     askable: ["height", "rate", "accel", "mass", "actual"],
-    chartTitle: "Height and rate",
-    visual: "The rocket rises or falls from the integrated motion. The chart can also show acceleration, mass, and thrust to connect the tank to the trajectory.",
+    chartTitle: "Acceleration and rate",
+    visual: "The rocket rises or falls from the integrated motion. The live chart shows acceleration and rate so the burn story is visible before height finishes changing.",
   },
   {
     id: "engine",
@@ -804,6 +804,7 @@ function springRows(): Row[] {
     const row = blank(t);
     row.height = springHeight(t);
     row.rate = springRate(t);
+    row.accel = (-SPRING_K / SPRING_M) * row.height;
     row.truth = row.height;
     rows.push(row);
   }
@@ -1684,7 +1685,7 @@ function allowedList(id: SceneId): string {
 
 export function chatBrief(id: SceneId, knobs: Knobs): string {
   const scene = sceneById(id);
-  if (id === "state") return `${scene.title}. Undamped spring, mass ${SPRING_M} kg, stiffness ${SPRING_K} N/m. Height from rest is cos(t) meters. Rate is -sin(t) meters per second. Allowed chart columns: ${allowedList(id)}.`;
+  if (id === "state") return `${scene.title}. Undamped spring, mass ${SPRING_M} kg, stiffness ${SPRING_K} N/m. Height from rest is cos(t) meters. Rate is -sin(t) meters per second. Acceleration is −height. The live chart is a phase loop of rate against height. Allowed chart columns: ${allowedList(id)}.`;
   if (id === "step") return `${scene.title}. True height is cos(t). Stepped height is explicit Euler of the spring force with dt = ${knobs.dt.toFixed(2)} s. Allowed chart columns: ${allowedList(id)}.`;
   if (id === "mass") {
     return `${scene.title}. Thrust input is ${knobs.thrust.toFixed(0)} N until t = ${BURN} s, then zero. Dry mass ${DRY} kg, fuel ${FUEL} kg. Height and rate integrate acceleration. Allowed chart columns: ${allowedList(id)}.`;
