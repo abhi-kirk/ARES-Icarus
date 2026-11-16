@@ -1178,7 +1178,7 @@ export function plotOf(id: SceneId, columns: Column[], knobs: Knobs, until: numb
     // Unstable hover: open loop runs to huge heights. Put it on its own log axis
     // so the closed-loop landing stays readable. Hidden mode: keep measured height
     // on the left axis and the internal coordinate on the right.
-    let axis = shareScale || COLUMNS[column].unit === primaryUnit ? 0 : 1;
+    let axis: 0 | 1 = shareScale || COLUMNS[column].unit === primaryUnit ? 0 : 1;
     if (id === "loopHover" && column === "openHeight") axis = 1;
     if (id === "loopHover" && column === "closedHeight") axis = 0;
     if (id === "loopMode" && column === "hiddenMode") axis = 1;
