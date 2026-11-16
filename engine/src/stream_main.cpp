@@ -52,8 +52,19 @@ void write_sample(const FlightSample& sample) {
               << ",\"pitch\":" << sample.pitch
               << ",\"yaw\":" << sample.yaw
               << ",\"gimbalX\":" << sample.gimbal_x
-              << ",\"gimbalY\":" << sample.gimbal_y
-              << "}\n";
+              << ",\"gimbalY\":" << sample.gimbal_y;
+    if (sample.plan_valid) {
+        std::cout << ",\"planX\":" << sample.plan_x
+                  << ",\"planY\":" << sample.plan_y
+                  << ",\"planZ\":" << sample.plan_z
+                  << ",\"planTrail\":[";
+        for (size_t i = 0; i < sample.plan_trail.size(); ++i) {
+            if (i > 0) std::cout << ",";
+            std::cout << sample.plan_trail[i];
+        }
+        std::cout << "]";
+    }
+    std::cout << "}\n";
     std::cout.flush();
     if (!std::cout) g_stop.store(true);
 }

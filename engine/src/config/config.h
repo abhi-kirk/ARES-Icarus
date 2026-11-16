@@ -78,6 +78,19 @@ struct SimConfig {
     double attitude_kp = 1.5;
     double attitude_kd = 0.8;
 
+    // Guidance law for the force ask. "pid" is the cascade. "mpc" is LTV-MPC
+    // (Phase 5) that tracks a soft-landing reference with OSQP.
+    std::string controller = "pid";
+
+    // MPC horizon length (steps) and step size (s). Weights are diagonal
+    // costs on position, velocity, and force effort.
+    int mpc_horizon = 40;
+    double mpc_dt = 0.1;
+    double mpc_w_pos = 25.0;
+    double mpc_w_vel = 40.0;
+    double mpc_w_u = 1.0e-9;
+    double mpc_w_terminal = 80.0;
+
     bool use_rerun          = false;
     bool rerun_spawn_viewer = true;
     bool rerun_save_rrd     = true;

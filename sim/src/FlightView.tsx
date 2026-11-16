@@ -155,6 +155,17 @@ function padPoints(samples: Sample[], time: number, future: boolean): [number, n
   return out;
 }
 
+/** MPC predicted path still ahead (engine frame x,z,y → three.js x,y,z). */
+function planPoints(sample: Sample | null): [number, number, number][] {
+  const trail = sample?.planTrail;
+  if (!trail || trail.length < 6) return [];
+  const out: [number, number, number][] = [];
+  for (let i = 0; i + 2 < trail.length; i += 3) {
+    out.push([trail[i], Math.max(trail[i + 2], 2), trail[i + 1]]);
+  }
+  return out;
+}
+
 function padYaw(samples: Sample[], time: number): number {
   const now = sampleAt(samples, time);
   if (!now) return 0;
@@ -372,6 +383,7 @@ function Scene({ sample, samples, time }: { sample: Sample | null; samples: Samp
   const yaw = padYaw(samples, time);
   const future = pointsOf(samples, time, true);
   const past = pointsOf(samples, time, false);
+  const plan = planPoints(sample);
   const padFuture = padPoints(samples, time, true);
   const padPast = padPoints(samples, time, false);
   const touchdown = samples.length > 0 ? samples[samples.length - 1] : null;
@@ -429,6 +441,9 @@ function Scene({ sample, samples, time }: { sample: Sample | null; samples: Samp
       {past.length > 1 ? <Line points={past} color="#8ea6b2" lineWidth={1.4} transparent opacity={0.4} /> : null}
       {future.length > 1 ? (
         <Line points={future} color="#f7fbfe" dashed dashSize={6} gapSize={4.5} lineWidth={2.2} />
+      ) : null}
+      {plan.length > 1 ? (
+        <Line points={plan} color="#f2c14e" dashed dashSize={5} gapSize={3.5} lineWidth={2.4} />
       ) : null}
       {touchdown ? (
         <mesh position={[touchdown.x, Math.max(touchdown.z, 2.4), touchdown.y]} rotation={[0, Math.PI / 4, 0]}>

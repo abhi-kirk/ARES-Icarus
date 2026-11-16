@@ -34,6 +34,19 @@ if(ICARUS_WITH_RERUN)
   add_subdirectory(${rerun_sdk_SOURCE_DIR} ${rerun_sdk_BINARY_DIR})
 endif()
 
+# OSQP for Phase 5 LTV-MPC. Static lib only; Fly builds with Rerun OFF still link it.
+include(FetchContent)
+set(OSQP_BUILD_SHARED_LIB OFF CACHE BOOL "" FORCE)
+set(OSQP_BUILD_DEMO_EXE OFF CACHE BOOL "" FORCE)
+set(UNITTESTS OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+  osqp
+  GIT_REPOSITORY https://github.com/osqp/osqp.git
+  GIT_TAG v0.6.3
+  GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(osqp)
+
 # Dependency order: math <- config <- dynamics/environment <- control <- guidance <- sim
 add_subdirectory(modules/math)
 add_subdirectory(src/config)

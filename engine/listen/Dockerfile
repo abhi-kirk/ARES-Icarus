@@ -1,6 +1,6 @@
 FROM debian:bookworm-slim AS build
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential cmake libeigen3-dev ca-certificates \
+    build-essential cmake git libeigen3-dev ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY . .

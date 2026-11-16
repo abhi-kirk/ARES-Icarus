@@ -17,6 +17,12 @@ export type Sample = {
   yaw: number;
   gimbalX: number;
   gimbalY: number;
+  /** MPC predicted position at this sample, when the QP flew. */
+  planX?: number;
+  planY?: number;
+  planZ?: number;
+  /** Remaining predicted path as flat [x,y,z, x,y,z, ...]. */
+  planTrail?: number[];
 };
 
 function num(value: unknown): number | null {
@@ -69,6 +75,22 @@ export function parseSample(line: string): Sample | null {
   ) {
     return null;
   }
+  const planX = num(raw.planX);
+  const planY = num(raw.planY);
+  const planZ = num(raw.planZ);
+  let planTrail: number[] | undefined;
+  if (Array.isArray(raw.planTrail)) {
+    const trail: number[] = [];
+    for (const value of raw.planTrail) {
+      const parsed = num(value);
+      if (parsed === null) {
+        trail.length = 0;
+        break;
+      }
+      trail.push(parsed);
+    }
+    if (trail.length >= 3 && trail.length % 3 === 0) planTrail = trail;
+  }
   return {
     t,
     x,
@@ -88,6 +110,10 @@ export function parseSample(line: string): Sample | null {
     yaw: optionalNum(raw.yaw),
     gimbalX: optionalNum(raw.gimbalX),
     gimbalY: optionalNum(raw.gimbalY),
+    planX: planX ?? undefined,
+    planY: planY ?? undefined,
+    planZ: planZ ?? undefined,
+    planTrail,
   };
 }
 

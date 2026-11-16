@@ -43,6 +43,14 @@ export type FlightCase = {
     gimbal_max_deg: number;
     Ixx: number;
     Iyy: number;
+    // Force ask: "pid" cascade or "mpc" LTV-MPC (Phase 5).
+    controller: "pid" | "mpc";
+    mpc_horizon: number;
+    mpc_dt: number;
+    mpc_w_pos: number;
+    mpc_w_vel: number;
+    mpc_w_u: number;
+    mpc_w_terminal: number;
     use_rerun: boolean;
     rerun_spawn_viewer: boolean;
     rerun_save_rrd: boolean;
@@ -130,6 +138,13 @@ export const NOMINAL_CASE: FlightCase = {
     gimbal_max_deg: 15.0,
     Ixx: 2000.0,
     Iyy: 2000.0,
+    controller: "mpc",
+    mpc_horizon: 40,
+    mpc_dt: 0.1,
+    mpc_w_pos: 25.0,
+    mpc_w_vel: 40.0,
+    mpc_w_u: 1.0e-9,
+    mpc_w_terminal: 80.0,
     use_rerun: false,
     rerun_spawn_viewer: false,
     rerun_save_rrd: false,

@@ -11,9 +11,42 @@ export function flightTrace(samples: Sample[], time: number, kind: "height" | "r
   const shown = samples.filter((sample) => sample.t <= time + 1e-6);
   const color = kind === "height" ? GOLD : TEAL;
   const data = shown.map((sample) => [sample.t, kind === "height" ? sample.z : sample.vz]);
+  const planData =
+    kind === "height"
+      ? shown
+          .filter((sample) => typeof sample.planZ === "number")
+          .map((sample) => [sample.t, sample.planZ as number])
+      : [];
   const title = kind === "height" ? "Altitude" : "Rate";
   const unit = kind === "height" ? "m" : "m/s";
   const label = { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 10 };
+  const series: EChartsOption["series"] = [
+    {
+      name: title,
+      type: "line",
+      showSymbol: false,
+      data,
+      color,
+      lineStyle: { color, width: 2 },
+      markLine: {
+        silent: true,
+        symbol: "none",
+        lineStyle: { color, width: 1, opacity: 0.7 },
+        label: { show: false },
+        data: [{ xAxis: time }],
+      },
+    },
+  ];
+  if (planData.length > 1) {
+    series.push({
+      name: "Plan",
+      type: "line",
+      showSymbol: false,
+      data: planData,
+      color: "#f2c14e",
+      lineStyle: { color: "#f2c14e", width: 1.5, type: "dashed" },
+    });
+  }
 
   return {
     backgroundColor: "transparent",
@@ -44,22 +77,6 @@ export function flightTrace(samples: Sample[], time: number, kind: "height" | "r
       axisLabel: { ...label, color },
       splitLine: { lineStyle: { color: GRID } },
     },
-    series: [
-      {
-        name: title,
-        type: "line",
-        showSymbol: false,
-        data,
-        color,
-        lineStyle: { color, width: 2 },
-        markLine: {
-          silent: true,
-          symbol: "none",
-          lineStyle: { color, width: 1, opacity: 0.7 },
-          label: { show: false },
-          data: [{ xAxis: time }],
-        },
-      },
-    ],
+    series,
   };
 }

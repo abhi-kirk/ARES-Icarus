@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <functional>
+#include <vector>
 
 #include "config/config.h"
 #include "gnc/control/controller.h"
@@ -39,6 +40,13 @@ struct FlightSample {
     double yaw = 0.0;
     double gimbal_x = 0.0;
     double gimbal_y = 0.0;
+    // MPC predicted position at this sample (inertial). Valid when plan_valid.
+    double plan_x = 0.0;
+    double plan_y = 0.0;
+    double plan_z = 0.0;
+    bool plan_valid = false;
+    // Remaining predicted path after this sample (inertial x,y,z triples).
+    std::vector<double> plan_trail;
 };
 
 using SampleEmit = std::function<void(const FlightSample&)>;

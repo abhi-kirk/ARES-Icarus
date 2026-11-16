@@ -74,6 +74,14 @@ bool apply_config(const json& j, Config& config) {
         config.simulation.attitude_kp        = j["simulation"].value("attitude_kp", 1.5);
         config.simulation.attitude_kd        = j["simulation"].value("attitude_kd", 0.8);
 
+        config.simulation.controller         = j["simulation"].value("controller", std::string("pid"));
+        config.simulation.mpc_horizon        = j["simulation"].value("mpc_horizon", 40);
+        config.simulation.mpc_dt             = j["simulation"].value("mpc_dt", 0.1);
+        config.simulation.mpc_w_pos          = j["simulation"].value("mpc_w_pos", 25.0);
+        config.simulation.mpc_w_vel          = j["simulation"].value("mpc_w_vel", 40.0);
+        config.simulation.mpc_w_u            = j["simulation"].value("mpc_w_u", 1.0e-9);
+        config.simulation.mpc_w_terminal     = j["simulation"].value("mpc_w_terminal", 80.0);
+
         config.simulation.use_rerun          = j["simulation"].value("use_rerun", false);
         config.simulation.rerun_spawn_viewer = j["simulation"].value("rerun_spawn_viewer", true);
         config.simulation.rerun_save_rrd     = j["simulation"].value("rerun_save_rrd", true);

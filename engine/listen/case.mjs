@@ -62,6 +62,13 @@ const NOMINAL = {
     gimbal_max_deg: 15.0,
     attitude_kp: 1.5,
     attitude_kd: 0.8,
+    controller: "mpc",
+    mpc_horizon: 40,
+    mpc_dt: 0.1,
+    mpc_w_pos: 25.0,
+    mpc_w_vel: 40.0,
+    mpc_w_u: 1.0e-9,
+    mpc_w_terminal: 80.0,
     use_rerun: false,
     rerun_spawn_viewer: false,
     rerun_save_rrd: false,
@@ -97,6 +104,10 @@ export function caseFromRequest(body) {
     const lag = finite(sim.thrust_tau);
     const gimbal = finite(sim.gimbal_max_deg);
     const inertia = finite(sim.Ixx);
+    if (typeof sim.controller === "string") {
+      const mode = sim.controller.toLowerCase();
+      if (mode === "pid" || mode === "mpc") next.simulation.controller = mode;
+    }
     if (height !== null) next.simulation.initial_z_pos = height;
     if (offset !== null) next.simulation.initial_x_pos = offset;
     if (descent !== null) next.simulation.initial_z_velocity = descent;

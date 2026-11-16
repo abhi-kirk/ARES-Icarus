@@ -8,9 +8,12 @@
 #include "gnc/control/gimbal_alloc.h"
 #include "gnc/control/thrust_lag.h"
 #include "gnc/control/thrust_limits.h"
+#include "gnc/guidance/ltv_mpc.h"
+#include "gnc/guidance/soft_land_reference.h"
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 namespace icarus {
 
@@ -25,7 +28,8 @@ FlightSample sample_from(
     double pad_x,
     double pad_y,
     double gimbal_x,
-    double gimbal_y
+    double gimbal_y,
+    const MpcSolveResult* plan
 ) {
     FlightSample sample;
     sample.t = t;
@@ -46,6 +50,20 @@ FlightSample sample_from(
     sample.yaw = state[YAW];
     sample.gimbal_x = gimbal_x;
     sample.gimbal_y = gimbal_y;
+    if (plan != nullptr && !plan->plan_pos.empty()) {
+        // plan_pos[0] is "now"; use the first future knot for the marker.
+        const size_t idx = plan->plan_pos.size() > 1 ? 1 : 0;
+        sample.plan_x = plan->plan_pos[idx].x();
+        sample.plan_y = plan->plan_pos[idx].y();
+        sample.plan_z = plan->plan_pos[idx].z();
+        sample.plan_valid = true;
+        sample.plan_trail.clear();
+        for (size_t i = idx; i < plan->plan_pos.size(); ++i) {
+            sample.plan_trail.push_back(plan->plan_pos[i].x());
+            sample.plan_trail.push_back(plan->plan_pos[i].y());
+            sample.plan_trail.push_back(plan->plan_pos[i].z());
+        }
+    }
     return sample;
 }
 
@@ -126,12 +144,13 @@ void Simulator::run(
     Eigen::Vector2d ref_vel_xy = Eigen::Vector2d::Zero();
     double Fx_cmd = vel_ctrl_h_x.compute(state[VEL_X], 0.0);
     double Fy_cmd = vel_ctrl_h_y.compute(state[VEL_Y], 0.0);
+    double Fz_cmd = (MASS_DRY + state[FUEL]) * GRAVITY;
 
-    // Lagged force command from the PID. On the 6-DOF plant this is the ask
-    // that becomes thrust + gimbal; samples may show delivered force instead.
+    // Lagged force command from the PID / MPC. On the 6-DOF plant this is the
+    // ask that becomes thrust + gimbal; samples may show delivered force instead.
     double Fx_act = 0.0;
     double Fy_act = 0.0;
-    double Fz_act = (MASS_DRY + state[FUEL]) * GRAVITY;
+    double Fz_act = Fz_cmd;
 
     double gimbal_x = 0.0;
     double gimbal_y = 0.0;
@@ -142,9 +161,60 @@ void Simulator::run(
     const double tau_kp = cfg.attitude_kp * cfg.Ixx;
     const double tau_kd = cfg.attitude_kd * cfg.Ixx;
 
+    const bool use_mpc = (cfg.controller == "mpc");
+    SoftLandReference soft_ref;
+    LtvMpc mpc;
+    MpcSolveResult last_plan;
+    int mpc_divider = 1;
+    if (use_mpc) {
+        Eigen::Vector2d pad0 = landing_pad.pad_position(t);
+        const double mass0 = MASS_DRY + state[FUEL];
+        soft_ref.build(
+            Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
+            Eigen::Vector3d(state[VEL_X], state[VEL_Y], state[VEL_Z]),
+            mass0,
+            cfg.thrust_min,
+            cfg.thrust_max,
+            cfg.mpc_dt,
+            pad0[0],
+            pad0[1]
+        );
+        mpc.configure(
+            cfg.mpc_horizon,
+            cfg.mpc_dt,
+            cfg.mpc_w_pos,
+            cfg.mpc_w_vel,
+            cfg.mpc_w_u,
+            cfg.mpc_w_terminal,
+            cfg.thrust_min,
+            cfg.thrust_max,
+            cfg.pointing_cone_deg
+        );
+        mpc.set_reference(&soft_ref);
+        mpc_divider = std::max(1, static_cast<int>(std::lround(cfg.mpc_dt / dt_inner_v)));
+
+        last_plan = mpc.solve(
+            t,
+            Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
+            Eigen::Vector3d(state[VEL_X], state[VEL_Y], state[VEL_Z]),
+            mass0,
+            pad0[0],
+            pad0[1]
+        );
+        Fx_cmd = last_plan.force.x();
+        Fy_cmd = last_plan.force.y();
+        Fz_cmd = last_plan.force.z();
+        Fx_act = Fx_cmd;
+        Fy_act = Fy_cmd;
+        Fz_act = Fz_cmd;
+    }
+
     if (emit != nullptr) {
         Eigen::Vector2d pad0 = landing_pad.pad_position(t);
-        (*emit)(sample_from(t, state, Fx_act, Fy_act, Fz_act, pad0[0], pad0[1], gimbal_x, gimbal_y));
+        (*emit)(sample_from(
+            t, state, Fx_act, Fy_act, Fz_act, pad0[0], pad0[1], gimbal_x, gimbal_y,
+            use_mpc ? &last_plan : nullptr
+        ));
     }
 
     while (state[POS_Z] > 0.0 && !should_stop(t, time_limit, stop)) {
@@ -155,14 +225,32 @@ void Simulator::run(
         Eigen::Vector2d pad_pos = landing_pad.pad_position(t);
         Eigen::Vector2d pad_vel = landing_pad.pad_velocity();
 
-        const double ref_vel_z = guidance.compute(state);
-        const double feedforward = (MASS_DRY + state[FUEL]) * GRAVITY;
-        double Fz_cmd = vel_ctrl.compute(state[VEL_Z], ref_vel_z, feedforward);
+        double ref_vel_z = 0.0;
+        if (use_mpc) {
+            if (sim_counter % mpc_divider == 0) {
+                const double mass = MASS_DRY + state[FUEL];
+                last_plan = mpc.solve(
+                    t,
+                    Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
+                    Eigen::Vector3d(state[VEL_X], state[VEL_Y], state[VEL_Z]),
+                    mass,
+                    pad_pos[0],
+                    pad_pos[1]
+                );
+                Fx_cmd = last_plan.force.x();
+                Fy_cmd = last_plan.force.y();
+                Fz_cmd = last_plan.force.z();
+            }
+        } else {
+            ref_vel_z = guidance.compute(state);
+            const double feedforward = (MASS_DRY + state[FUEL]) * GRAVITY;
+            Fz_cmd = vel_ctrl.compute(state[VEL_Z], ref_vel_z, feedforward);
 
-        if (sim_counter % inner_loop_divider == 0) {
-            ref_vel_xy = guidance_h.compute(state, pad_pos, pad_vel);
-            Fx_cmd = vel_ctrl_h_x.compute(state[VEL_X], ref_vel_xy[0]);
-            Fy_cmd = vel_ctrl_h_y.compute(state[VEL_Y], ref_vel_xy[1]);
+            if (sim_counter % inner_loop_divider == 0) {
+                ref_vel_xy = guidance_h.compute(state, pad_pos, pad_vel);
+                Fx_cmd = vel_ctrl_h_x.compute(state[VEL_X], ref_vel_xy[0]);
+                Fy_cmd = vel_ctrl_h_y.compute(state[VEL_Y], ref_vel_xy[1]);
+            }
         }
 
         apply_thrust_limits(
@@ -244,10 +332,14 @@ void Simulator::run(
         }
 #else
         (void)logger;
+        (void)ref_vel_z;
 #endif
         if (emit != nullptr) {
             Eigen::Vector2d pad_now = landing_pad.pad_position(t);
-            (*emit)(sample_from(t, state, Fx_log, Fy_log, Fz_log, pad_now[0], pad_now[1], gimbal_x, gimbal_y));
+            (*emit)(sample_from(
+                t, state, Fx_log, Fy_log, Fz_log, pad_now[0], pad_now[1], gimbal_x, gimbal_y,
+                use_mpc ? &last_plan : nullptr
+            ));
         }
     }
 }
