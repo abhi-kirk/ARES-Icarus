@@ -78,7 +78,13 @@ export function descentBrief(id: DescentId, knobs: Knobs): string {
     return `Lossless convexification. Thrust floor ${knobs.floor.toFixed(0)} N, ceiling ${TMAX} N. σ is stored in reference and equals |T| (minimum-fuel puts the thrust on the slack). Command is the uncapped ask.`;
   }
   if (id === "desScvx") {
-    return `Successive convexification. Pass ${Math.round(knobs.pass)} of 5. Each pass moves the thrust 0.65 of the way toward the guidance solution and flies that profile.`;
+    const infos = scvxPassInfo();
+    const index = Math.min(infos.length, Math.max(1, Math.round(knobs.pass))) - 1;
+    const info = infos[index];
+    const detail = info
+      ? ` End height ${info.error.toFixed(2)} m, trust radius ${info.radius.toFixed(1)} N${info.accepted ? "" : " (step rejected)"}.`
+      : "";
+    return `Successive convexification. Pass ${Math.round(knobs.pass)} of 5: fly, linearize along the path, solve a pad-aiming subproblem, limit the thrust step by a trust region, add virtual vertical slack, then accept or shrink.${detail}`;
   }
   if (id === "desGusto") {
     return `GuSTO. The thrust may move at most ${knobs.region.toFixed(1)} N from the weak first push. The dashed height is that first push.`;
@@ -183,8 +189,18 @@ function lossRows(floor: number): DescentSample[] {
   return rows;
 }
 
+/** End-height error and trust radius after each SCvx pass (for the knob aside). */
+export type ScvxPassInfo = { error: number; radius: number; accepted: boolean };
+
+let scvxInfoCache: ScvxPassInfo[] | null = null;
+
+export function scvxPassInfo(): ScvxPassInfo[] {
+  if (!scvxInfoCache) scvxPasses();
+  return scvxInfoCache ?? [];
+}
+
 function scvxRows(passKnob: number): DescentSample[] {
-  const passes = scvxPasses();
+  const { passes } = scvxPasses();
   const index = Math.min(passes.length, Math.max(1, Math.round(passKnob))) - 1;
   const current = passes[index];
   const previous = index === 0 ? current : passes[index - 1];
@@ -195,18 +211,88 @@ function scvxRows(passKnob: number): DescentSample[] {
   });
 }
 
-function scvxPasses(): DescentSample[][] {
+function scvxPasses(): { passes: DescentSample[][] } {
   const count = Math.round(8 / STEP);
+  // Weak first push, well below weight, so pass 1 falls through the pad.
   let tx = Array(count).fill(0);
-  let tz = Array(count).fill(16);
+  let tz = Array(count).fill(8);
+  let radius = 4;
   const passes: DescentSample[][] = [];
+  const info: ScvxPassInfo[] = [];
+  // Pad-aiming subproblem (closed-form stand-in for the convex program).
+  const solved = guidanceProfile(12, 30, 0, -2);
+
   for (let pass = 0; pass < 5; pass += 1) {
-    passes.push(flyProfile(tx, tz, 12, 30, 0, -2));
-    const solved = guidanceProfile(12, 30, 0, -2);
-    tx = tx.map((value, i) => value + 0.65 * (solved.tx[i] - value));
-    tz = tz.map((value, i) => value + 0.65 * (solved.tz[i] - value));
+    // Fly without a pad clamp so early passes can miss through the ground.
+    const flown = flyProfile(tx, tz, 12, 30, 0, -2, false);
+    const error = flown[flown.length - 1].height;
+    passes.push(flown);
+
+    // Trust region: only a limited step in thrust from the current profile toward the solve.
+    const stepped = trustStep(tx, tz, solved.tx, solved.tz, radius);
+    const steppedFlight = flyProfile(stepped.tx, stepped.tz, 12, 30, 0, -2, false);
+    const leftover = steppedFlight[steppedFlight.length - 1].height;
+    // Virtual control: vertical slack once the trust step is already near the pad.
+    const virtual = virtualVertical(leftover, count);
+    const aimTx = stepped.tx;
+    const aimTz = stepped.tz.map((value, i) => value + virtual[i]);
+    const trial = flyProfile(aimTx, aimTz, 12, 30, 0, -2, false);
+    const trialError = trial[trial.length - 1].height;
+
+    const radiusShown = radius;
+    let accepted = false;
+    if (Math.abs(trialError) < Math.abs(error) - 0.05) {
+      tx = aimTx;
+      tz = aimTz;
+      radius = Math.min(35, radius * 1.45);
+      accepted = true;
+    } else if (Math.abs(leftover) < Math.abs(error) - 0.05) {
+      // Virtual made it worse; keep the trust-limited step alone and grow more slowly.
+      tx = stepped.tx;
+      tz = stepped.tz;
+      radius = Math.min(35, radius * 1.25);
+      accepted = true;
+    } else {
+      // Reject the step and shrink the trust region.
+      radius = Math.max(2.5, radius * 0.65);
+    }
+    info.push({ error, radius: radiusShown, accepted });
   }
-  return passes;
+
+  scvxInfoCache = info;
+  return { passes };
+}
+
+function trustStep(
+  tx: number[],
+  tz: number[],
+  solTx: number[],
+  solTz: number[],
+  radius: number,
+): { tx: number[]; tz: number[] } {
+  const nextTx: number[] = [];
+  const nextTz: number[] = [];
+  for (let i = 0; i < tx.length; i += 1) {
+    let dtx = solTx[i] - tx[i];
+    let dtz = solTz[i] - tz[i];
+    const step = Math.hypot(dtx, dtz);
+    if (step > radius && step > 1e-9) {
+      const scale = radius / step;
+      dtx *= scale;
+      dtz *= scale;
+    }
+    nextTx.push(tx[i] + dtx);
+    nextTz.push(tz[i] + dtz);
+  }
+  return { tx: nextTx, tz: nextTz };
+}
+
+/** Soft vertical slack once a trust step is near the pad. Far leftovers stay at zero. */
+function virtualVertical(leftover: number, count: number): number[] {
+  if (Math.abs(leftover) >= 25 || Math.abs(leftover) < 0.15) return Array(count).fill(0);
+  const slack = (-leftover / 6) * MASS;
+  const per = Math.max(-8, Math.min(8, slack));
+  return Array(count).fill(per);
 }
 
 function gustoRows(trust: number): DescentSample[] {
@@ -341,7 +427,15 @@ function guidanceProfile(x0: number, z0: number, vx0: number, vz0: number): { tx
   return { tx, tz };
 }
 
-function flyProfile(tx: number[], tz: number[], x0: number, z0: number, vx0: number, vz0: number): DescentSample[] {
+function flyProfile(
+  tx: number[],
+  tz: number[],
+  x0: number,
+  z0: number,
+  vx0: number,
+  vz0: number,
+  clampGround = true,
+): DescentSample[] {
   let x = x0;
   let z = z0;
   let vx = vx0;
@@ -356,9 +450,11 @@ function flyProfile(tx: number[], tz: number[], x0: number, z0: number, vx0: num
     vz += (tz[i] / mass - G) * STEP;
     x += vx * STEP;
     z += vz * STEP;
-    const held = holdPad(z, vz);
-    z = held.height;
-    vz = held.rate;
+    if (clampGround) {
+      const held = holdPad(z, vz);
+      z = held.height;
+      vz = held.rate;
+    }
     mass = Math.max(1.4, mass - magnitude / VE * STEP);
   }
   const last = rows[rows.length - 1];

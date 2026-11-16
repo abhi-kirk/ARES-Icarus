@@ -1193,17 +1193,17 @@ $T_{\max}$ is the ceiling.`,
   desScvx: {
     threads: [
       plain(
-        "Fly it, then aim again",
-        ["The first profile falls through the pad", "Each pass moves the thrust toward a guidance solution"],
+        "Fly it, solve, step, fly again",
+        ["Each pass builds a new thrust near the last one", "A trust region limits how far that step may go"],
         [
-          "The first thrust is only a weak upward push, smaller than the weight, so the rocket falls through the pad. A guidance solution knows the thrust that would arrive at the pad with the speed gone. The flown profile is not replaced all at once.",
-          "[Each pass moves the thrust 0.65 of the way toward that solution and flies the result from the same start](https://arxiv.org/abs/1608.05133). The fall gets shallower. By the fifth pass the height meets the pad.",
+          "The first thrust is only a weak upward push, smaller than the weight, so the rocket falls through the pad. [Successive convexification flies that profile, solves a pad-aiming subproblem (stand-in for the convex program), and steps toward it](https://arxiv.org/abs/1608.05133).",
+          "The new thrust is not free to jump to the full solve. A trust region caps how far each sample may move, and a small virtual vertical slack can close leftover pad error once the step is already near the pad. If the trial flight is worse, the step is rejected and the region shrinks.",
         ],
       ),
       {
         id: "pass",
-        title: "Most of the way, then fly",
-        focus: ["The update keeps part of the old thrust", "The guidance acceleration aims at the pad in the time left"],
+        title: "Solve, trust, slack, accept",
+        focus: ["The subproblem aims at the pad", "The trust region limits the thrust step", "Virtual slack closes leftover miss"],
         segments: [
           {
             kind: "look",
@@ -1211,22 +1211,22 @@ $T_{\max}$ is the ceiling.`,
           },
           {
             kind: "relation",
-            tex: String.raw`T_{k+1} = T_k + 0.65\,(T_{\mathrm{sol}} - T_k)`,
-            stake: "T_k is the thrust profile on this pass. T_sol is the guidance thrust for the same start. The next profile keeps 0.35 of the old thrust and takes 0.65 of the new one, then the vehicle flies that mix from the start again.",
+            tex: String.raw`\|T_{k+1} - T_k\| \le \Delta_k`,
+            stake: "T_k is the thrust profile on this pass. The solved pad-aiming thrust is pulled back so the step stays inside a trust radius Δ_k. An accepted trial grows Δ. A rejected trial shrinks it.",
             gloss: String.raw`$k$ is the pass.
-$T_{\mathrm{sol}}$ is the guidance thrust.`,
+$\Delta_k$ is the trust radius.`,
           },
           {
             kind: "relation",
             tex: String.raw`a = -6r/t_f^{2} - 4v/t_f`,
-            stake: "a is the acceleration that meets the pad with no speed in the time still left. r is the distance still to cover and v is the speed. That acceleration, plus gravity, is the guidance thrust before the mix.",
+            stake: "The pad-aiming subproblem uses this acceleration from the state and the time left. Virtual slack then adds a small vertical push when the trust-limited trial still ends a little off the pad.",
             gloss: String.raw`$t_f$ is the time left.
 $r$ is the distance still to the pad.
 $v$ is the speed.`,
           },
           {
             kind: "trace",
-            text: "Pass 1 ends about 15 m under the pad. Pass 3 is a short miss. Pass 5 meets the pad with the speed nearly gone. The knob is the pass.",
+            text: "Pass 1 falls well under the pad. Later passes cut that miss until the height meets the pad. The aside reports end-height error, the trust radius, and whether the step out of that pass was accepted.",
           },
         ],
       },

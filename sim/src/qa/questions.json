@@ -286,9 +286,9 @@
   },
   "desScvx": {
     "pass": {
-      "beginner": "In the update for $T_{k+1}$, what fraction of the new guidance thrust is taken?",
-      "intermediate": "Pass 1 and pass 5 fly from the same start. What does the height do on each?",
-      "advanced": "The guidance acceleration uses the time left and the distance still to the pad. What does the mix with the old thrust keep you from doing in a single pass?"
+      "beginner": "In $\\Vert T_{k+1}-T_k\\Vert \\le \\Delta_k$, what does $\\Delta_k$ limit?",
+      "intermediate": "Pass 1 and pass 5 fly from the same start. What does the height do on each, and what do the error and trust radius on the aside report?",
+      "advanced": "After the trust-limited step, a virtual vertical slack may still be added. What leftover miss is that slack trying to close, and what happens to the trust radius if the trial flight is worse?"
     },
     "eli5": {
       "beginner": "The first thrust is a weak upward push. What changes about the fall as you move to a later pass?"

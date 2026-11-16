@@ -13,7 +13,16 @@ import {
 } from "./loopPlant";
 import { turnAt, turnBrief, turnDuration, turnRows, type TurnId, type TurnSample } from "./turnPlant";
 import { vehicleAt, vehicleBrief, vehicleDuration, vehicleRows, type VehicleId, type VehicleSample } from "./vehiclePlant";
-import { costGains, descentAt, descentBrief, descentDuration, descentRows, type DescentId, type DescentSample } from "./descentPlant";
+import {
+  costGains,
+  descentAt,
+  descentBrief,
+  descentDuration,
+  descentRows,
+  scvxPassInfo,
+  type DescentId,
+  type DescentSample,
+} from "./descentPlant";
 
 
 export type SceneId =
@@ -604,12 +613,12 @@ export const SCENES: {
     id: "desScvx",
     name: "Successive convexification",
     title: "Successive convexification",
-    lede: "The first thrust is a weak upward push, and the rocket falls through the pad. Each pass moves that profile most of the way toward a guidance solution and flies it again.",
+    lede: "Each pass flies the current thrust, solves a pad-aiming subproblem, limits the step with a trust region, and may add virtual slack. Early passes miss the pad. Later ones close in.",
     opener: "Height is this pass. The dashed line is the pass before it. Drag the rocket to change the pass.",
     live: ["height", "reference"],
-    askable: ["height", "reference", "downrange", "thrust"],
+    askable: ["height", "reference", "downrange", "thrust", "rate"],
     chartTitle: "This pass and the one before",
-    visual: "The rocket flies the pass you picked. Early passes fall through the pad.",
+    visual: "The rocket flies the pass you picked. Early passes fall through the pad. The aside shows end error, trust radius, and whether the next step was accepted.",
   },
   {
     id: "desGusto",
@@ -1487,7 +1496,15 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
       ),
     ];
   }
-  if (id === "desScvx") return [knob("pass", "Pass", knobs.pass, LIMITS.pass.min, LIMITS.pass.max, 1, `${Math.round(knobs.pass)}`)];
+  if (id === "desScvx") {
+    const infos = scvxPassInfo();
+    const index = Math.min(infos.length, Math.max(1, Math.round(knobs.pass))) - 1;
+    const info = infos[index];
+    const aside = info
+      ? `err ${info.error.toFixed(2)} m · Δ ${info.radius.toFixed(1)} N · ${info.accepted ? "accept" : "reject"}`
+      : undefined;
+    return [knob("pass", "Pass", knobs.pass, LIMITS.pass.min, LIMITS.pass.max, 1, `${Math.round(knobs.pass)}`, aside)];
+  }
   if (id === "desGusto") return [knob("region", "Trust", knobs.region, LIMITS.region.min, LIMITS.region.max, 0.5, `${knobs.region.toFixed(1)} N`)];
   if (id === "desReplan") return [knob("gust", "Gust", knobs.gust, LIMITS.gust.min, LIMITS.gust.max, 0.5, `${knobs.gust.toFixed(1)} m/s`)];
   if (id === "desMiss") return [knob("fuel", "Fuel", knobs.fuel, LIMITS.fuel.min, LIMITS.fuel.max, 0.05, `${knobs.fuel.toFixed(2)} kg`)];
