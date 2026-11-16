@@ -674,6 +674,37 @@ body {
   color: var(--ink);
 }
 
+.chapter-closer {
+  margin: 2rem 0 0.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.chapter-closer h2 {
+  margin: 0 0 0.55rem;
+  font-size: 1.05rem;
+}
+
+.chapter-closer .prose {
+  margin: 0 0 0.85rem;
+  color: var(--ink);
+}
+
+.chapter-closer-link {
+  margin: 0;
+}
+
+.chapter-closer-link a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.chapter-closer-link a:hover,
+.chapter-closer-link a:focus-visible {
+  color: var(--muted);
+}
+
 .essay figure { margin: 0; }
 
 .relation.is-contrast .formula {

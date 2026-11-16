@@ -1,8 +1,10 @@
+import { chapterCloser } from "./chapterCloser";
 import { Formula, MathText } from "./Formula";
 import { InfoTip } from "./InfoTip";
 import { lessonContext } from "./lessonContext";
 import { QaCard } from "./qa/QaCard";
 import { readingFor, type Segment, type Thread } from "./reading";
+import { visit } from "./route";
 import { chatBrief, type Knobs, type SceneId } from "./scenes";
 
 export function Essay({
@@ -18,6 +20,7 @@ export function Essay({
 }) {
   const page = readingFor(scene);
   const model = readerModel(scene, knobs);
+  const closer = chapterCloser(scene);
 
   return (
     <div className="essay">
@@ -39,6 +42,23 @@ export function Essay({
           />
         </section>
       ))}
+      {closer ? (
+        <section className="chapter-closer">
+          <h2>{closer.title}</h2>
+          <p className="prose">{closer.body}</p>
+          <p className="chapter-closer-link">
+            <a
+              href={closer.href}
+              onClick={(event) => {
+                event.preventDefault();
+                visit(closer.href);
+              }}
+            >
+              {closer.linkLabel}
+            </a>
+          </p>
+        </section>
+      ) : null}
     </div>
   );
 }

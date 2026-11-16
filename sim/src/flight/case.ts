@@ -36,7 +36,7 @@ export type FlightCase = {
   };
 };
 
-export type KnobKey = "height" | "offset" | "descent" | "fuel" | "wind" | "pad" | "gain";
+export type KnobKey = "height" | "offset" | "descent" | "fuel" | "wind" | "pad" | "gust" | "gain";
 
 export type KnobSpec = {
   key: KnobKey;
@@ -54,6 +54,7 @@ export const KNOBS: KnobSpec[] = [
   { key: "fuel", label: "Fuel", min: 50, max: 1200, step: 5, unit: "kg" },
   { key: "wind", label: "Wind", min: -15, max: 15, step: 0.1, unit: "m/s" },
   { key: "pad", label: "Barge", min: -4, max: 4, step: 0.1, unit: "m/s" },
+  { key: "gust", label: "Gust", min: 0, max: 20, step: 0.5, unit: "m/s" },
   { key: "gain", label: "Gain", min: 0.02, max: 0.5, step: 0.01, unit: "" },
 ];
 
@@ -109,6 +110,7 @@ export function readKnob(flight: FlightCase, key: KnobKey): number {
   if (key === "fuel") return flight.simulation.initial_fuel;
   if (key === "wind") return flight.simulation.wind_x_velocity;
   if (key === "pad") return flight.simulation.initial_pad_x_velocity;
+  if (key === "gust") return flight.simulation.gust_magnitude;
   return flight.outer_pid_vertical_position.gains.kp;
 }
 
@@ -119,6 +121,7 @@ function writeKnob(flight: FlightCase, key: KnobKey, value: number): void {
   else if (key === "fuel") flight.simulation.initial_fuel = value;
   else if (key === "wind") flight.simulation.wind_x_velocity = value;
   else if (key === "pad") flight.simulation.initial_pad_x_velocity = value;
+  else if (key === "gust") flight.simulation.gust_magnitude = value;
   else flight.outer_pid_vertical_position.gains.kp = value;
 }
 
@@ -143,12 +146,14 @@ export function caseFromRequest(body: unknown): FlightCase {
     const fuel = finite(sim.initial_fuel);
     const wind = finite(sim.wind_x_velocity);
     const pad = finite(sim.initial_pad_x_velocity);
+    const gust = finite(sim.gust_magnitude);
     if (height !== null) writeKnob(next, "height", height);
     if (offset !== null) writeKnob(next, "offset", offset);
     if (descent !== null) writeKnob(next, "descent", descent);
     if (fuel !== null) writeKnob(next, "fuel", fuel);
     if (wind !== null) writeKnob(next, "wind", wind);
     if (pad !== null) writeKnob(next, "pad", pad);
+    if (gust !== null) writeKnob(next, "gust", gust);
   }
   const gain = finite(raw.outer_pid_vertical_position?.gains?.kp);
   if (gain !== null) writeKnob(next, "gain", gain);
