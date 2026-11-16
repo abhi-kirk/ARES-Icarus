@@ -156,6 +156,7 @@ export type Knobs = {
   kick: number;
   hold: number;
   care: number;
+  spend: number;
   cone: number;
   floor: number;
   pass: number;
@@ -191,6 +192,7 @@ export const KNOBS: Knobs = {
   kick: 18,
   hold: 6,
   care: 1,
+  spend: 1,
   cone: 15,
   floor: 8,
   pass: 3,
@@ -238,6 +240,7 @@ export type KnobKey =
   | "kick"
   | "hold"
   | "care"
+  | "spend"
   | "cone"
   | "floor"
   | "pass"
@@ -273,6 +276,7 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   kick: { min: 5, max: 35 },
   hold: { min: 2, max: 14 },
   care: { min: 0.05, max: 4 },
+  spend: { min: 0.25, max: 4 },
   cone: { min: 8, max: 40 },
   floor: { min: 0, max: 24 },
   pass: { min: 1, max: 5 },
@@ -565,12 +569,12 @@ export const SCENES: {
     id: "desCost",
     name: "A cost that makes a gain",
     title: "A cost that makes a gain",
-    lede: "The weight on height chooses the gain. A heavier weight checks the fall sooner and spends more thrust. The cost has no ground in it, so the path can pass through the pad.",
-    opener: "Height is the state. Thrust is what the gain asks for. Drag the rocket to change the weight on height.",
+    lede: "The weight on height chooses the gain. A heavier weight checks the fall sooner and peaks the thrust later and higher. Thrust floors at zero. The cost has no ground in it, so the path can pass through the pad.",
+    opener: "Height is the state. Thrust is what the gain asks for, floored at zero. Drag the rocket to change the weight on height.",
     live: ["height", "thrust"],
-    askable: ["height", "thrust", "rate"],
+    askable: ["height", "thrust", "rate", "command"],
     chartTitle: "Height and thrust",
-    visual: "The rocket falls toward the pad. A heavier weight on height brakes sooner.",
+    visual: "The rocket falls toward the pad. A heavier weight on height brakes sooner. Thrust can sit at zero until the demand rises.",
   },
   {
     id: "desPath",
@@ -965,7 +969,7 @@ function fromDescentSample(row: DescentSample): Row {
 }
 
 export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
-  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}`;
+  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}`;
   if (rowCache && rowCache.key === key) return rowCache.rows;
 
   let rows: Row[];
@@ -1429,11 +1433,11 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
   if (id === "vehGuide") return [knob("kick", "Kick", knobs.kick, LIMITS.kick.min, LIMITS.kick.max, 1, `${knobs.kick.toFixed(0)}°`)];
   if (id === "vehAuto") return [knob("hold", "Gain", knobs.hold, LIMITS.hold.min, LIMITS.hold.max, 0.5, knobs.hold.toFixed(1))];
   if (id === "desCost") {
-    const gains = costGains(knobs.care);
+    const gains = costGains(knobs.care, knobs.spend);
     return [
       knob(
         "care",
-        "Weight",
+        "Weight q",
         knobs.care,
         LIMITS.care.min,
         LIMITS.care.max,
@@ -1441,6 +1445,7 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
         knobs.care.toFixed(2),
         `kp ${gains.kp.toFixed(2)}  kd ${gains.kd.toFixed(2)}`,
       ),
+      knob("spend", "Weight r", knobs.spend, LIMITS.spend.min, LIMITS.spend.max, 0.05, knobs.spend.toFixed(2), "thrust cost"),
     ];
   }
   if (id === "desPath") return [knob("cone", "Cone", knobs.cone, LIMITS.cone.min, LIMITS.cone.max, 1, `${knobs.cone.toFixed(0)}°`)];
@@ -1495,6 +1500,12 @@ export function chartMarkers(id: SceneId, knobs: Knobs): ChartMarker[] {
     const rows = rowsFor(id, knobs);
     const tumble = rows.find((row) => Math.abs(row.attack) >= 179.5);
     return [{ t: tumble ? tumble.t : 0, label: "unstable" }];
+  }
+  if (id === "desCost") {
+    const rows = rowsFor(id, knobs);
+    if (rows[0].thrust > 0.05) return [];
+    const lift = rows.find((row) => row.thrust > 0.05);
+    return [{ t: lift ? lift.t : 0, label: "thrust floor" }];
   }
   if (id === "vehGuide") return [{ t: 2, label: "kickover" }];
   if (id === "vehAuto") return [{ t: 0.4, label: "pitch command" }];

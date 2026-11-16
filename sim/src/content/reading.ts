@@ -1072,13 +1072,13 @@ $c$ is the coefficient on that speed squared.`,
         ["The weight on height sets the gain", "The cost does not contain the ground"],
         [
           "A landing can be scored. One part of the score is how far the height sits from the pad, and another is how much thrust you spend getting there. [Those weights choose the gain that pulls the vehicle home](https://en.wikipedia.org/wiki/Linear-quadratic_regulator).",
-          "A heavier weight on height makes a stronger gain, so the fall is checked sooner and the thrust peaks higher. The score has no ground in it, so a hard pull can pass through the pad and come back.",
+          "A heavier weight on height makes a stronger gain, so the fall is checked sooner and the thrust peaks later and higher. Thrust cannot go below zero, so a strong early pull that would want negative thrust just sits on that floor. The score has no ground in it, so a hard pull can pass through the pad and come back.",
         ],
       ),
       {
         id: "gain",
         title: "The weight sets both gains",
-        focus: ["kp grows with the square root of the height weight", "kd brakes the rate"],
+        focus: ["kp grows with the square root of q/r", "kd brakes the rate", "thrust floors at zero"],
         segments: [
           {
             kind: "look",
@@ -1087,7 +1087,7 @@ $c$ is the coefficient on that speed squared.`,
           {
             kind: "relation",
             tex: String.raw`u = -k_p h - k_d v`,
-            stake: "u is the acceleration left after gravity. It pulls height toward the pad and brakes a downward rate. Thrust is that acceleration plus gravity, times the mass.",
+            stake: "u is the acceleration left after gravity. It pulls height toward the pad and brakes a downward rate. Thrust is that acceleration plus gravity, times the mass, then floored at zero.",
             gloss: String.raw`$u$ is the extra acceleration.
 $h$ is height.
 $v$ is the climb rate.
@@ -1097,13 +1097,13 @@ $k_d$ acts on rate.`,
           {
             kind: "relation",
             tex: String.raw`k_p = \sqrt{q/r},\quad k_d = \sqrt{2 k_p}`,
-            stake: "q is the weight on height and r is the weight on thrust, held at 1. A larger q is a larger gain on height. The rate gain is the square root of twice that, so a fast fall gets a brake that matches the height gain.",
+            stake: "q is the weight on height and r is the weight on thrust. A larger q, or a smaller r, raises the height gain. The rate gain is the square root of twice that, so a fast fall gets a brake that matches the height gain.",
             gloss: String.raw`$q$ is the weight on height.
 $r$ is the weight on thrust.`,
           },
           {
             kind: "trace",
-            text: "At two seconds a weight of 1 has the height near 3 m, and a weight of 4 has it under 1 m. Both traces can cross the pad. Raising the weight spends more thrust early.",
+            text: "At two seconds a weight of 1 has the height near 3 m, and a weight of 4 has it under 1 m. Both traces can cross the pad. Raising q can keep thrust on the zero floor at the start, then peak later and higher once the demand rises.",
           },
         ],
       },

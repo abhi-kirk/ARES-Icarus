@@ -257,11 +257,11 @@
   "desCost": {
     "gain": {
       "beginner": "In $k_p = \\sqrt{q/r}$, what does $q$ weigh?",
-      "intermediate": "The weight on height goes up. What happens to the thrust early in the fall, and what does the height do by two seconds?",
+      "intermediate": "The weight on height goes up to 4. What can the thrust do in the first half-second, and where is the height by two seconds?",
       "advanced": "The height crosses below the pad and comes back. Which part of the cost is silent about the ground?"
     },
     "eli5": {
-      "beginner": "A heavier weight on height makes a stronger pull home. What else does that heavier weight spend, and why can the vehicle still pass through the pad?"
+      "beginner": "A heavier weight on height makes a stronger pull home. When can the thrust sit at zero early, and why can the vehicle still pass through the pad?"
     }
   },
   "desPath": {

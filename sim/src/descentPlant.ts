@@ -39,8 +39,9 @@ export function descentDuration(id: DescentId): number {
   return 8;
 }
 
-export function costGains(weight: number): { kp: number; kd: number } {
-  const kp = Math.sqrt(weight);
+export function costGains(weight: number, spend = 1): { kp: number; kd: number } {
+  const r = Math.max(0.05, spend);
+  const kp = Math.sqrt(weight / r);
   const kd = Math.sqrt(2 * kp);
   return { kp, kd };
 }
@@ -48,7 +49,7 @@ export function costGains(weight: number): { kp: number; kd: number } {
 let cache: { key: string; rows: DescentSample[] } | null = null;
 
 export function descentRows(id: DescentId, knobs: Knobs): DescentSample[] {
-  const key = `${id}|${knobs.care}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}`;
+  const key = `${id}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}`;
   if (cache && cache.key === key) return cache.rows;
   const rows = integrate(id, knobs);
   cache = { key, rows };
@@ -67,8 +68,8 @@ export function descentAt(id: DescentId, t: number, knobs: Knobs): DescentSample
 
 export function descentBrief(id: DescentId, knobs: Knobs): string {
   if (id === "desCost") {
-    const gains = costGains(knobs.care);
-    return `A cost that makes a gain. Height weight q = ${knobs.care.toFixed(2)}, control weight r = 1, so kp = ${gains.kp.toFixed(2)} and kd = ${gains.kd.toFixed(2)}. Mass ${MASS} kg. The ground is not in the cost.`;
+    const gains = costGains(knobs.care, knobs.spend);
+    return `A cost that makes a gain. Height weight q = ${knobs.care.toFixed(2)}, control weight r = ${knobs.spend.toFixed(2)}, so kp = ${gains.kp.toFixed(2)} and kd = ${gains.kd.toFixed(2)}. Mass ${MASS} kg. Thrust floors at 0 N. The ground is not in the cost.`;
   }
   if (id === "desPath") {
     return `A path under constraints. Glide cone ${knobs.cone.toFixed(0)} degrees from the pad. Thrust stays between 6 N and ${TMAX} N.`;
@@ -89,7 +90,7 @@ export function descentBrief(id: DescentId, knobs: Knobs): string {
 }
 
 function integrate(id: DescentId, knobs: Knobs): DescentSample[] {
-  if (id === "desCost") return costRows(knobs.care);
+  if (id === "desCost") return costRows(knobs.care, knobs.spend);
   if (id === "desPath") return pathRows(knobs.cone);
   if (id === "desLoss") return lossRows(knobs.floor);
   if (id === "desScvx") return scvxRows(knobs.pass);
@@ -98,22 +99,22 @@ function integrate(id: DescentId, knobs: Knobs): DescentSample[] {
   return missRows(knobs.fuel);
 }
 
-function costRows(weight: number): DescentSample[] {
-  const gains = costGains(weight);
+function costRows(weight: number, spend: number): DescentSample[] {
+  const gains = costGains(weight, spend);
   let height = 18;
   let rate = -6;
   const rows: DescentSample[] = [];
   const end = 6;
+  // No pad clamp here: the lesson is that the cost has no ground, so the path can cross the pad.
   for (let t = 0; t <= end + 1e-9; t += STEP) {
     const excess = -gains.kp * height - gains.kd * rate;
-    const thrust = Math.min(TMAX, Math.max(0, MASS * (excess + G)));
+    const raw = MASS * (excess + G);
+    const thrust = Math.min(TMAX, Math.max(0, raw));
     const applied = thrust / MASS - G;
-    rows.push(sample(t, height, rate, 0, thrust, thrust, 0, 0, thrust, thrust));
+    // command holds the uncapped demand so the 0 N floor is visible against it
+    rows.push(sample(t, height, rate, 0, thrust, raw, 0, 0, thrust, thrust));
     rate += applied * STEP;
     height += rate * STEP;
-    const held = holdPad(height, rate);
-    height = held.height;
-    rate = held.rate;
   }
   return rows;
 }
