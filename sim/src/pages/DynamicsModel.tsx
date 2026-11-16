@@ -32,6 +32,10 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
   const spec = sceneById(scene);
   const chapter = chapterForSceneId(scene);
   const beats = readyScenesInChapter(chapter.id);
+  const sceneIndex = beats.findIndex((item) => item.sceneId === scene);
+  const prevBeat = sceneIndex > 0 ? beats[sceneIndex - 1] : null;
+  const nextBeat = sceneIndex >= 0 && sceneIndex < beats.length - 1 ? beats[sceneIndex + 1] : null;
+  const readingScrollRef = useRef<HTMLDivElement>(null);
   const chapterLinks = CHAPTERS.map((item) => {
     const first = item.scenes.find((entry) => entry.ready && entry.sceneId);
     if (!first) return null;
@@ -80,6 +84,11 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
 
   useEffect(() => {
     setPrompts({});
+  }, [scene]);
+
+  useEffect(() => {
+    const box = readingScrollRef.current;
+    if (box) box.scrollTop = 0;
   }, [scene]);
 
   useEffect(() => {
@@ -206,8 +215,29 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
             ))}
           </nav>
         </header>
-        <div className="reading-scroll">
+        <div className="reading-scroll" ref={readingScrollRef}>
           <Essay scene={scene} knobs={knobs} time={time} onPrompt={remember} />
+          <nav className="scene-step" aria-label="Scene progress">
+            <button
+              type="button"
+              className="scene-step-btn"
+              disabled={!prevBeat?.sceneId}
+              onClick={() => prevBeat?.sceneId && openScene(prevBeat.sceneId)}
+            >
+              Previous
+            </button>
+            <p className="scene-step-progress">
+              {sceneIndex >= 0 ? sceneIndex + 1 : 0} / {beats.length}
+            </p>
+            <button
+              type="button"
+              className="scene-step-btn"
+              disabled={!nextBeat?.sceneId}
+              onClick={() => nextBeat?.sceneId && openScene(nextBeat.sceneId)}
+            >
+              Next
+            </button>
+          </nav>
         </div>
       </main>
 
@@ -272,6 +302,7 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
                   max={durationOf(scene)}
                   step={0.01}
                   value={time}
+                  aria-label="Time"
                   aria-valuetext={lines[0]?.text}
                   onChange={(event) => {
                     void unlock();
@@ -304,7 +335,8 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
                     max={knob.max}
                     step={knob.step}
                     value={knob.value}
-                    aria-valuetext={knob.show}
+                    aria-label={knob.label}
+                    aria-valuetext={knob.aside ? `${knob.show}, ${knob.aside}` : knob.show}
                     onChange={(event) => setKnob(knob.key, Number(event.target.value))}
                   />
                   <output>

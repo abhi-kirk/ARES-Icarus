@@ -535,6 +535,46 @@ body {
   scrollbar-color: rgba(245, 245, 245, 0.35) transparent;
 }
 
+.scene-step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 2.2rem 0 0.4rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(215, 222, 216, 0.14);
+}
+
+.scene-step-btn {
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  padding: 0.35rem 0;
+  cursor: pointer;
+}
+
+.scene-step-btn:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.scene-step-btn:not(:disabled):hover,
+.scene-step-btn:not(:disabled):focus-visible {
+  color: var(--gold, #e2a43a);
+}
+
+.scene-step-progress {
+  margin: 0;
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
 .chapter-links {
   display: flex;
   flex-wrap: wrap;
@@ -1379,6 +1419,24 @@ body {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+}
+
+.stage-fallback {
+  flex: 1;
+  display: grid;
+  place-content: center;
+  gap: 0.45rem;
+  padding: 1.5rem;
+  text-align: center;
+  background: var(--viewport);
+  color: var(--muted);
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
+.stage-fallback p {
+  margin: 0;
 }
 
 .site.is-cover .topbar {

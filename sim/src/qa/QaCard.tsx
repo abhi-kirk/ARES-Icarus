@@ -91,7 +91,8 @@ export function QaCard({
   async function load(id: LevelId, previous: string) {
     const ticket = tickets.current[id] + 1;
     tickets.current[id] = ticket;
-    patch(id, { busy: "question", error: "", grade: null, prompt: previous });
+    // Clear the typed answer as soon as refresh starts so the old text never sticks.
+    patch(id, { busy: "question", error: "", grade: null, prompt: previous, draft: "" });
     try {
       const data = await postJson<QuestionResponse>("/api/tutor", {
         op: "question",

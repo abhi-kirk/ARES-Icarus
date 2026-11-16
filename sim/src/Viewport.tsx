@@ -1,6 +1,6 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, OrbitControls, RoundedBox } from "@react-three/drei";
-import { useEffect, useLayoutEffect, useMemo, useRef, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
   AdditiveBlending,
   CatmullRomCurve3,
@@ -779,8 +779,27 @@ function FollowCam({ orbit }: { orbit: RefObject<OrbitRig | null> }) {
   return null;
 }
 
+function webglOk(): boolean {
+  try {
+    const canvas = document.createElement("canvas");
+    return Boolean(canvas.getContext("webgl") || canvas.getContext("experimental-webgl"));
+  } catch {
+    return false;
+  }
+}
+
 export function Viewport({ onBodyDrag }: { onBodyDrag?: () => void }) {
   const orbit = useRef<OrbitRig | null>(null);
+  const [ok] = useState(webglOk);
+
+  if (!ok) {
+    return (
+      <div className="stage-fallback" role="img" aria-label="3D view unavailable">
+        <p>This browser cannot draw the 3D stage.</p>
+        <p>The chart and knobs still run the lesson.</p>
+      </div>
+    );
+  }
 
   return (
     <Canvas
