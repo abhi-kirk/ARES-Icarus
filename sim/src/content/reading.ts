@@ -332,6 +332,9 @@ $\Delta F$ is the extra thrust knob.`,
             kind: "relation",
             tex: String.raw`\dot v = F/m - g \qquad \dot x = v`,
             stake: "A small extra acceleration first becomes rate, then the rate becomes height error. That is why the drift keeps growing.",
+            gloss: String.raw`$v$ is vertical rate.
+$x$ is height.
+$m$ is mass, $g$ is gravity.`,
           },
           {
             kind: "trace",
@@ -372,11 +375,17 @@ $\Delta F$ is the extra thrust knob.`,
             kind: "relation",
             tex: String.raw`e = x_{\mathrm{ref}} - x`,
             stake: "Error is signed. It gives the distance to the target and the direction the correction needs to push.",
+            gloss: String.raw`$e$ is the error.
+$x_{\mathrm{ref}}$ is the target height.
+$x$ is the measured height.`,
           },
           {
             kind: "contrast",
             tex: String.raw`F_0 + K_p e \qquad F_0 + K_i\!\int e\,dt \qquad F_0 - K_d v`,
             stake: "Proportional reacts to the gap now. Integral reacts to error that has lingered. Derivative pushes against motion before height alone tells the whole story.",
+            gloss: String.raw`$F_0$ is hover thrust, $mg$.
+$K_p$, $K_i$, $K_d$ are the three gains.
+$v$ is vertical rate.`,
           },
           {
             kind: "trace",
@@ -417,11 +426,16 @@ $\Delta F$ is the extra thrust knob.`,
             kind: "relation",
             tex: String.raw`\ddot x \approx -\frac{K_p}{m}(x - x_{\mathrm{eq}})`,
             stake: "The local model says the controller behaves like a spring pulling height back toward equilibrium.",
+            gloss: String.raw`$x_{\mathrm{eq}}$ is the hover height.
+$K_p$ is the local gain.
+$m$ is mass.`,
           },
           {
             kind: "contrast",
             tex: String.raw`\ddot x = F(x)/m - g`,
             stake: "The nonlinear trace keeps the full thrust law and its limits. Move too far from hover and the shortcut starts to show.",
+            gloss: String.raw`$F(x)$ is the full thrust law.
+$g$ is gravity.`,
           },
           {
             kind: "trace",
@@ -462,11 +476,16 @@ $\Delta F$ is the extra thrust knob.`,
             kind: "relation",
             tex: String.raw`\ddot x = \mu^2 x`,
             stake: "The sign is the danger. Positive height creates positive acceleration, so the open-loop trace runs from the point it was supposed to hold.",
+            gloss: String.raw`$\mu$ is the open-loop growth rate, in 1/s.
+$x$ is height from the hover point.`,
           },
           {
             kind: "contrast",
             tex: String.raw`\ddot x = \mu^2 x + \frac{K_p}{m}(x_{\mathrm{ref}} - x) - \frac{K_d}{m}\dot x`,
             stake: "Feedback adds a term that watches the gap to the reference, and a rate term that damps the landing. The loop can hold only while Kp/m is larger than μ².",
+            gloss: String.raw`$x_{\mathrm{ref}}$ is the moving landing reference.
+$K_p$ and $K_d$ are the feedback gains.
+$m$ is mass.`,
           },
           {
             kind: "trace",
@@ -507,11 +526,16 @@ $\Delta F$ is the extra thrust knob.`,
             kind: "relation",
             tex: String.raw`\ddot q = \lambda^2 q`,
             stake: "The internal coordinate $q$ has its own dynamics. The controller reacts to $q$ once something measures it.",
+            gloss: String.raw`$q$ is the hidden mode.
+$\lambda$ is its growth rate.`,
           },
           {
             kind: "contrast",
             tex: String.raw`\ddot x = F/m - g + \epsilon q`,
             stake: "Coupling lets the hidden motion push on height anyway. The unseen state can return through the plant.",
+            gloss: String.raw`$x$ is measured height.
+$\epsilon$ is the coupling knob.
+$F$ is thrust.`,
           },
           {
             kind: "trace",
@@ -552,11 +576,17 @@ $\Delta F$ is the extra thrust knob.`,
             kind: "relation",
             tex: String.raw`F = F_0 + K_p e + K_i\!\int e\,dt - K_d \dot x`,
             stake: "Continuous feedback updates as the error changes. The rate term keeps the always-updating loop from ringing away.",
+            gloss: String.raw`$F_0$ is hover thrust.
+$K_p$, $K_i$, $K_d$ are the PID gains.
+$e$ is the height error.`,
           },
           {
             kind: "contrast",
             tex: String.raw`e_k = x_{\mathrm{ref}}(t) - x(t-\tau)`,
             stake: "The sampled controller can act on old height. A correction sized for the height now meets a vehicle that has already moved.",
+            gloss: String.raw`$e_k$ is the sampled error.
+$\tau$ is the measurement delay.
+$x_{\mathrm{ref}}$ is the target height.`,
           },
           {
             kind: "trace",

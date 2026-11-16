@@ -640,6 +640,40 @@ body {
   color: var(--muted);
 }
 
+.model-panel {
+  margin: 0 0 1.4rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--hairline);
+  border-radius: 0.4rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.model-panel summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
+  list-style: none;
+}
+
+.model-panel summary::-webkit-details-marker { display: none; }
+
+.model-panel summary::before {
+  content: "▸ ";
+  color: var(--muted);
+}
+
+.model-panel[open] summary::before { content: "▾ "; }
+
+.model-panel[open] summary { color: var(--ink); margin-bottom: 0.45rem; }
+
+.model-panel-body {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
 .essay figure { margin: 0; }
 
 .relation.is-contrast .formula {
@@ -673,15 +707,15 @@ body {
   border-radius: 50%;
   background: transparent;
   color: var(--muted);
-  cursor: help;
+  cursor: pointer;
 }
 
 .info:hover { color: var(--ink); border-color: var(--ink); }
 
 .tip {
-  z-index: 30;
+  z-index: 40;
   width: max-content;
-  max-width: calc(100vw - 1.5rem);
+  max-width: min(22rem, calc(100vw - 1.5rem));
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--hairline);
   border-radius: 0.45rem;
@@ -700,7 +734,11 @@ body {
 
 .tip p { margin: 0; }
 
-.tip-lines p { white-space: nowrap; }
+.tip-lines p { white-space: normal; }
+
+.tip-arrow {
+  fill: #161616;
+}
 
 .prose a.source {
   color: var(--muted);

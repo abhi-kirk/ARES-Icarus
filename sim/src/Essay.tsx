@@ -1,10 +1,9 @@
-import * as Tooltip from "@radix-ui/react-tooltip";
 import { Formula, MathText } from "./Formula";
 import { InfoTip } from "./InfoTip";
 import { lessonContext } from "./lessonContext";
 import { QaCard } from "./qa/QaCard";
 import { readingFor, type Segment, type Thread } from "./reading";
-import type { Knobs, SceneId } from "./scenes";
+import { chatBrief, type Knobs, type SceneId } from "./scenes";
 
 export function Essay({
   scene,
@@ -18,10 +17,14 @@ export function Essay({
   onPrompt: (id: string, prompt: string) => void;
 }) {
   const page = readingFor(scene);
+  const model = readerModel(scene, knobs);
 
   return (
-    <Tooltip.Provider delayDuration={350}>
     <div className="essay">
+      <details className="model-panel">
+        <summary>Model and parameters</summary>
+        <p className="prose model-panel-body">{model}</p>
+      </details>
       {page.threads.map((thread) => (
         <section className="scene-thread" key={`${scene}-${thread.id}`}>
           <h2>{thread.title}</h2>
@@ -37,8 +40,14 @@ export function Essay({
         </section>
       ))}
     </div>
-    </Tooltip.Provider>
   );
+}
+
+/** Scene plant and knobs for the reader; drops Ask-only chart-column lists. */
+function readerModel(scene: SceneId, knobs: Knobs): string {
+  const brief = chatBrief(scene, knobs);
+  const cut = brief.indexOf(" Allowed chart columns:");
+  return cut >= 0 ? brief.slice(0, cut) : brief;
 }
 
 function threadCacheKey(thread: Thread): string {
