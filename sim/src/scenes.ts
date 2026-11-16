@@ -386,12 +386,12 @@ export const SCENES: {
     id: "loopError",
     name: "Three reactions to an error",
     title: "Three reactions to an error",
-    lede: "The target height steps up at two seconds. Three controllers each use one idea: proportional to error, integral of error, or derivative through the rate. Compare how each shape responds.",
-    opener: "The gold lines are the three responses. Drag the rocket to change the proportional gain used in the P run.",
-    live: ["pHeight", "iHeight", "dHeight"],
-    askable: ["reference", "pHeight", "iHeight", "dHeight", "height", "rate", "thrust"],
-    chartTitle: "P, I, and D",
-    visual: "The reference steps up. The three height traces show how proportional, integral, and derivative terms react to the same error.",
+    lede: "The target steps at two seconds. P, I, and D each fly alone; PID flies all three together. I alone can run far, so it sits on its own axis. Kp, Ki, and Kd each have a slider.",
+    opener: "P, D, and PID share the left axis. I is on the right. Drag the rocket to change Kp.",
+    live: ["pHeight", "dHeight", "closedHeight", "iHeight"],
+    askable: ["reference", "pHeight", "iHeight", "dHeight", "closedHeight", "height", "rate", "thrust"],
+    chartTitle: "P, D, PID, and I",
+    visual: "Closed loop is the combined PID. I alone is on the right axis so P and D stay readable.",
   },
   {
     id: "loopEquil",
@@ -1218,6 +1218,8 @@ export function plotOf(id: SceneId, columns: Column[], knobs: Knobs, until: numb
     let axis: 0 | 1 = shareScale || COLUMNS[column].unit === primaryUnit ? 0 : 1;
     if (id === "loopHover" && column === "openHeight") axis = 1;
     if (id === "loopHover" && column === "closedHeight") axis = 0;
+    if (id === "loopError" && column === "iHeight") axis = 1;
+    if (id === "loopError" && (column === "pHeight" || column === "dHeight" || column === "closedHeight" || column === "reference")) axis = 0;
     if (id === "loopMode" && column === "hiddenMode") axis = 1;
     if (id === "loopMode" && column === "measured") axis = 0;
     if (id === "vehAuto" && column === "estimate") axis = 1;
@@ -1230,6 +1232,8 @@ export function plotOf(id: SceneId, columns: Column[], knobs: Knobs, until: numb
     if (id === "vehAuto" && column === "rate") name = "Speed v (m/s)";
     if (id === "turnGimbal" && column === "pitch") name = "Gimbal δ₁ (°)";
     if (id === "turnGimbal" && column === "angle") name = "Gimbal δ₂ (°)";
+    if (id === "loopError" && column === "closedHeight") name = "PID (m)";
+    if (id === "loopError" && column === "iHeight") name = "I alone (m)";
     return {
       name,
       column,
@@ -1263,6 +1267,12 @@ export function axisOf(id: SceneId, columns: Column[], knobs: Knobs): { y: [numb
       y: pad(primary, true),
       y2: [Math.max(1e-3, openLo * 0.8), Math.max(openHi * 1.2, 1)],
       y2Log: true,
+    };
+  }
+  if (id === "loopError" && secondary.length) {
+    return {
+      y: pad(primary, true),
+      y2: pad(secondary, true),
     };
   }
   return {
@@ -1408,16 +1418,9 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
   }
   if (id === "loopError") {
     return [
-      knob(
-        "kp",
-        "Gain",
-        knobs.kp,
-        LIMITS.kp.min,
-        LIMITS.kp.max,
-        1,
-        `Kp ${knobs.kp.toFixed(0)}`,
-        `Ki ${knobs.ki.toFixed(0)} Kd ${knobs.kd.toFixed(0)}`,
-      ),
+      knob("kp", "Kp", knobs.kp, LIMITS.kp.min, LIMITS.kp.max, 1, knobs.kp.toFixed(0), "proportional"),
+      knob("ki", "Ki", knobs.ki, LIMITS.ki.min, LIMITS.ki.max, 1, knobs.ki.toFixed(0), "integral"),
+      knob("kd", "Kd", knobs.kd, LIMITS.kd.min, LIMITS.kd.max, 1, knobs.kd.toFixed(0), "derivative"),
     ];
   }
   if (id === "loopEquil") {

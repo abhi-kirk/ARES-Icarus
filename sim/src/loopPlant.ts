@@ -86,7 +86,7 @@ function refStep(t: number, at: number, size: number): number {
 }
 
 function simulatePid(
-  kind: "p" | "i" | "d",
+  kind: "p" | "i" | "d" | "pid",
   end: number,
   step: number,
   gains: { kp: number; ki: number; kd: number },
@@ -100,9 +100,9 @@ function simulatePid(
     const error = ref - h;
     integral += error * step;
     let thrust = LOOP_T0;
-    if (kind === "p") thrust += gains.kp * error;
-    if (kind === "i") thrust += gains.ki * integral;
-    if (kind === "d") thrust += -gains.kd * v;
+    if (kind === "p" || kind === "pid") thrust += gains.kp * error;
+    if (kind === "i" || kind === "pid") thrust += gains.ki * integral;
+    if (kind === "d" || kind === "pid") thrust += -gains.kd * v;
     thrust = clampThrust(thrust);
     const accel = thrust / LOOP_M - LOOP_G;
     const row = blank(t);
@@ -117,12 +117,14 @@ function simulatePid(
   return rows;
 }
 
-function mergeErrorRows(p: LoopRow[], i: LoopRow[], d: LoopRow[]): LoopRow[] {
+function mergeErrorRows(p: LoopRow[], i: LoopRow[], d: LoopRow[], pid: LoopRow[]): LoopRow[] {
   return p.map((row, index) => {
     const merged = { ...row };
     merged.pHeight = p[index].height;
     merged.iHeight = i[index].height;
     merged.dHeight = d[index].height;
+    // Combined PID on the same plant, stored as closedHeight for the chart.
+    merged.closedHeight = pid[index].height;
     merged.reference = row.reference;
     return merged;
   });
@@ -322,7 +324,8 @@ export function loopRowsFor(
     const p = simulatePid("p", 14, step, gains);
     const i = simulatePid("i", 14, step, gains);
     const d = simulatePid("d", 14, step, gains);
-    return mergeErrorRows(p, i, d);
+    const pid = simulatePid("pid", 14, step, gains);
+    return mergeErrorRows(p, i, d, pid);
   }
   if (id === "loopEquil") return simulateEquilibrium(knobs.perturb, 10, step);
   if (id === "loopHover") return simulateHover(knobs.unstable, 14, step);

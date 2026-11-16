@@ -67,8 +67,8 @@
   "loopError": {
     "pid": {
       "beginner": "In $e = x_{\\mathrm{ref}} - x$, what is $x$?",
-      "intermediate": "Proportional reacts to the gap now, integral reacts to error that has lingered, and derivative pushes against the rate. Which of those is $F_0 - K_d v$?",
-      "advanced": "If you raise $K_p$, what happens to how quickly the height leaves for the new target?"
+      "intermediate": "The chart puts I alone on its own axis. Why can that I-only height sit far from the P and D traces?",
+      "advanced": "If you raise $K_p$, which live traces on the left axis should move, and what does the PID trace include that P alone does not?"
     },
     "eli5": {
       "beginner": "Three controllers see the same miss. What is different about the fact each one reacts to?"

@@ -352,7 +352,7 @@ $\Delta F$ is the extra thrust knob.`,
         ["Error is the gap from the target height", "Each term listens to a different part of that gap"],
         [
           "Error is how far the height sits from the target, and which way. Three controllers see that same miss and answer it from three different facts.",
-          "[One pushes in proportion to the gap right now. One pushes for the gap that has been sitting there, so a small miss that lasts can still grow into a real push. One pushes against the speed, so it can start easing off while the height is still on the way](https://en.wikipedia.org/wiki/PID_controller). The gain knob scales the first of those.",
+          "[One pushes in proportion to the gap right now. One pushes for the gap that has been sitting there, so a small miss that lasts can still grow into a real push. One pushes against the speed, so it can start easing off while the height is still on the way](https://en.wikipedia.org/wiki/PID_controller). Kp, Ki, and Kd each have a slider. PID on the chart is all three together.",
         ],
       ),
       {
@@ -362,11 +362,11 @@ $\Delta F$ is the extra thrust knob.`,
         segments: [
           {
             kind: "look",
-            text: "All three traces face the same target step. They differ because each listens to a different part of the error story.",
+            text: "P, D, and PID share the left axis. I alone is on the right because it can run far from the target. Raise Kp and watch the P and PID traces react.",
           },
           {
             kind: "look",
-            text: "Each term listens to a different part of the error.",
+            text: "Each alone-term listens to a different part of the error. PID uses all three gains at once.",
           },
           {
             kind: "relation",
