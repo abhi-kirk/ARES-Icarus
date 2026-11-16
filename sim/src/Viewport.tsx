@@ -74,9 +74,11 @@ function altitudeTicks(min: number, max: number): number[] {
 
 function viewY(height: number, scene: SceneId, knobs: Knobs): number {
   const span = viewSpan(scene, knobs);
-  const fraction = (height - span.min) / (span.max - span.min);
-  if (scene === "state" || scene === "step") return -1.2 + fraction * 1.15;
-  return -1.5 + fraction * 3;
+  const spanSize = Math.max(span.max - span.min, 1e-6);
+  const fraction = (height - span.min) / spanSize;
+  // Leave headroom so the mesh above the CoM stays in frame at the top of the climb.
+  if (scene === "state" || scene === "step") return -1.15 + fraction * 1.0;
+  return -1.25 + fraction * 2.35;
 }
 
 function dragValue(dy: number, scene: SceneId): void {
@@ -755,6 +757,28 @@ function FirstFrame({ target }: { target: [number, number, number] }) {
   return null;
 }
 
+/** Keep the orbit target near the moving body so climbs stay in frame. */
+function FollowCam({ orbit }: { orbit: RefObject<OrbitRig | null> }) {
+  useFrame(() => {
+    const controls = orbit.current;
+    if (!controls) return;
+    const scene = getScene();
+    const knobs = getKnobs();
+    const body = bodyAt(scene, getTime(), knobs);
+    const y = viewY(body.height, scene, knobs);
+    const span = viewSpan(scene, knobs);
+    const reach = Math.max(span.max - span.min, 1);
+    const x = isVehicleScene(scene) || isDescentScene(scene) ? (body.drift / reach) * 1.1 : 0;
+    // Aim a little above the nozzle / mass so the nose has room.
+    const aimY = scene === "state" || scene === "step" ? y + 0.15 : y + NOZZLE_LIFT + 0.45;
+    controls.target.x += (x - controls.target.x) * 0.12;
+    controls.target.y += (aimY - controls.target.y) * 0.12;
+    controls.target.z += (0 - controls.target.z) * 0.12;
+    controls.update();
+  });
+  return null;
+}
+
 export function Viewport({ onBodyDrag }: { onBodyDrag?: () => void }) {
   const orbit = useRef<OrbitRig | null>(null);
 
@@ -778,6 +802,7 @@ export function Viewport({ onBodyDrag }: { onBodyDrag?: () => void }) {
         <Lightformer form="rect" intensity={1.3} color="#ffffff" position={[0, 3.4, -2]} scale={[5, 1.4, 1]} />
       </Environment>
       <FirstFrame target={TARGET} />
+      <FollowCam orbit={orbit} />
       <Picture orbit={orbit} onBodyDrag={onBodyDrag} />
       <StageGuide />
       <OrbitControls ref={orbit} enablePan={false} minPolarAngle={POLAR} maxPolarAngle={POLAR} target={TARGET} />
