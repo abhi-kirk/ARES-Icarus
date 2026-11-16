@@ -206,13 +206,17 @@ function simulateHover(mu: number, end: number, step: number): LoopRow[] {
   return rows;
 }
 
+/** Growth rate for the hidden mode q̈ = λ² q. Kept small so measured height can look calm. */
+export const LOOP_HIDDEN_LAMBDA = 0.5;
+
 function simulateHidden(coupling: number, end: number, step: number): LoopRow[] {
   const rows: LoopRow[] = [];
   let h = 0;
   let v = 0;
   let q = 0.02;
   let w = 0;
-  const lambda = 2.2;
+  // λ was 2.2 on a 12 s horizon, so q hit 1e9 and the height story never looked calm.
+  const lambda = LOOP_HIDDEN_LAMBDA;
   const kp = 16;
   for (let t = 0; t <= end + 1e-9; t += step) {
     const ref = refStep(t, 1.5, 1.2);
@@ -322,7 +326,7 @@ export function loopRowsFor(
   }
   if (id === "loopEquil") return simulateEquilibrium(knobs.perturb, 10, step);
   if (id === "loopHover") return simulateHover(knobs.unstable, 14, step);
-  if (id === "loopMode") return simulateHidden(knobs.coupling, 12, step);
+  if (id === "loopMode") return simulateHidden(knobs.coupling, 5, step);
   return simulateSample(knobs.dt, knobs.tau, 12, step);
 }
 

@@ -3,6 +3,7 @@
 import {
   loopRowAt,
   loopRowsFor,
+  LOOP_HIDDEN_LAMBDA,
   LOOP_HOVER_KD,
   LOOP_HOVER_KP,
   LOOP_LIMIT,
@@ -653,7 +654,7 @@ export function durationOf(id: SceneId): number {
   if (id === "loopError") return 14;
   if (id === "loopEquil") return 10;
   if (id === "loopHover") return 14;
-  if (id === "loopMode") return 12;
+  if (id === "loopMode") return 5;
   if (id === "loopSample") return 12;
   if (isTurnScene(id)) return turnDuration(id);
   if (isVehicleScene(id)) return vehicleDuration(id);
@@ -1175,10 +1176,13 @@ export function plotOf(id: SceneId, columns: Column[], knobs: Knobs, until: numb
   const shareScale = id === "state";
   return columns.map((column) => {
     // Unstable hover: open loop runs to huge heights. Put it on its own log axis
-    // so the closed-loop landing stays readable.
+    // so the closed-loop landing stays readable. Hidden mode: keep measured height
+    // on the left axis and the internal coordinate on the right.
     let axis = shareScale || COLUMNS[column].unit === primaryUnit ? 0 : 1;
     if (id === "loopHover" && column === "openHeight") axis = 1;
     if (id === "loopHover" && column === "closedHeight") axis = 0;
+    if (id === "loopMode" && column === "hiddenMode") axis = 1;
+    if (id === "loopMode" && column === "measured") axis = 0;
     return {
       name: COLUMNS[column].label,
       column,
@@ -1516,7 +1520,7 @@ export function chatBrief(id: SceneId, knobs: Knobs): string {
     return `${scene.title}. Open loop ẍ = μ² x with μ = ${knobs.unstable.toFixed(1)} (μ² = ${mu2.toFixed(2)}). Closed loop adds (Kp e − Kd ẋ)/m with Kp = ${LOOP_HOVER_KP}, Kd = ${LOOP_HOVER_KD}; needs Kp/m > μ² (${(LOOP_HOVER_KP / LOOP_M).toFixed(2)} > ${mu2.toFixed(2)}). Pad clamp at height 0. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "loopMode") {
-    return `${scene.title}. Coupling ${knobs.coupling.toFixed(2)} from hidden mode into height. Allowed chart columns: ${allowedList(id)}.`;
+    return `${scene.title}. Hidden mode q̈ = λ² q with λ = ${LOOP_HIDDEN_LAMBDA}, coupling ε = ${knobs.coupling.toFixed(2)} into height. Measured height can look calm while q grows. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "loopSample") {
     return `${scene.title}. Sample time ${knobs.dt.toFixed(2)} s and measurement delay ${knobs.tau.toFixed(2)} s versus continuous PID (Kp 12, Ki 4, Kd 15). Delay near ${LOOP_SAMPLE_DELAY_MARK.toFixed(2)} s starts to pull discrete away from continuous. Allowed chart columns: ${allowedList(id)}.`;
