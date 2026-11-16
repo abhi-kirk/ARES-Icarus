@@ -88,7 +88,7 @@
     "unstable": {
       "beginner": "In $\\ddot{x} = \\mu^2 x$, what does a positive height do to the acceleration?",
       "intermediate": "Hover can sit at equilibrium and still run away. What does the feedback term add to that acceleration?",
-      "advanced": "If you raise $\\mu$, what happens to the open-loop height?"
+      "advanced": "If you raise $\\mu$, what happens to the open-loop height on the chart (the open-loop trace)?"
     },
     "eli5": {
       "beginner": "A small rise makes this hover accelerate farther upward. What does feedback add so the vehicle can still come down to the pad?"

@@ -1198,6 +1198,14 @@ body {
 
 .chat-chip:hover { border-color: var(--ink); }
 
+.chat-chip.is-meta {
+  cursor: default;
+  color: var(--muted, #6a645c);
+  border-style: dashed;
+}
+
+.chat-chip.is-meta:hover { border-color: var(--hairline); }
+
 .chat-chart {
   width: 100%;
   margin-top: 0.35rem;

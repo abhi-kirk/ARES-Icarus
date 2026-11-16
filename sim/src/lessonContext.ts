@@ -10,6 +10,7 @@ import {
   type Knobs,
   type SceneId,
 } from "./scenes";
+import { notationBlock } from "./tutor/notation";
 
 export type LessonContext = {
   sceneId: SceneId;
@@ -84,7 +85,8 @@ export function renderLessonContext(context: LessonContext): string {
     `Visual: ${context.visual}`,
     `Slider time: ${context.time.toFixed(2)} s`,
     `Readout: ${context.readout.join(", ")}`,
-    `Allowed chart columns: ${context.columns.map((item) => `${item.id} (${item.label})`).join(", ")}`,
+    `Allowed chart columns (API id → reader name): ${context.columns.map((item) => `${item.id} → ${item.name}`).join(", ")}. In prose and grade notes, use the reader name. Use the API id only inside chart.y / chart.x.`,
+    notationBlock(),
   ];
 
   if (context.block) {

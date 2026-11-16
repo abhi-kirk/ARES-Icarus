@@ -62,8 +62,20 @@ function SourceLink({ label, url }: { label: string; url: string }) {
   );
 }
 
-export function MathText({ text }: { text: string }) {
-  const pieces = piecesOf(text);
+/**
+ * When streaming is true, an unfinished trailing $... block stays as plain text
+ * so KaTeX does not flash half-parsed LaTeX while the JSON is still arriving.
+ */
+export function MathText({ text, streaming = false }: { text: string; streaming?: boolean }) {
+  let display = text;
+  if (streaming) {
+    const dollars = (text.match(/\$/g) ?? []).length;
+    if (dollars % 2 === 1) {
+      const cut = text.lastIndexOf("$");
+      display = text.slice(0, cut);
+    }
+  }
+  const pieces = piecesOf(display);
   return (
     <>
       {pieces.map((piece, index) => {

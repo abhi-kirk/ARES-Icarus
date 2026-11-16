@@ -41,10 +41,11 @@ export const READING: ReadingMap = {
           {
             kind: "relation",
             tex: String.raw`m\ddot{x} = -kx`,
-            stake: "The left side is mass times acceleration. The right side is a force proportional to height, and the minus sign points that force back toward the rest point. With the damper open, the force depends on the height alone.",
+            stake: "The left side is mass times acceleration. The right side is a force proportional to height, and the minus sign points that force back toward the rest point. There is no friction damper here, so the force depends on the height alone.",
             gloss: String.raw`$m$ is the mass.
 $k$ is the spring stiffness.
-$x$ is height from the rest point.`,
+$x$ is height from the rest point.
+A damper would add a force against rate; this scene leaves that term out.`,
           },
           {
             kind: "contrast",
@@ -465,7 +466,7 @@ $g$ is gravity.`,
         ["A hover can accelerate away from itself", "Feedback can hold a restless plant onto a landing"],
         [
           "A hover can be perfectly balanced and still be unsafe. Balance means the forces cancel at that one height. [Stability means a small mistake brings the vehicle back](https://en.wikipedia.org/wiki/Stability_theory). Here a small rise makes the acceleration point farther up, so waiting makes the miss larger.",
-          "[Feedback watches the gap to a reference and pushes back](https://en.wikipedia.org/wiki/Feedback). The reference can walk down toward the pad while that push keeps collecting the vehicle. The open-loop knob sets how hard the restless plant runs away on its own.",
+          "[Feedback watches the gap to a reference and pushes back](https://en.wikipedia.org/wiki/Feedback). The reference can walk down toward the pad while that push keeps collecting the vehicle. The $\\mu$ knob sets the open-loop growth rate: how hard the restless plant runs away on its own.",
         ],
       ),
       {
@@ -565,7 +566,7 @@ $F$ is thrust.`,
         ["A digital controller holds its thrust between samples", "A delayed sample decides about a vehicle that has moved"],
         [
           "A controller that updates all the time changes the thrust as the error changes. A digital one [looks, decides, and holds that decision until the next look](https://en.wikipedia.org/wiki/Zero-order_hold). Between looks the vehicle keeps moving under a thrust that has stopped listening.",
-          "[If the look itself is old, the decision is about a height the vehicle has already left](https://en.wikipedia.org/wiki/Digital_control). A short sample and a short delay stay close to the always-updating loop. A long one spends more of the flight acting on a stale fact. Drag sets the delay. The sample knob sets how long each hold lasts.",
+          "[If the look itself is old, the decision is about a height the vehicle has already left](https://en.wikipedia.org/wiki/Digital_control). A short sample and a short delay stay close to the always-updating loop. A long one spends more of the flight acting on a stale fact. The Delay knob sets how old that reading is. The Sample knob sets how long each hold lasts.",
         ],
       ),
       {
@@ -1289,7 +1290,7 @@ $T_{\max}$ is the ceiling.`,
           {
             kind: "relation",
             tex: String.raw`\|T_{k+1} - T_k\| \le \Delta_k`,
-            stake: "T_k is the thrust profile on this pass. The solved pad-aiming thrust is pulled back so the step stays inside a trust radius Δ_k. An accepted trial grows Δ. A rejected trial shrinks it.",
+            stake: "$T_k$ is the thrust profile on this pass. The solved pad-aiming thrust is pulled back so the step stays inside a trust radius $\\Delta_k$. An accepted trial grows $\\Delta$. A rejected trial shrinks it.",
             gloss: String.raw`$k$ is the pass.
 $\Delta_k$ is the trust radius.`,
           },
@@ -1401,7 +1402,7 @@ $t_f$ is the time left.`,
           {
             kind: "relation",
             tex: String.raw`\dot m_f = -T / v_e`,
-            stake: "In fuel mode, m_f is the budget left. At zero fuel the thrust is zero for the rest of the flight. Soft landing still needs $|\\dot z| \\le 0.5\\,\\mathrm{m/s}$ at the pad.",
+            stake: "In fuel mode, $m_f$ is the budget left. At zero fuel the thrust is zero for the rest of the flight. Soft landing still needs $|\\dot z| \\le 0.5\\,\\mathrm{m/s}$ at the pad.",
             gloss: String.raw`$m_f$ is fuel left.
 $T$ is thrust.
 $v_e$ is exhaust speed, $280\,\mathrm{m/s}$.`,

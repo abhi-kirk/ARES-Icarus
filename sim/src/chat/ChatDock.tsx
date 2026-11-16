@@ -8,8 +8,8 @@ import { lessonContext } from "../lessonContext";
 import { localTurn } from "../localChat";
 import { pathForScene } from "../paths";
 import { usePath, visit } from "../route";
-import { chartColumns, sceneById, type Column, type SceneId } from "../scenes";
-import { setKnob, setTime, useKnobs, useScene, useTime } from "../sceneStore";
+import { chartColumns, durationOf, sceneById, type Column, type SceneId } from "../scenes";
+import { getKnobs, getTime, setKnob, setTime, useKnobs, useScene, useTime } from "../sceneStore";
 import { postChatStream } from "../tutor/client";
 import { RocketMark } from "./RocketMark";
 import { clearThread, loadThread, saveThread, type StoredMessage } from "./storage";
@@ -18,6 +18,8 @@ import { startersForChapter } from "./starters";
 type Message = StoredMessage & {
   id: string;
   pending?: boolean;
+  /** Sim time captured when this user turn was sent. */
+  sentAt?: number;
 };
 
 const ASK_HINT = "Ask a question";
@@ -107,12 +109,17 @@ export function ChatDock({
 
   const runTurn = useCallback(
     async (text: string) => {
+      // Read the live store at send so the chip and context match the scrubber.
+      const sendTime = getTime();
+      const sendKnobs = getKnobs();
+      const horizon = durationOf(scene);
+
       setSending(true);
       setLiveText("");
       streamedRef.current = "";
       setMessages((prev) => [
         ...prev,
-        { id: nextId(), role: "user", text },
+        { id: nextId(), role: "user", text, sentAt: sendTime },
         { id: nextId(), role: "assistant", text: "", pending: true },
       ]);
 
@@ -120,9 +127,16 @@ export function ChatDock({
       const controller = new AbortController();
       abortRef.current = controller;
 
+      function clampActionTime(raw: number | null | undefined): number | undefined {
+        if (typeof raw !== "number" || !Number.isFinite(raw)) return undefined;
+        if (raw < 0) return 0;
+        if (raw > horizon) return horizon;
+        return raw;
+      }
+
       try {
         const data = await postChatStream(
-          { text, t: time, context: lessonContext(scene, knobs, time), question },
+          { text, t: sendTime, context: lessonContext(scene, sendKnobs, sendTime), question },
           (partial) => {
             streamedRef.current = partial;
             setLiveText(partial);
@@ -133,14 +147,18 @@ export function ChatDock({
         const columns = (data.chart?.y ?? []).filter((name): name is Column => allowed.has(name as Column));
         const x = data.chart?.x && allowed.has(data.chart.x as Column) ? (data.chart.x as Column) : undefined;
         const modelChart = columns.length && data.chart ? { title: data.chart.title || "Chart", y: columns, x } : undefined;
-        const localChart = !modelChart && /\b(plot|chart|graph|show)\b/i.test(text) ? localTurn(text, time, scene, knobs, question).chart : undefined;
+        const localChart =
+          !modelChart && /\b(plot|chart|graph|show)\b/i.test(text)
+            ? localTurn(text, sendTime, scene, sendKnobs, question).chart
+            : undefined;
         const chart = modelChart ?? localChart;
         const replyText = data.text || streamedRef.current || "I could not read that reply.";
         const actions: Message["actions"] = {};
-        if (typeof data.t === "number") actions.time = data.t;
+        const moved = clampActionTime(data.t);
+        if (moved !== undefined) actions.time = moved;
         if (chart) actions.chart = chart;
 
-        if (typeof data.t === "number") setTime(data.t);
+        if (moved !== undefined) setTime(moved);
 
         patchAssistant({ text: replyText, chart, pending: false, failed: false, actions });
         setLiveText("");
@@ -152,16 +170,17 @@ export function ChatDock({
         } else {
           const streamed = streamedRef.current.trim();
           if (streamed) {
-            const offline = localTurn(text, time, scene, knobs, question);
+            const offline = localTurn(text, sendTime, scene, sendKnobs, question);
+            const moved = clampActionTime(offline.time);
             patchAssistant({
               text: streamed,
               chart: offline.chart,
               pending: false,
               failed: true,
-              actions: offline.time !== undefined || offline.chart ? { time: offline.time, chart: offline.chart } : undefined,
+              actions: moved !== undefined || offline.chart ? { time: moved, chart: offline.chart } : undefined,
             });
           } else {
-            const offline = localTurn(text, time, scene, knobs, question);
+            const offline = localTurn(text, sendTime, scene, sendKnobs, question);
             const message =
               offline.text !== spec.opener
                 ? offline.text
@@ -169,13 +188,14 @@ export function ChatDock({
                   ? error.message
                   : "Grok did not answer. Try again.";
             if (offline.knob) setKnob(offline.knob.key, offline.knob.value);
-            if (offline.time !== undefined) setTime(offline.time);
+            const moved = clampActionTime(offline.time);
+            if (moved !== undefined) setTime(moved);
             patchAssistant({
               text: message,
               chart: offline.chart,
               pending: false,
               failed: true,
-              actions: offline.time !== undefined || offline.chart ? { time: offline.time, chart: offline.chart } : undefined,
+              actions: moved !== undefined || offline.chart ? { time: moved, chart: offline.chart } : undefined,
             });
           }
           setLiveText("");
@@ -185,7 +205,7 @@ export function ChatDock({
       abortRef.current = null;
       setSending(false);
     },
-    [knobs, question, scene, spec.opener, time],
+    [question, scene, spec.opener],
   );
 
   function sendText(text: string) {
@@ -311,7 +331,7 @@ export function ChatDock({
                   </p>
                 ) : (
                   <p className="prose">
-                    <MathText text={message.text} />
+                    <MathText text={message.text} streaming={Boolean(message.pending)} />
                   </p>
                 )}
                 {message.role === "assistant" && message.text && !message.pending ? (
@@ -340,10 +360,15 @@ export function ChatDock({
                   </div>
                 ) : null}
               </div>
+              {message.role === "user" && message.sentAt !== undefined ? (
+                <div className="chat-chips">
+                  <span className="chat-chip is-meta">Time {message.sentAt.toFixed(2)} s</span>
+                </div>
+              ) : null}
               {message.actions?.time !== undefined ? (
                 <div className="chat-chips">
                   <button type="button" className="chat-chip" onClick={() => applyTime(message.actions!.time!)}>
-                    Time {message.actions.time.toFixed(2)} s
+                    Jump to {message.actions.time.toFixed(2)} s
                   </button>
                 </div>
               ) : null}
