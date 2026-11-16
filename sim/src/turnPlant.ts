@@ -49,7 +49,7 @@ export function turnDuration(id: TurnId): number {
 let cache: { key: string; rows: TurnSample[] } | null = null;
 
 export function turnRows(id: TurnId, knobs: Knobs): TurnSample[] {
-  const key = `${id}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}`;
+  const key = `${id}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.twist}`;
   if (cache && cache.key === key) return cache.rows;
   const end = turnDuration(id);
   const rows: TurnSample[] = [];
@@ -131,12 +131,16 @@ function sample(id: TurnId, t: number, knobs: Knobs, attack: number): TurnSample
   }
 
   if (id === "turnGimbal") {
-    const deg = knobs.gimbal * Math.min(1, t / 1.5);
-    const rad = deg / DEG;
-    row.pitch = deg;
-    row.side = THRUST * Math.sin(rad);
-    row.moment = LEVER * row.side;
-    row.gimbal = rad;
+    // Two engines. Commands ramp in over 1.5 s, then allocation + actuator limits.
+    const ramp = Math.min(1, t / 1.5);
+    const fyCmd = knobs.gimbal * ramp;
+    const mCmd = knobs.twist * ramp;
+    const allocated = allocateGimbals(fyCmd, mCmd);
+    row.side = allocated.fy;
+    row.moment = allocated.moment;
+    row.pitch = allocated.d1 * DEG;
+    row.angle = allocated.d2 * DEG;
+    row.gimbal = 0.5 * (allocated.d1 + allocated.d2);
     return row;
   }
 
@@ -157,6 +161,28 @@ function sample(id: TurnId, t: number, knobs: Knobs, attack: number): TurnSample
   row.slosh = swing;
   row.cp = fuel / 1.5;
   return row;
+}
+
+const GIMBAL_MAX_DEG = 15;
+
+/**
+ * Sum-and-difference allocation for two engines:
+ *   Fy = T (δ1 + δ2)
+ *   M  = T ℓ (δ1 − δ2)
+ * with δ in radians, then each δ clipped to ±15°.
+ */
+function allocateGimbals(fyCmd: number, mCmd: number): { d1: number; d2: number; fy: number; moment: number } {
+  const tEngine = THRUST;
+  const maxRad = GIMBAL_MAX_DEG / DEG;
+  // Invert A = [[T, T], [Tℓ, −Tℓ]] for the unconstrained solve.
+  let d1 = fyCmd / (2 * tEngine) + mCmd / (2 * tEngine * LEVER);
+  let d2 = fyCmd / (2 * tEngine) - mCmd / (2 * tEngine * LEVER);
+  d1 = Math.max(-maxRad, Math.min(maxRad, d1));
+  d2 = Math.max(-maxRad, Math.min(maxRad, d2));
+  // Delivered force and moment use sin(δ) so large angles stay honest.
+  const fy = tEngine * (Math.sin(d1) + Math.sin(d2));
+  const moment = tEngine * LEVER * (Math.sin(d1) - Math.sin(d2));
+  return { d1, d2, fy, moment };
 }
 
 function empty(t: number): TurnSample {
@@ -201,7 +227,7 @@ export function turnBrief(id: TurnId, knobs: Knobs): string {
     return `Inertia. A ${TORQUE} N·m torque on inertia ${knobs.inertia.toFixed(2)} kg·m². Rate is torque/inertia times time. Allowed chart columns: angle, spin, moment.`;
   }
   if (id === "turnGimbal") {
-    return `Gimbal. One nozzle tilts to ${knobs.gimbal.toFixed(1)} degrees over 1.5 s and holds. Thrust is ${THRUST} N and the lever to the center of mass is ${LEVER} m. Side force and moment both come from sin(gimbal). Allowed chart columns: side, moment, pitch.`;
+    return `Gimbal and allocation. Two engines, thrust ${THRUST} N each, lever ${LEVER} m. Commands Fy=${knobs.gimbal.toFixed(0)} N and M=${knobs.twist.toFixed(0)} N·m map through [T T; Tℓ −Tℓ] to δ₁, δ₂, each clipped to ±${GIMBAL_MAX_DEG}°. pitch=δ₁°, angle=δ₂°. Allowed chart columns: side, moment, pitch, angle.`;
   }
   if (id === "turnAir") {
     const stability =

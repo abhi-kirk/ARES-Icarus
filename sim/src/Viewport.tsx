@@ -88,7 +88,7 @@ function dragValue(dy: number, scene: SceneId): void {
   if (scene === "turnQuat") setKnob("tumble", clampKnob(scene, knobs.tumble + dy * 0.35));
   if (scene === "turnSpin") setKnob("rate", clampKnob(scene, knobs.rate + dy * 0.25));
   if (scene === "turnInertia") setKnob("inertia", clampKnob(scene, knobs.inertia + dy * 0.01));
-  if (scene === "turnGimbal") setKnob("gimbal", clampKnob(scene, knobs.gimbal + dy * 0.04));
+  if (scene === "turnGimbal") setKnob("gimbal", clampKnob(scene, knobs.gimbal + dy * 0.12));
   if (scene === "turnAir") setKnob("margin", clampKnob(scene, knobs.margin + dy * 0.004));
   if (scene === "turnSlosh") setKnob("slosh", clampKnob(scene, knobs.slosh + dy * 0.08));
   if (scene === "vehAscent") setKnob("lift", clampKnob(scene, knobs.lift + dy * 0.12));

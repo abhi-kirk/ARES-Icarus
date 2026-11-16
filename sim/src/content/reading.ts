@@ -725,36 +725,36 @@ $\Delta F$ is the extra thrust knob.`,
   turnGimbal: {
     threads: [
       plain(
-        "One tilt, a shove and a twist",
-        ["A tilted nozzle gives the thrust a sideways part", "That sideways part also makes a moment"],
+        "Two engines, one allocation",
+        ["Commands are side force and moment", "An allocation matrix picks two signed gimbal angles"],
         [
-          "Point the nozzle straight along the body and the thrust pushes along the body. Tilt it, and [part of that push points sideways](https://en.wikipedia.org/wiki/Thrust_vectoring). The sideways part shoves the rocket off to the side.",
-          "The nozzle sits below the center of mass, so the same sideways push also [twists the rocket](https://en.wikipedia.org/wiki/Torque). One tilt sets both the shove and the twist, and a larger tilt sets both larger, until the nozzle holds. The gimbal knob is that tilt.",
+          "A flight computer asks for a sideways shove and a twist. [Two nozzles share that ask](https://en.wikipedia.org/wiki/Control_allocation): each can tilt left or right, and each stops at an actuator limit.",
+          "The solve maps the two commands onto δ₁ and δ₂. Common tilt builds side force. Differential tilt builds moment. When a command needs more tilt than ±15°, that gimbal clips and the delivered force or moment falls short.",
         ],
       ),
       {
         id: "gimbal",
-        title: "One angle, two effects",
-        focus: ["A tilted nozzle makes side force", "The same tilt makes a moment about the center of mass"],
+        title: "Allocate, then clip",
+        focus: ["Fy and M are the commands", "δ₁ and δ₂ come from an allocation matrix", "Each actuator stops at ±15°"],
         segments: [
-          { kind: "look", text: "The gold arrow leaves the nozzle off the centerline. That tilt is the only command." },
+          { kind: "look", text: "Side force and moment on the chart are what the clipped gimbals deliver. Pitch is δ₁ and angle is δ₂. Drag Side Fy; set Moment M on the second slider." },
           {
             kind: "relation",
-            tex: String.raw`F_y = T\sin\delta`,
-            stake: "Side force is the thrust times the sine of the gimbal angle. At zero tilt the sine is zero and the shove vanishes. A larger tilt raises the sine, and both traces rise, until the angle holds.",
-            gloss: String.raw`$T$ is thrust.
-$\delta$ is the gimbal angle.`,
+            tex: String.raw`\begin{bmatrix} F_y \\ M \end{bmatrix} = \begin{bmatrix} T & T \\ T\ell & -T\ell \end{bmatrix}\begin{bmatrix} \delta_1 \\ \delta_2 \end{bmatrix}`,
+            stake: "In the small-angle model, the sum of the gimbals sets side force and the difference sets moment. T is thrust per engine and ℓ is the lever to the center of mass. The scene then uses sin δ for the delivered numbers.",
+            gloss: String.raw`$T$ is thrust on each engine.
+$\ell$ is the moment arm.
+$\delta_1$ and $\delta_2$ are the gimbal angles.`,
           },
           {
             kind: "contrast",
-            tex: String.raw`M = \ell T\sin\delta`,
-            stake: "The moment is that same side force times $\\ell$, the distance from the nozzle up to the center of mass. One sine sets the shove and the twist, and the lever arm turns the shove into the twist.",
-            gloss: String.raw`$\ell$ is the moment arm.
-$M$ is the moment about the center of mass.`,
+            tex: String.raw`|\delta_i| \le 15^\circ`,
+            stake: "Each actuator is signed and hard-limited. A large Side Fy with a large Moment M can demand more than ±15° on one engine; that engine clips and the traces sit below the unsaturated ask.",
+            gloss: String.raw`$\delta_i$ is either gimbal angle.`,
           },
           {
             kind: "trace",
-            text: "The two traces rise together and then hold. One gimbal sets both, so the moment stays with the side force.",
+            text: "A pure side command drives δ₁ ≈ δ₂. A pure moment command drives δ₁ ≈ −δ₂. Mix both and watch one angle hit the wall first while the other still has room.",
           },
         ],
       },

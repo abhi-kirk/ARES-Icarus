@@ -166,12 +166,12 @@
   },
   "turnGimbal": {
     "gimbal": {
-      "beginner": "What does $F_y = T\\sin\\delta$ give you?",
-      "intermediate": "Side force and moment share one sine. What extra factor turns that side force into the moment?",
-      "advanced": "If you increase the gimbal angle, what happens to the side force and the moment together?"
+      "beginner": "In the allocation matrix, what do $\\delta_1$ and $\\delta_2$ name?",
+      "intermediate": "A pure side-force command and a pure moment command use the gimbals differently. Which pattern is $\\delta_1 \\approx \\delta_2$, and which is $\\delta_1 \\approx -\\delta_2$?",
+      "advanced": "Both commands are large enough that one gimbal hits $\\pm 15^\\circ$. What happens to the delivered side force or moment compared with the unsaturated ask?"
     },
     "eli5": {
-      "beginner": "Tilting the nozzle does two things at once. What are they?"
+      "beginner": "Two nozzles share a shove command and a twist command. What does the allocator decide for each nozzle?"
     }
   },
   "turnAir": {

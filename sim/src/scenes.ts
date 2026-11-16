@@ -175,6 +175,7 @@ export type Knobs = {
   fuel: number;
   noise: number;
   schedule: number;
+  twist: number;
 };
 
 export const KNOBS: Knobs = {
@@ -213,6 +214,7 @@ export const KNOBS: Knobs = {
   fuel: 0.4,
   noise: 12,
   schedule: 1,
+  twist: 10,
 };
 
 // Undamped spring. Mass 1 kg, stiffness 1 N/m, so one swing takes 2π seconds.
@@ -262,7 +264,8 @@ export type KnobKey =
   | "gust"
   | "fuel"
   | "noise"
-  | "schedule";
+  | "schedule"
+  | "twist";
 
 const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   dt: { min: 0.05, max: 0.5 },
@@ -282,7 +285,9 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   tumble: { min: 90, max: 180 },
   rate: { min: 15, max: 120 },
   inertia: { min: 0.4, max: 4 },
-  gimbal: { min: 0, max: 15 },
+  // turnGimbal: signed side-force command (N). Other scenes do not use this range.
+  gimbal: { min: -25, max: 25 },
+  twist: { min: -45, max: 45 },
   margin: { min: -1, max: 1.5 },
   slosh: { min: 4, max: 35 },
   lift: { min: 25, max: 70 },
@@ -491,12 +496,12 @@ export const SCENES: {
     id: "turnGimbal",
     name: "Gimbal and allocation",
     title: "Gimbal and allocation",
-    lede: "One nozzle angle sets both the side force and the moment about the center of mass. The moment is that side force times the distance from the nozzle up to the mass.",
-    opener: "Side force and moment rise together because both are thrust times the sine of the gimbal angle. Drag the rocket to change that angle.",
+    lede: "Two engines share side-force and moment commands through an allocation matrix. Each gimbal is signed and clipped to ±15°. When the solve hits a limit, the delivered force and moment fall short of the ask.",
+    opener: "Side force and moment are what the allocated gimbals deliver. Drag the rocket to change the side-force command.",
     live: ["side", "moment"],
-    askable: ["side", "moment", "pitch"],
+    askable: ["side", "moment", "pitch", "angle"],
     chartTitle: "Side force and moment",
-    visual: "The gold arrow is the thrust, tilted off the centerline. The moment arm runs from that line to the center of mass.",
+    visual: "Pitch is δ₁. Angle is δ₂. The gold arrow uses the mean tilt. Actuators stop at ±15°.",
   },
   {
     id: "turnAir",
@@ -990,7 +995,7 @@ function fromDescentSample(row: DescentSample): Row {
 }
 
 export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
-  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}|${knobs.schedule}`;
+  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}|${knobs.schedule}|${knobs.twist}`;
   if (rowCache && rowCache.key === key) return rowCache.rows;
 
   let rows: Row[];
@@ -1223,6 +1228,8 @@ export function plotOf(id: SceneId, columns: Column[], knobs: Knobs, until: numb
     if (id === "vehAuto" && column === "estimate") name = "Gain used K";
     if (id === "vehAuto" && column === "measured") name = "Air stiffness κ";
     if (id === "vehAuto" && column === "rate") name = "Speed v (m/s)";
+    if (id === "turnGimbal" && column === "pitch") name = "Gimbal δ₁ (°)";
+    if (id === "turnGimbal" && column === "angle") name = "Gimbal δ₂ (°)";
     return {
       name,
       column,
@@ -1455,7 +1462,16 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
   if (id === "turnQuat") return [knob("tumble", "Pitch", knobs.tumble, LIMITS.tumble.min, LIMITS.tumble.max, 1, `${knobs.tumble.toFixed(0)}°`)];
   if (id === "turnSpin") return [knob("rate", "Spin", knobs.rate, LIMITS.rate.min, LIMITS.rate.max, 1, `${knobs.rate.toFixed(0)}°/s`)];
   if (id === "turnInertia") return [knob("inertia", "Inertia", knobs.inertia, LIMITS.inertia.min, LIMITS.inertia.max, 0.1, `${knobs.inertia.toFixed(1)} kg·m²`)];
-  if (id === "turnGimbal") return [knob("gimbal", "Gimbal", knobs.gimbal, LIMITS.gimbal.min, LIMITS.gimbal.max, 0.5, `${knobs.gimbal.toFixed(1)}°`)];
+  if (id === "turnGimbal") {
+    const rows = turnRows("turnGimbal", knobs);
+    const end = rows[rows.length - 1];
+    const hit = Math.abs(end.pitch) >= 14.9 || Math.abs(end.angle) >= 14.9;
+    const aside = `δ₁ ${end.pitch.toFixed(1)}° · δ₂ ${end.angle.toFixed(1)}°${hit ? " · limit" : ""}`;
+    return [
+      knob("gimbal", "Side Fy", knobs.gimbal, LIMITS.gimbal.min, LIMITS.gimbal.max, 1, `${knobs.gimbal.toFixed(0)} N`, aside),
+      knob("twist", "Moment M", knobs.twist, LIMITS.twist.min, LIMITS.twist.max, 1, `${knobs.twist.toFixed(0)} N·m`, "±15° actuators"),
+    ];
+  }
   if (id === "turnAir") {
     return [
       knob(
@@ -1610,7 +1626,7 @@ export function chartMarkers(id: SceneId, knobs: Knobs): ChartMarker[] {
   if (id === "loopOpen") return [{ t: 1, label: "extra thrust" }];
   if (id === "loopError") return [{ t: 2, label: "target step" }];
   if (id === "loopMode") return [{ t: 1.5, label: "target step" }];
-  if (id === "turnGimbal") return [{ t: 1.5, label: "gimbal holds" }];
+  if (id === "turnGimbal") return [{ t: 1.5, label: "commands hold" }];
   if (id === "turnLock" && knobs.pitch >= 90) return [{ t: durationOf(id), label: "nose vertical" }];
   if (id === "turnQuat") return [{ t: durationOf(id) * (90 / knobs.tumble), label: "nose vertical" }];
   if (id === "turnAir" && knobs.margin < 0) {
