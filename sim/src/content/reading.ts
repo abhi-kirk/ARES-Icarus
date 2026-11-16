@@ -22,7 +22,7 @@ export const READING: ReadingMap = {
         ["The spring pulls back toward the hanging point", "Height and rate together tell the next moment"],
         [
           "A spring pulls a mass back toward the place it hangs at rest, and [the pull is stronger the farther the mass sits from that place](https://en.wikipedia.org/wiki/Hooke%27s_law). Let go from above, and the mass falls through the rest point and keeps going, because it still has speed at the moment the pull passes through zero.",
-          "Height says where the mass is. Rate says how fast that height is changing. [Those two numbers are enough to know what the mass does next](https://www.fbswiki.org/wiki/index.php/System_Modeling): the same height with an upward rate climbs, and the same height with a downward rate falls.",
+          "Height says where the mass is. Rate says how fast that height is changing. [Those two numbers are enough to know what the mass does next](https://www.fbswiki.org/wiki/index.php/System_Modeling): the same height with an upward rate climbs, and the same height with a downward rate falls. Drag the mass to set the start height. The Rate knob ($v_0$) sets the start rate, so you can hold one height and leave two ways.",
         ],
       ),
       {
@@ -76,19 +76,21 @@ $x$ is height from the rest point.`,
           },
           {
             kind: "relation",
-            tex: String.raw`x = \cos t \qquad v = -\sin t`,
-            stake: "The clock chooses both numbers at once. If you know only height, you can miss whether the mass is climbing or falling.",
+            tex: String.raw`x = x_0\cos t + v_0\sin t \qquad v = -x_0\sin t + v_0\cos t`,
+            stake: "The start height $x_0$ and start rate $v_0$ fix the whole orbit. The clock then chooses both numbers at once. If you know only height, you can miss whether the mass is climbing or falling.",
             gloss: String.raw`$x$ is height from rest.
 $v$ is rate in meters per second.
+$x_0$ is height at $t=0$.
+$v_0$ is rate at $t=0$.
 $t$ is the slider time.`,
           },
           {
             kind: "trace",
-            text: "The live chart is that pair as one point: rate against height. The gold dot is the state now, and as time moves the point loops.",
+            text: "The live chart is that pair as one point: rate against height. The gold dot is the state now, and as time moves the point loops. A larger $|x_0|$ or $|v_0|$ opens a bigger ellipse.",
           },
           {
             kind: "trace",
-            text: "The loop strips away the clock for a moment. It shows the shape of the motion as a relationship between the two state numbers.",
+            text: "Set the same $x_0$ with two different $v_0$ values. The gold dot leaves that height in two directions on the phase loop.",
           },
         ],
       },

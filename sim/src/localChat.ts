@@ -130,8 +130,8 @@ export function localTurn(text: string, time: number, scene: SceneId, knobs: Kno
 
 function explain(scene: SceneId, time: number, knobs: Knobs): string {
   if (scene === "state") {
-    const height = springHeight(time);
-    return `$t = ${time.toFixed(2)}\\,\\mathrm{s}$. Height from rest is $${height.toFixed(2)}\\,\\mathrm{m}$. The rate $v$ is how fast that height is changing. Read it beside the slider.`;
+    const height = springHeight(time, knobs.x0, knobs.v0);
+    return `$t = ${time.toFixed(2)}\\,\\mathrm{s}$. Height from rest is $${height.toFixed(2)}\\,\\mathrm{m}$ with start $(x_0,v_0)=(${knobs.x0.toFixed(2)},${knobs.v0.toFixed(2)})$. The rate $v$ is how fast that height is changing. Read it beside the slider.`;
   }
   if (scene === "step") {
     return `The step is $${knobs.dt.toFixed(2)}\\,\\mathrm{s}$. At $t = ${time.toFixed(2)}\\,\\mathrm{s}$, the gold mass is the stepped height and the wire box is the true height.`;

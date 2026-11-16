@@ -178,6 +178,9 @@ export type Knobs = {
   twist: number;
   // Step scene: 0 = explicit Euler, 1 = semi-implicit Euler.
   method: number;
+  // Spring scene: initial height and rate at t = 0.
+  x0: number;
+  v0: number;
 };
 
 export const KNOBS: Knobs = {
@@ -218,10 +221,13 @@ export const KNOBS: Knobs = {
   schedule: 1,
   twist: 10,
   method: 0,
+  x0: 1,
+  v0: 0,
 };
 
 // Undamped spring. Mass 1 kg, stiffness 1 N/m, so one swing takes 2π seconds.
-// Released from rest, 1 m above the rest point: height = cos(t), rate = -sin(t).
+// Default release from rest 1 m above rest: height = cos(t), rate = -sin(t).
+// General start (x0, v0): height = x0 cos(t) + v0 sin(t).
 const SPRING_M = 1;
 const SPRING_K = 1;
 
@@ -269,7 +275,9 @@ export type KnobKey =
   | "noise"
   | "schedule"
   | "twist"
-  | "method";
+  | "method"
+  | "x0"
+  | "v0";
 
 const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   dt: { min: 0.05, max: 0.5 },
@@ -316,6 +324,8 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   // Near 0.7 kg arrival speed is already nearly gone; more fuel only sits unused.
   fuel: { min: 0.2, max: 0.75 },
   method: { min: 0, max: 1 },
+  x0: { min: -1.5, max: 1.5 },
+  v0: { min: -1.5, max: 1.5 },
 };
 
 export function clampNamed(key: KnobKey, value: number): number {
@@ -338,12 +348,12 @@ export const SCENES: {
     id: "state",
     name: "The spring",
     title: "The spring",
-    lede: "A mass hangs from a spring with the damper open. Its height from the rest point is the state, and the rate is how fast that height is changing.",
-    opener: "Height from the rest point is the state. The rate is how fast that height changes. Ask me about a symbol, or tell me a time.",
+    lede: "A mass hangs from a spring with the damper open. Drag sets the start height; the Rate knob sets the start rate. Same height with two rates leaves two ways.",
+    opener: "Height and rate together are the state. Drag the mass to set start height, or set the Rate knob. Ask me about a symbol, or tell me a time.",
     live: ["height", "rate"],
     askable: ["height", "rate", "accel"],
     chartTitle: "Rate against height",
-    visual: "The mass shows height from the rest point. The live chart is a phase loop: rate against height, with a gold dot at the current state.",
+    visual: "Drag the mass to set start height x0. The Rate knob sets start rate v0. The phase loop is that pair, with a gold dot at the current state.",
   },
   {
     id: "step",
@@ -796,21 +806,23 @@ function blank(t: number): Row {
   };
 }
 
-export function springHeight(t: number): number {
-  return Math.cos(t);
+export function springHeight(t: number, x0 = 1, v0 = 0): number {
+  return x0 * Math.cos(t) + v0 * Math.sin(t);
 }
 
-export function springRate(t: number): number {
-  return -Math.sin(t);
+export function springRate(t: number, x0 = 1, v0 = 0): number {
+  return -x0 * Math.sin(t) + v0 * Math.cos(t);
 }
 
-function springRows(): Row[] {
+function springRows(x0: number, v0: number): Row[] {
   const rows: Row[] = [];
   const end = durationOf("state");
+  const startHeight = clampNamed("x0", x0);
+  const startRate = clampNamed("v0", v0);
   for (let t = 0; t <= end + 1e-9; t += 0.05) {
     const row = blank(t);
-    row.height = springHeight(t);
-    row.rate = springRate(t);
+    row.height = springHeight(t, startHeight, startRate);
+    row.rate = springRate(t, startHeight, startRate);
     row.accel = (-SPRING_K / SPRING_M) * row.height;
     row.truth = row.height;
     rows.push(row);
@@ -1043,11 +1055,11 @@ function fromDescentSample(row: DescentSample): Row {
 }
 
 export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
-  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}|${knobs.schedule}|${knobs.twist}|${knobs.method}`;
+  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}|${knobs.schedule}|${knobs.twist}|${knobs.method}|${knobs.x0}|${knobs.v0}`;
   if (rowCache && rowCache.key === key) return rowCache.rows;
 
   let rows: Row[];
-  if (id === "state") rows = springRows();
+  if (id === "state") rows = springRows(knobs.x0, knobs.v0);
   else if (id === "step") rows = stepRows(knobs.dt, knobs.method);
   else if (id === "mass") rows = massRows(knobs.thrust);
   else if (id === "engine") rows = engineRows(knobs.tau, knobs.ask);
@@ -1090,7 +1102,7 @@ function still(height: number, truth: number, flame: number): BodyDraw {
 
 export function bodyAt(id: SceneId, t: number, knobs: Knobs): BodyDraw {
   if (id === "state") {
-    const height = springHeight(t);
+    const height = springHeight(t, knobs.x0, knobs.v0);
     return still(height, height, 0);
   }
   if (id === "step") {
@@ -1248,7 +1260,10 @@ export function seriesPoints(id: SceneId, column: Column, knobs: Knobs, until: n
   if (wantsTip) {
     const tip = points[points.length - 1];
     if (!tip || Math.abs(tip[0] - until) > 1e-4) {
-      const value = column === "rate" ? springRate(until) : springHeight(until);
+      // Step truth stays on the unit spring. The spring scene uses (x0, v0).
+      const x0 = id === "state" ? knobs.x0 : 1;
+      const v0 = id === "state" ? knobs.v0 : 0;
+      const value = column === "rate" ? springRate(until, x0, v0) : springHeight(until, x0, v0);
       points.push([until, value]);
     }
   }
@@ -1304,7 +1319,10 @@ export function plotOf(id: SceneId, columns: Column[], knobs: Knobs, until: numb
 }
 
 export function axisOf(id: SceneId, columns: Column[], knobs: Knobs): { y: [number, number]; y2?: [number, number]; y2Log?: boolean } {
-  if (id === "state") return { y: [-1.25, 1.25] };
+  if (id === "state") {
+    const reach = Math.max(1.25, Math.hypot(knobs.x0, knobs.v0) * 1.15);
+    return { y: [-reach, reach] };
+  }
   const full = plotOf(id, columns, knobs, durationOf(id));
   const primary = full.filter((series) => series.axis === 0).flatMap((series) => series.points.map((point) => point[1]));
   const secondary = full.filter((series) => series.axis === 1).flatMap((series) => series.points.map((point) => point[1]));
@@ -1374,8 +1392,8 @@ export function readout(id: SceneId, t: number, knobs: Knobs): ReadoutLine[] {
   if (id === "state") {
     return [
       { name: "Time", text: `${t.toFixed(2)} s` },
-      { name: "Height", text: `${springHeight(t).toFixed(2)} m`, column: "height" },
-      { name: "Rate", text: `${springRate(t).toFixed(2)} m/s`, column: "rate" },
+      { name: "Height", text: `${springHeight(t, knobs.x0, knobs.v0).toFixed(2)} m`, column: "height" },
+      { name: "Rate", text: `${springRate(t, knobs.x0, knobs.v0).toFixed(2)} m/s`, column: "rate" },
     ];
   }
   if (id === "step") {
@@ -1452,6 +1470,12 @@ function knob(
 }
 
 export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
+  if (id === "state") {
+    return [
+      knob("x0", "x0", knobs.x0, LIMITS.x0.min, LIMITS.x0.max, 0.05, `${knobs.x0.toFixed(2)} m`, "height at t=0"),
+      knob("v0", "v0", knobs.v0, LIMITS.v0.min, LIMITS.v0.max, 0.05, `${knobs.v0.toFixed(2)} m/s`, "rate at t=0"),
+    ];
+  }
   if (id === "step") {
     const semi = knobs.method >= 0.5;
     return [
@@ -1649,12 +1673,16 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
 }
 
 export function dragHint(id: SceneId): string {
-  if (id === "state" || id === "step") return "Drag the mass";
+  if (id === "state") return "Drag to set height";
+  if (id === "step") return "Drag the mass";
   return "Drag the rocket";
 }
 
 export function viewSpan(id: SceneId, knobs: Knobs): { min: number; max: number } {
-  if (id === "state") return { min: -1, max: 1 };
+  if (id === "state") {
+    const reach = Math.max(1, Math.hypot(knobs.x0, knobs.v0) * 1.1);
+    return { min: -reach, max: reach };
+  }
   if (id === "step") {
     let min = -1;
     let max = 1;
@@ -1739,7 +1767,9 @@ function allowedList(id: SceneId): string {
 
 export function chatBrief(id: SceneId, knobs: Knobs): string {
   const scene = sceneById(id);
-  if (id === "state") return `${scene.title}. Undamped spring, mass ${SPRING_M} kg, stiffness ${SPRING_K} N/m. Height from rest is cos(t) meters. Rate is -sin(t) meters per second. Acceleration is −height. The live chart is a phase loop of rate against height. Allowed chart columns: ${allowedList(id)}.`;
+  if (id === "state") {
+    return `${scene.title}. Undamped spring, mass ${SPRING_M} kg, stiffness ${SPRING_K} N/m. Start height x0 = ${knobs.x0.toFixed(2)} m, start rate v0 = ${knobs.v0.toFixed(2)} m/s. Height is x0 cos(t) + v0 sin(t). Rate is −x0 sin(t) + v0 cos(t). Acceleration is −height. Drag sets x0 (keeps the current rate as v0 and resets time). The live chart is a phase loop of rate against height. Allowed chart columns: ${allowedList(id)}.`;
+  }
   if (id === "step") {
     const method = knobs.method >= 0.5 ? "semi-implicit Euler (rate then height)" : "explicit Euler (both updates from the old state)";
     return `${scene.title}. True height is cos(t). Stepped height uses ${method} with dt = ${knobs.dt.toFixed(2)} s on a unit spring (m=k=1). Explicit Euler grows mechanical energy and the phase orbit spirals out; semi-implicit stays nearer the true ellipse. Allowed chart columns: ${allowedList(id)}.`;

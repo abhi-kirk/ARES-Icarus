@@ -15,7 +15,19 @@ import {
 import type { Group, Mesh } from "three";
 import type { OrbitControls as OrbitRig } from "three-stdlib";
 import { NOZZLE_Y, Rocket } from "./Rocket";
-import { bodyAt, clampKnob, isDescentScene, isTurnScene, isVehicleScene, viewSpan, type SceneId, type Knobs } from "./scenes";
+import {
+  bodyAt,
+  clampKnob,
+  clampNamed,
+  isDescentScene,
+  isTurnScene,
+  isVehicleScene,
+  springHeight,
+  springRate,
+  viewSpan,
+  type SceneId,
+  type Knobs,
+} from "./scenes";
 import { getKnobs, getScene, getTime, setKnob, setTime, useKnobs, useScene } from "./sceneStore";
 import { unlock } from "./sound";
 
@@ -69,9 +81,14 @@ function viewY(height: number, scene: SceneId, knobs: Knobs): number {
 function dragValue(dy: number, scene: SceneId): void {
   const knobs = getKnobs();
   if (scene === "state") {
-    // dy is upward pointer motion. A downward pull should lower the mass,
-    // which is later in the swing.
-    setTime(getTime() - dy * 0.012);
+    // dy is upward pointer motion. A downward pull lowers the mass.
+    // Capture the live state as new initial conditions and reset the clock.
+    const t = getTime();
+    const height = springHeight(t, knobs.x0, knobs.v0);
+    const rate = springRate(t, knobs.x0, knobs.v0);
+    setKnob("x0", clampNamed("x0", height + dy * 0.012));
+    setKnob("v0", clampNamed("v0", rate));
+    setTime(0);
     return;
   }
   if (scene === "step") setKnob("dt", clampKnob("step", knobs.dt + dy * 0.004));

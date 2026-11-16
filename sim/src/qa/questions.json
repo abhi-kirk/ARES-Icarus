@@ -8,7 +8,7 @@
     "state": {
       "beginner": "Which two numbers together are the state of the mass?",
       "intermediate": "Two moments can share a height. What second number tells you whether the mass is climbing or falling?",
-      "advanced": "On the phase loop, when the gold dot crosses height zero, where is the rate, and which way is the mass about to move?"
+      "advanced": "Keep $x_0$ fixed and change $v_0$. On the phase loop, what changes about the orbit, and how do the two starts leave the same height?"
     },
     "eli5": {
       "beginner": "When the mass is above the place it hangs at rest, which way does the spring pull, and why does the mass keep going past that place?"
