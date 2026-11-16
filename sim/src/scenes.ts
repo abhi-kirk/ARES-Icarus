@@ -174,6 +174,7 @@ export type Knobs = {
   gust: number;
   fuel: number;
   noise: number;
+  schedule: number;
 };
 
 export const KNOBS: Knobs = {
@@ -211,6 +212,7 @@ export const KNOBS: Knobs = {
   gust: 6,
   fuel: 0.4,
   noise: 12,
+  schedule: 1,
 };
 
 // Undamped spring. Mass 1 kg, stiffness 1 N/m, so one swing takes 2π seconds.
@@ -259,7 +261,8 @@ export type KnobKey =
   | "region"
   | "gust"
   | "fuel"
-  | "noise";
+  | "noise"
+  | "schedule";
 
 const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   dt: { min: 0.05, max: 0.5 },
@@ -290,6 +293,7 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   // Target downrange for closed-loop guidance (meters).
   kick: { min: 40, max: 160 },
   hold: { min: 2, max: 14 },
+  schedule: { min: 0, max: 1 },
   care: { min: 0.05, max: 4 },
   spend: { min: 0.25, max: 4 },
   // Above ~35° the wall is wider than the path needs, so further opening does nothing.
@@ -575,12 +579,12 @@ export const SCENES: {
     id: "vehAuto",
     name: "Autopilot as mass and air change",
     title: "Autopilot as mass and air change",
-    lede: "One gain pitches the nose toward the command while the vehicle gets lighter. As the speed builds, the air, growing with speed squared, eases that nose back.",
-    opener: "Pitch is the nose. Mass is what is left in the vehicle. Drag the rocket to change the gain.",
-    live: ["pitch", "mass"],
-    askable: ["pitch", "mass", "aim", "height"],
-    chartTitle: "Pitch and mass",
-    visual: "The rocket pitches toward the command while the tank gets lighter.",
+    lede: "The autopilot pitches toward a command while mass falls and air stiffness grows with speed squared. Schedule scales the gain with mass so the twist stays matched to inertia. Fixed holds one K the whole burn.",
+    opener: "Pitch is the nose. Gain used is the live K. Drag the rocket to change the base gain.",
+    live: ["pitch", "estimate"],
+    askable: ["pitch", "estimate", "mass", "rate", "measured", "aim", "height"],
+    chartTitle: "Pitch and gain used",
+    visual: "Estimate is the live gain K. Measured is air stiffness κ = c v². Rate is speed.",
   },
   {
     id: "desCost",
@@ -986,7 +990,7 @@ function fromDescentSample(row: DescentSample): Row {
 }
 
 export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
-  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}`;
+  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}|${knobs.schedule}`;
   if (rowCache && rowCache.key === key) return rowCache.rows;
 
   let rows: Row[];
@@ -1211,9 +1215,14 @@ export function plotOf(id: SceneId, columns: Column[], knobs: Knobs, until: numb
     if (id === "loopHover" && column === "closedHeight") axis = 0;
     if (id === "loopMode" && column === "hiddenMode") axis = 1;
     if (id === "loopMode" && column === "measured") axis = 0;
+    if (id === "vehAuto" && column === "estimate") axis = 1;
+    if (id === "vehAuto" && column === "pitch") axis = 0;
     let name = COLUMNS[column].label;
     if (id === "vehEstimate" && column === "measured") name = "Sensor − truth (m)";
     if (id === "vehEstimate" && column === "estimate") name = "Estimate − truth (m)";
+    if (id === "vehAuto" && column === "estimate") name = "Gain used K";
+    if (id === "vehAuto" && column === "measured") name = "Air stiffness κ";
+    if (id === "vehAuto" && column === "rate") name = "Speed v (m/s)";
     return {
       name,
       column,
@@ -1474,7 +1483,22 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
   if (id === "vehGuide") {
     return [knob("kick", "Target", knobs.kick, LIMITS.kick.min, LIMITS.kick.max, 5, `${knobs.kick.toFixed(0)} m`, "ground target x")];
   }
-  if (id === "vehAuto") return [knob("hold", "Gain", knobs.hold, LIMITS.hold.min, LIMITS.hold.max, 0.5, knobs.hold.toFixed(1))];
+  if (id === "vehAuto") {
+    const scheduled = knobs.schedule >= 0.5;
+    return [
+      knob("hold", "Gain", knobs.hold, LIMITS.hold.min, LIMITS.hold.max, 0.5, knobs.hold.toFixed(1), scheduled ? "base K₀" : "fixed K"),
+      knob(
+        "schedule",
+        "Schedule",
+        knobs.schedule,
+        LIMITS.schedule.min,
+        LIMITS.schedule.max,
+        1,
+        scheduled ? "K(m)" : "fixed",
+        "0 fixed · 1 K∝m",
+      ),
+    ];
+  }
   if (id === "desCost") {
     const gains = costGains(knobs.care, knobs.spend);
     return [

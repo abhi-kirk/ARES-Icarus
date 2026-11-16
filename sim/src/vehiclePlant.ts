@@ -36,7 +36,7 @@ export function vehicleDuration(id: VehicleId): number {
 let cache: { key: string; rows: VehicleSample[] } | null = null;
 
 export function vehicleRows(id: VehicleId, knobs: Knobs): VehicleSample[] {
-  const key = `${id}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.noise}`;
+  const key = `${id}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.noise}|${knobs.schedule}`;
   if (cache && cache.key === key) return cache.rows;
 
   const end = vehicleDuration(id);
@@ -54,7 +54,17 @@ export function vehicleRows(id: VehicleId, knobs: Knobs): VehicleSample[] {
   let zHat = 0;
 
   for (let t = 0; t <= end + 1e-9; t += STEP) {
-    rows.push(sample(id, t, knobs, { estimate, pitch, height, downrange, speed, aim: id === "vehGuide" ? aim : 0 }));
+    rows.push(
+      sample(id, t, knobs, {
+        estimate,
+        pitch,
+        height,
+        downrange,
+        speed,
+        aim: id === "vehGuide" || id === "vehAuto" ? aim : 0,
+        airStiff: id === "vehAuto" ? rateHat : 0,
+      }),
+    );
     if (id === "vehEstimate") {
       const accel = CLIMB_THRUST / MASS - G;
       const truth = 0.5 * accel * t * t;
@@ -93,18 +103,25 @@ export function vehicleRows(id: VehicleId, knobs: Knobs): VehicleSample[] {
     }
     if (id === "vehAuto") {
       const mass = burnMass(t);
+      const mass0 = 3;
       const command = t < 0.4 ? 0 : 12;
       const accel = 40 / mass - G;
       speed += accel * STEP;
       height += speed * STEP;
-      const air = 0.0003 * speed * speed;
+      // κ = c v²: air stiffness (restoring). Teaching choice; many rockets are aero-unstable.
+      const airStiff = 0.0003 * speed * speed;
       const inertia = 0.25 * mass;
-      const wn2 = knobs.hold / inertia;
-      const wn = Math.sqrt(wn2);
+      // Schedule: K ∝ m so K/I stays closer to constant as the tank empties.
+      const gainUsed = knobs.schedule >= 0.5 ? knobs.hold * (mass / mass0) : knobs.hold;
+      const wn2 = gainUsed / inertia;
+      const wn = Math.sqrt(Math.max(wn2, 1e-9));
       const error = (command - pitch) / DEG;
-      const alpha = wn2 * error - 1.6 * wn * pitchRate - air * (pitch / DEG);
+      const alpha = wn2 * error - 1.6 * wn * pitchRate - airStiff * (pitch / DEG);
       pitchRate += alpha * STEP;
       pitch += pitchRate * STEP * DEG;
+      estimate = gainUsed;
+      aim = command;
+      rateHat = airStiff;
     }
   }
 
@@ -138,7 +155,8 @@ export function vehicleBrief(id: VehicleId, knobs: Knobs): string {
   if (id === "vehGuide") {
     return `Guidance. Closed-loop: a filtered estimate of downrange and height aims the nose at a ground target ${knobs.kick.toFixed(0)} m downrange. The body follows that command with τ = 0.7 s. Allowed chart columns: downrange, height, aim, pitch, estimate.`;
   }
-  return `Autopilot. The command is 12 degrees after 0.4 s. Gain is ${knobs.hold.toFixed(1)}. Mass falls from 3 kg to 1.4 kg, and the air moment grows with speed squared. Allowed chart columns: pitch, mass, aim, height.`;
+  const mode = knobs.schedule >= 0.5 ? "scheduled K∝m" : "fixed K";
+  return `Autopilot. Command 12° after 0.4 s. Base gain ${knobs.hold.toFixed(1)} (${mode}). Mass 3→1.4 kg. Air stiffness κ = c v² (restoring). Allowed chart columns: pitch, estimate (K used), measured (κ), rate (v), mass, aim, height.`;
 }
 
 type Pose = {
@@ -148,6 +166,7 @@ type Pose = {
   downrange: number;
   speed: number;
   aim: number;
+  airStiff: number;
 };
 
 function sample(id: VehicleId, t: number, knobs: Knobs, pose: Pose): VehicleSample {
@@ -213,11 +232,13 @@ function sample(id: VehicleId, t: number, knobs: Knobs, pose: Pose): VehicleSamp
     return row;
   }
 
-  row.aim = t < 0.4 ? 0 : 12;
+  row.aim = pose.aim;
   row.pitch = pose.pitch;
   row.mass = burnMass(t);
   row.height = pose.height;
   row.rate = pose.speed;
+  row.estimate = pose.estimate;
+  row.measured = pose.airStiff;
   row.tilt = -pose.pitch / DEG;
   row.flame = 0.7;
   return row;

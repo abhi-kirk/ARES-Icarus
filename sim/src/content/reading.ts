@@ -1029,46 +1029,53 @@ $\tau$ is the follow time.`,
   vehAuto: {
     threads: [
       plain(
-        "One gain, a vehicle that is changing",
-        ["The gain twists the nose toward the command", "Mass falls and the air pushes the nose back"],
+        "Schedule the gain as the vehicle changes",
+        ["Fixed K stays put while mass and air change", "Scheduled K scales with mass so the twist matches inertia"],
         [
-          "The autopilot is one gain. It twists the nose toward a commanded angle, harder when the miss is larger. After four tenths of a second the command is twelve degrees, and it stays there.",
-          "While that happens the vehicle burns fuel. It gets lighter, so [the same gain is a quicker twist](https://en.wikipedia.org/wiki/Time-variant_system), and it goes faster, so the air pushes harder. [That air push grows with the square of the speed](https://en.wikipedia.org/wiki/Dynamic_pressure) and eases the nose back toward straight up. The gain and the air are both acting on the same angle. The gain knob is how hard the autopilot twists.",
+          "The autopilot twists the nose toward a 12° command that arrives at 0.4 s. While that happens the vehicle burns fuel and speeds up, so inertia falls and [air loads grow with speed squared](https://en.wikipedia.org/wiki/Dynamic_pressure).",
+          "[Gain scheduling changes K as the vehicle changes](https://en.wikipedia.org/wiki/Gain_scheduling). Here Schedule sets K ∝ m, so K/I stays nearer a constant. Fixed holds one K for the whole burn. The air term is written κ and is restoring in this scene (a teaching choice); many real rockets are aerodynamically unstable.",
         ],
       ),
       {
         id: "auto",
-        title: "The same gain, a changing vehicle",
-        focus: ["Gain pitches the nose toward the command", "Mass falls and the air moment grows"],
+        title: "Fixed K or K(m)",
+        focus: ["K twists the nose toward the command", "κ = c v² is air stiffness", "Schedule scales K with mass"],
         segments: [
-          { kind: "look", text: "The nose tips toward a 12° command that arrives at 0.4 s. The tank is emptying the whole time, from 3 kg down to 1.4 kg, and the climb uses 40 N." },
+          { kind: "look", text: "Pitch is the nose. Gain used is the live K (right axis). Switch Schedule between fixed and K∝m. Ask for speed v or air stiffness κ on the chart." },
           {
             kind: "relation",
             tex: String.raw`m = 3 - 1.6\,t/8`,
-            stake: "Mass falls in a straight line over the eight seconds. Inertia is a quarter of the mass, so the vehicle gets easier to twist as it lightens, and the same gain produces a quicker angular acceleration.",
+            stake: "Mass falls in a straight line over eight seconds. Inertia is I = m/4, so the vehicle gets easier to twist as it lightens.",
             gloss: String.raw`$m$ is mass in kilograms.
-$t$ is the clock in seconds.`,
+$t$ is the clock in seconds.
+$I$ is inertia.`,
           },
           {
             kind: "contrast",
-            tex: String.raw`I\dot\omega = K(\theta_{\mathrm{cmd}} - \theta) - b\omega - q\theta`,
-            stake: "The first term is the gain times the miss, and it twists the nose toward the command. The middle term damps the pitch rate so the nose settles on the way there. The last term is the air, and it opposes the pitch itself.",
-            gloss: String.raw`$I$ is inertia.
-$K$ is the gain.
+            tex: String.raw`I\dot\omega = K(\theta_{\mathrm{cmd}} - \theta) - b\omega - \kappa\theta`,
+            stake: "K times the miss twists toward the command. b damps pitch rate. κθ is the air stiffness term, restoring here (positive κ pulls toward straight up). The sign is a teaching choice.",
+            gloss: String.raw`$K$ is the gain used.
 $\omega$ is pitch rate.
 $b$ damps that rate.
-$q$ scales the air.`,
+$\kappa$ is air stiffness.`,
           },
           {
             kind: "relation",
-            tex: String.raw`q = c\,v^{2}`,
-            stake: "The air coefficient grows with speed squared. Early in the burn the gain sets the pitch. Later, with the vehicle fast and light, the air eases the nose back from the 12° command.",
+            tex: String.raw`\kappa = c\,v^{2}`,
+            stake: "Air stiffness grows with speed squared. Early on, K sets the pitch. Later, with the vehicle fast, κ eases the nose back from the command.",
             gloss: String.raw`$v$ is speed.
 $c$ is the coefficient on that speed squared.`,
           },
           {
+            kind: "relation",
+            tex: String.raw`K = K_0\,m/m_0`,
+            stake: "With Schedule on, the live gain tracks mass, so K/I changes less as the tank empties. With Schedule off, K stays at the Gain knob the whole burn.",
+            gloss: String.raw`$K_0$ is the Gain knob.
+$m_0$ is the start mass, 3 kg.`,
+          },
+          {
             kind: "trace",
-            text: "Mass falls in a straight line. Pitch rises toward the command and then sags a little as the air term grows. A higher gain makes the rise quicker, and the air is still there at the end.",
+            text: "With Schedule on, Gain used falls with mass. Pitch still rises toward 12°, then sags a little as κ grows. Fixed K keeps the right-axis gain flat.",
           },
         ],
       },

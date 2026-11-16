@@ -247,8 +247,8 @@
   "vehAuto": {
     "auto": {
       "beginner": "What does the gain $K$ do to the nose?",
-      "intermediate": "Mass falls while the air term grows with speed squared. What does that air term do to the pitch after the nose has reached the command?",
-      "advanced": "If you raise the gain, what happens to how quickly the pitch approaches the command?"
+      "intermediate": "Compare Schedule off (fixed $K$) with Schedule on ($K \\propto m$). What does the Gain used trace do in each case as mass falls?",
+      "advanced": "Air stiffness is $\\kappa = c v^{2}$ and enters as $-\\kappa\\theta$. Why can that restoring sign be a teaching choice rather than the only aero reality?"
     },
     "eli5": {
       "beginner": "One gain pulls the nose toward the command while the vehicle burns fuel. What does the air do to that nose as the vehicle goes faster?"
