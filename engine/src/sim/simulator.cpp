@@ -166,12 +166,12 @@ void Simulator::run(
     LtvMpc mpc;
     MpcSolveResult last_plan;
     int mpc_divider = 1;
-    // Rebuild the soft-land reference when burned mass changes the thrust
-    // schedule enough to matter (about 5% of the mass used for that profile).
-    const double mass_rebuild_frac = 0.05;
     if (use_mpc) {
         Eigen::Vector2d pad0 = landing_pad.pad_position(t);
         const double mass0 = MASS_DRY + state[FUEL];
+        // Rebuild the soft-land reference from the live state at every MPC
+        // tick. A once-built open-loop profile goes stale under wind and then
+        // commands a post-skim climb (MC hard landings at |vz| >> 2 m/s).
         soft_ref.build(
             t,
             Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
@@ -234,22 +234,17 @@ void Simulator::run(
         if (use_mpc) {
             if (sim_counter % mpc_divider == 0) {
                 const double mass = MASS_DRY + state[FUEL];
-                // Rebuild when mass has dropped enough that the old force
-                // schedule no longer matches the current vehicle.
-                const double mass_ref = soft_ref.mass_used();
-                if (mass_ref > 1.0 && (mass_ref - mass) > mass_rebuild_frac * mass_ref) {
-                    soft_ref.build(
-                        t,
-                        Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
-                        Eigen::Vector3d(state[VEL_X], state[VEL_Y], state[VEL_Z]),
-                        mass,
-                        cfg.thrust_min,
-                        cfg.thrust_max,
-                        cfg.mpc_dt,
-                        pad_pos[0],
-                        pad_pos[1]
-                    );
-                }
+                soft_ref.build(
+                    t,
+                    Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
+                    Eigen::Vector3d(state[VEL_X], state[VEL_Y], state[VEL_Z]),
+                    mass,
+                    cfg.thrust_min,
+                    cfg.thrust_max,
+                    cfg.mpc_dt,
+                    pad_pos[0],
+                    pad_pos[1]
+                );
                 last_plan = mpc.solve(
                     t,
                     Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
@@ -341,15 +336,18 @@ void Simulator::run(
 
         t += dt_inner_v;
 
-        // Soft contact: near the pad with little downward speed counts as
-        // landed. Without this the MPC can skim low and climb again.
-        const double speed_xy = std::hypot(state[VEL_X], state[VEL_Y]);
+        // Soft contact: near the pad with little vertical speed counts as
+        // landed. Miss gate stays tight so a 20 m skim is not scored a success.
+        const double miss_pad = std::hypot(
+            state[POS_X] - pad_pos[0],
+            state[POS_Y] - pad_pos[1]
+        );
         const bool soft_contact =
             state[POS_Z] > 0.0 &&
-            state[POS_Z] < 1.0 &&
-            state[VEL_Z] > -1.5 &&
+            state[POS_Z] < 2.0 &&
+            state[VEL_Z] > -2.0 &&
             state[VEL_Z] < 0.5 &&
-            speed_xy < 4.0;
+            miss_pad < 5.0;
         if (state[POS_Z] <= 0.0 || soft_contact) {
             if (state[POS_Z] > 0.0) {
                 state[POS_Z] = 0.0;

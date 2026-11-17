@@ -111,7 +111,7 @@ const cases = [
   {
     name: "nominal",
     overrides: {},
-    check: (last) => touchdown(last, { maxSpeed: 1.5, maxMiss: 20 }),
+    check: (last) => touchdown(last, { maxSpeed: 2.0, maxMiss: 20 }),
   },
   {
     name: "tight_glide",

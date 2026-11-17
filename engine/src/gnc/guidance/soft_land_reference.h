@@ -15,8 +15,8 @@ struct ReferenceKnot {
 };
 
 // Builds a constant-accel soft-landing profile from the current state to the
-// pad. Thrust is clamped to [thrust_min, thrust_max]. Rebuild when mass drops
-// so the force schedule stays honest.
+// pad. Thrust is clamped to [thrust_min, thrust_max]. The Simulator rebuilds
+// this every MPC tick so wind and tracking error cannot stale the profile.
 class SoftLandReference {
 public:
     void build(

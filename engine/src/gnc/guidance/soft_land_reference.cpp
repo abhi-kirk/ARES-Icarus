@@ -26,27 +26,62 @@ void SoftLandReference::build(
     // Work in pad-relative coordinates so the target is the origin.
     const double x0 = pos0.x() - pad_x;
     const double y0 = pos0.y() - pad_y;
-    const double z0 = std::max(1.0, pos0.z());
+    const double z_now = std::max(1.0, pos0.z());
     const double vx0 = vel0.x();
     const double vy0 = vel0.y();
-    const double vz0 = vel0.z();
+    const double vz_now = vel0.z();
     const double m = mass_used_;
+
+    // Soft-land time tf = -2*z/vz only works while descending. If the vehicle is
+    // climbing or nearly hovering, map the state to an effective apex and a
+    // small downward seed so the constant-accel profile still reaches the pad.
+    double z0 = z_now;
+    double vz0 = vz_now;
+    if (vz_now >= -0.5) {
+        if (vz_now > 0.0) {
+            z0 = z_now + (vz_now * vz_now) / (2.0 * GRAVITY);
+        }
+        vz0 = -0.5;
+    }
+    z0 = std::max(1.0, z0);
 
     // Vertical soft-land time for constant accel: zf = z0 + vz0*tf + 0.5*a*tf^2 = 0
     // and vzf = vz0 + a*tf = 0 => a = -vz0/tf => tf = -2*z0/vz0 when descending.
-    double tf = 20.0;
-    if (vz0 < -0.5) {
-        tf = -2.0 * z0 / vz0;
-    } else {
-        const double a_down = GRAVITY - thrust_max / m;
-        const double a_cmd = std::min(-2.0, a_down);
-        tf = std::sqrt(std::max(1.0, -2.0 * z0 / a_cmd));
-    }
-    tf = std::clamp(tf, 5.0, 80.0);
+    double tf_z = -2.0 * z0 / vz0;
+    const double a_down = GRAVITY - thrust_max / m;
+    const double a_cmd = std::min(-2.0, a_down);
+    const double tf_ballistic = std::sqrt(std::max(1.0, -2.0 * z0 / a_cmd));
+    tf_z = std::max(tf_z, tf_ballistic);
+    // Cap tf so a slow current vz cannot stretch the profile into a crawl
+    // (e.g. z=140 m at vz=-2.5 gave tf≈112 s and burned the clock).
+    tf_z = std::min(tf_z, std::max(5.0, z0 / 5.0));
+    tf_z = std::clamp(tf_z, 5.0, 80.0);
 
-    double a_z = -2.0 * (z0 / (tf * tf) + vz0 / tf);
-    double a_x = -2.0 * x0 / (tf * tf) - 2.0 * vx0 / tf;
-    double a_y = -2.0 * y0 / (tf * tf) - 2.0 * vy0 / tf;
+    // Lateral time is shorter than vertical so XY reaches the pad before z
+    // does. Sharing one long tf left ~20 m of miss at soft contact under wind.
+    const double range_xy = std::hypot(x0, y0);
+    double tf_xy = tf_z;
+    if (range_xy > 1.0) {
+        tf_xy = std::min(tf_z, std::max(5.0, range_xy / 25.0));
+    }
+
+    // Once laterally acquired: firm descent while high, then soften in the
+    // last tens of meters so touchdown |vz| stays inside the soft gate.
+    if (range_xy < 10.0) {
+        if (z_now > 25.0) {
+            tf_z = std::min(tf_z, std::max(4.0, z_now / 5.0));
+        } else {
+            tf_z = std::min(tf_z, std::max(6.0, z_now / 1.5));
+        }
+    }
+
+    const double tf = std::max(tf_z, tf_xy);
+
+    // Profile accelerations use the live velocity so the first segment matches
+    // the vehicle (including a climb that the effective apex absorbed in tf_z).
+    double a_z = -2.0 * (z_now / (tf_z * tf_z) + vz_now / tf_z);
+    double a_x = -2.0 * x0 / (tf_xy * tf_xy) - 2.0 * vx0 / tf_xy;
+    double a_y = -2.0 * y0 / (tf_xy * tf_xy) - 2.0 * vy0 / tf_xy;
 
     auto force_from_accel = [&](double ax, double ay, double az) {
         Eigen::Vector3d F;
@@ -85,9 +120,9 @@ void SoftLandReference::build(
         knot.t = t0_ + tau;
         const double xr = x0 + vx0 * tau + 0.5 * a_x * tau * tau;
         const double yr = y0 + vy0 * tau + 0.5 * a_y * tau * tau;
-        const double zr = z0 + vz0 * tau + 0.5 * a_z * tau * tau;
+        const double zr = z_now + vz_now * tau + 0.5 * a_z * tau * tau;
         knot.pos = Eigen::Vector3d(xr + pad_x, yr + pad_y, std::max(0.0, zr));
-        knot.vel = Eigen::Vector3d(vx0 + a_x * tau, vy0 + a_y * tau, vz0 + a_z * tau);
+        knot.vel = Eigen::Vector3d(vx0 + a_x * tau, vy0 + a_y * tau, vz_now + a_z * tau);
         knot.force = F0;
         if (knot.pos.z() <= 1e-6) {
             knot.pos.z() = 0.0;
