@@ -141,9 +141,53 @@ function percentile(xs, p) {
   return sorted[idx];
 }
 
+const MASS_DRY = 1000.0;
+const GRAVITY = 9.81;
+const GLIDE_PAD_RADIUS = 5.0;
+
 function baseSim(scenario) {
   const sim = { ...base.simulation, ...SCENARIOS[scenario].fixed };
   return sim;
+}
+
+// Open-loop IC check: is there any chance a constrained soft land exists?
+// Outside the glide cone or a dive that max throttle cannot brake are
+// case failures, not controller failures (SCvx would be infeasible too).
+function classifyDraw(draw, fuel) {
+  const z = Math.max(1.0, draw.initial_z_pos);
+  const vz = draw.initial_z_velocity;
+  const range = Math.hypot(draw.initial_x_pos, draw.initial_y_pos);
+  const glide = draw.glide_cone_deg ?? 90.0;
+  const tanGlide = glide >= 89.9 ? 1.0e6 : Math.tan((glide * Math.PI) / 180.0);
+  const allow = z * tanGlide + GLIDE_PAD_RADIUS;
+  const inside_glide = range <= allow;
+
+  const m = MASS_DRY + Math.max(0.0, fuel);
+  const hover = m * GRAVITY;
+  const thrustMax = draw.thrust_max;
+  const thrustMin = draw.thrust_min ?? 0.0;
+  const aBrakeMax = thrustMax / m - GRAVITY;
+
+  const reasons = [];
+  if (!inside_glide) reasons.push("outside_glide");
+  if (thrustMax < hover) reasons.push("cannot_hover");
+  if (thrustMin > hover) reasons.push("floor_above_hover");
+  if (aBrakeMax <= 0.0) {
+    reasons.push("cannot_brake");
+  } else if (vz < 0.0 && vz * vz > 2.0 * aBrakeMax * z) {
+    // Constant max-brake from here still hits the ground with leftover rate.
+    reasons.push("insufficient_brake");
+  }
+
+  return {
+    feasible: reasons.length === 0,
+    reasons,
+    inside_glide,
+    range,
+    allow,
+    hover,
+    a_brake_max: aBrakeMax,
+  };
 }
 
 function makeDraw(rng, sim, scenarioCfg) {
@@ -405,15 +449,31 @@ function pairedWins(runResults) {
   return { bothOk, onlyPid, onlyMpc, mpc_better_miss: miss, mpc_better_vz: vz, mpc_better_fuel: fuel };
 }
 
+function countReasons(classifications) {
+  const counts = {};
+  for (const c of classifications) {
+    for (const r of c.reasons) {
+      counts[r] = (counts[r] || 0) + 1;
+    }
+  }
+  return counts;
+}
+
 const { n, seed, jobs, binary, scenario } = parseArgs(process.argv.slice(2));
 const scenarioCfg = SCENARIOS[scenario];
 const rng = mulberry32(seed);
 const sim = baseSim(scenario);
+const fuel0 = sim.initial_fuel ?? 600.0;
 
 const draws = [];
 for (let i = 0; i < n; ++i) {
-  draws.push({ id: i, ...makeDraw(rng, sim, scenarioCfg) });
+  const raw = makeDraw(rng, sim, scenarioCfg);
+  const ic = classifyDraw(raw, fuel0);
+  draws.push({ id: i, ...raw, ic });
 }
+
+const feasibleDraws = draws.filter((d) => d.ic.feasible);
+const envelopeDraws = draws.filter((d) => !d.ic.feasible);
 
 const controllers = ["pid", "mpc"];
 const jobs_list = [];
@@ -427,6 +487,12 @@ console.log(
   `Monte Carlo: scenario=${scenario} n=${n} seed=${seed} jobs=${jobs} ` +
     `glide=${sim.glide_cone_deg}° point=${sim.pointing_cone_deg}° ` +
     `thrust=[${sim.thrust_min ?? 0}, ${sim.thrust_max}] N binary=${binary}`
+);
+console.log(
+  `IC split: feasible=${feasibleDraws.length}/${n}  envelope=${envelopeDraws.length}/${n}` +
+    (envelopeDraws.length
+      ? `  envelope_reasons=${JSON.stringify(countReasons(envelopeDraws.map((d) => d.ic)))}`
+      : "")
 );
 
 let done = 0;
@@ -444,11 +510,14 @@ const runResults = await mapPool(jobs_list, jobs, async (job) => {
   return {
     id: job.draw.id,
     controller: job.controller,
+    feasible_ic: job.draw.ic.feasible,
+    ic: job.draw.ic,
     draw: {
       wind_x_velocity: job.draw.wind_x_velocity,
       wind_y_velocity: job.draw.wind_y_velocity,
       gust_magnitude: job.draw.gust_magnitude,
       thrust_max: job.draw.thrust_max,
+      thrust_min: job.draw.thrust_min,
       thrust_scale: job.draw.thrust_scale,
       pointing_cone_deg: job.draw.pointing_cone_deg,
       glide_cone_deg: job.draw.glide_cone_deg,
@@ -461,21 +530,37 @@ const runResults = await mapPool(jobs_list, jobs, async (job) => {
   };
 });
 
-const byController = {};
-for (const c of controllers) {
-  byController[c] = runResults.filter((r) => r.controller === c);
-}
+const feasibleResults = runResults.filter((r) => r.feasible_ic);
+const envelopeResults = runResults.filter((r) => !r.feasible_ic);
 
-console.log("");
-const summaries = controllers.map((c) => summarize(c, byController[c]));
-for (const s of summaries) printSummary(s);
-
-const paired = pairedWins(runResults);
-console.log(
-  `paired: both_ok=${paired.bothOk} only_pid=${paired.onlyPid} only_mpc=${paired.onlyMpc} ` +
-    `mpc_better_miss=${paired.mpc_better_miss} mpc_better_vz=${paired.mpc_better_vz} ` +
-    `mpc_better_fuel=${paired.mpc_better_fuel}`
+console.log("\n--- Controller score (feasible ICs only) ---");
+const summariesFeasible = controllers.map((c) =>
+  summarize(
+    c,
+    feasibleResults.filter((r) => r.controller === c)
+  )
 );
+for (const s of summariesFeasible) printSummary(s);
+const pairedFeasible = pairedWins(feasibleResults);
+console.log(
+  `paired: both_ok=${pairedFeasible.bothOk} only_pid=${pairedFeasible.onlyPid} only_mpc=${pairedFeasible.onlyMpc} ` +
+    `mpc_better_miss=${pairedFeasible.mpc_better_miss} mpc_better_vz=${pairedFeasible.mpc_better_vz} ` +
+    `mpc_better_fuel=${pairedFeasible.mpc_better_fuel}`
+);
+
+console.log("\n--- Envelope ICs (infeasible cases; not a controller score) ---");
+console.log(
+  `draws=${envelopeDraws.length}/${n}  reasons=${JSON.stringify(countReasons(envelopeDraws.map((d) => d.ic)))}`
+);
+if (envelopeResults.length > 0) {
+  const summariesEnvelope = controllers.map((c) =>
+    summarize(
+      c,
+      envelopeResults.filter((r) => r.controller === c)
+    )
+  );
+  for (const s of summariesEnvelope) printSummary(s);
+}
 
 const outDir = join(root, "src", "results", "mc");
 mkdirSync(outDir, { recursive: true });
@@ -489,8 +574,22 @@ const payload = {
   success_gate: SUCCESS,
   binary,
   elapsed_s: (Date.now() - t0) / 1000,
-  summaries,
-  paired,
+  ic_split: {
+    feasible: feasibleDraws.length,
+    envelope: envelopeDraws.length,
+    envelope_reasons: countReasons(envelopeDraws.map((d) => d.ic)),
+  },
+  summaries_feasible: summariesFeasible,
+  paired_feasible: pairedFeasible,
+  summaries_envelope:
+    envelopeResults.length > 0
+      ? controllers.map((c) =>
+          summarize(
+            c,
+            envelopeResults.filter((r) => r.controller === c)
+          )
+        )
+      : [],
   runs: runResults,
 };
 writeFileSync(outPath, JSON.stringify(payload, null, 2));
