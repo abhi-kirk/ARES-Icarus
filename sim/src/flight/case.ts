@@ -38,6 +38,8 @@ export type FlightCase = {
     glide_cone_deg: number;
     // First-order engine lag time constant (s). 0 means instantaneous.
     thrust_tau: number;
+    // Quadratic drag multiplier. 1 is the historical plant. 0 is vacuum.
+    drag_scale: number;
     // 6-DOF / TVC. Gimbal limit in degrees; Ixx (= Iyy) in kg·m².
     use_6dof: boolean;
     gimbal_max_deg: number;
@@ -134,6 +136,7 @@ export const NOMINAL_CASE: FlightCase = {
     pointing_cone_deg: 90.0,
     glide_cone_deg: 90.0,
     thrust_tau: 0.0,
+    drag_scale: 1.0,
     use_6dof: true,
     gimbal_max_deg: 15.0,
     Ixx: 2000.0,
@@ -228,6 +231,7 @@ export function caseFromRequest(body: unknown): FlightCase {
     const cone = finite(sim.pointing_cone_deg);
     const glide = finite(sim.glide_cone_deg);
     const lag = finite(sim.thrust_tau);
+    const drag = finite(sim.drag_scale);
     const gimbal = finite(sim.gimbal_max_deg);
     const inertia = finite(sim.Ixx);
     if (height !== null) writeKnob(next, "height", height);
@@ -242,6 +246,7 @@ export function caseFromRequest(body: unknown): FlightCase {
     if (cone !== null) writeKnob(next, "cone", cone);
     if (glide !== null) writeKnob(next, "glide", glide);
     if (lag !== null) writeKnob(next, "lag", lag);
+    if (drag !== null) next.simulation.drag_scale = clamp(drag, 0, 2);
     if (gimbal !== null) writeKnob(next, "gimbal", gimbal);
     if (inertia !== null) writeKnob(next, "inertia", inertia);
   }

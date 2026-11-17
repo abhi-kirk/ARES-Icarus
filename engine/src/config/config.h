@@ -67,6 +67,10 @@ struct SimConfig {
     double thrust_tau = 0.0;
     double thrust_slew = 0.0;
 
+    // Multiplier on the quadratic drag law. 1 is the historical plant.
+    // 0 is vacuum. Wind is a separate field.
+    double drag_scale = 1.0;
+
     // 6-DOF plant. When use_6dof is true the stream integrates Euler
     // attitude with gimbal TVC; the force PID still sets the ask.
     bool use_6dof = true;

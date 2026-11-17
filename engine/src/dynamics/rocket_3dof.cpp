@@ -2,6 +2,7 @@
 #include "dynamics/constants.h"
 #include "dynamics/state_indices.h"
 
+#include <algorithm>
 #include <cmath>
 #include <Eigen/Dense>
 
@@ -9,7 +10,13 @@ using std::abs;
 
 namespace icarus {
 
-State rocket_dynamics_3dof(double t, const State& state, const ControlInput& control, const Disturbance& disturbance) {
+State rocket_dynamics_3dof(
+    double t,
+    const State& state,
+    const ControlInput& control,
+    const Disturbance& disturbance,
+    double drag_scale
+) {
     (void)t;
 
     const double wind_x = disturbance[0];
@@ -20,24 +27,28 @@ State rocket_dynamics_3dof(double t, const State& state, const ControlInput& con
     const double vy = state[VEL_Y] - wind_y;
     const double vz = state[VEL_Z] - wind_z;
 
-    const double thrust_x = control[0];
-    const double thrust_y = control[1];
-    const double thrust_z = control[2];
-
     const double fuel = state[FUEL];
-    const double m    = MASS_DRY + fuel;
+    // An empty tank produces no thrust. The command can still ask for it.
+    const double thrust_x = (fuel > 0.0) ? control[0] : 0.0;
+    const double thrust_y = (fuel > 0.0) ? control[1] : 0.0;
+    const double thrust_z = (fuel > 0.0) ? control[2] : 0.0;
+
+    const double m = MASS_DRY + std::max(0.0, fuel);
 
     double m_dot = 0.0;
     if (fuel > 0.0) {
-        double thrust_magnitude = control.norm();
+        double thrust_magnitude = std::sqrt(
+            thrust_x * thrust_x + thrust_y * thrust_y + thrust_z * thrust_z
+        );
         m_dot = -(thrust_magnitude / MAX_THRUST) * MAX_FLOW_RATE;
     }
 
     double speed = std::sqrt(vx*vx + vy*vy + vz*vz);
+    const double drag_coeff = 0.5 * std::max(0.0, drag_scale);
 
-    const double drag_x = -0.5 * vx * speed;
-    const double drag_y = -0.5 * vy * speed;
-    const double drag_z = -0.5 * vz * speed;
+    const double drag_x = -drag_coeff * vx * speed;
+    const double drag_y = -drag_coeff * vy * speed;
+    const double drag_z = -drag_coeff * vz * speed;
 
     const double net_force_x = thrust_x + drag_x;
     const double net_force_y = thrust_y + drag_y;

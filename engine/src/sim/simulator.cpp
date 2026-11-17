@@ -194,7 +194,8 @@ void Simulator::run(
             cfg.thrust_min,
             cfg.thrust_max,
             cfg.pointing_cone_deg,
-            cfg.glide_cone_deg
+            cfg.glide_cone_deg,
+            cfg.drag_scale
         );
         mpc.set_reference(&soft_ref);
         mpc_divider = std::max(1, static_cast<int>(std::lround(cfg.mpc_dt / dt_inner_v)));
@@ -291,6 +292,14 @@ void Simulator::run(
             cfg.thrust_slew
         );
 
+        // Dynamics also drop thrust at empty, but the gimbal torque cancel
+        // is computed here, so the command has to die here too.
+        if (state[FUEL] <= 0.0) {
+            Fx_act = 0.0;
+            Fy_act = 0.0;
+            Fz_act = 0.0;
+        }
+
         Eigen::Vector3d wind_speeds = wind_model.wind_velocity(t);
         double Fx_log = Fx_act;
         double Fy_log = Fy_act;
@@ -320,7 +329,8 @@ void Simulator::run(
             SystemDynamics bound = [&](double time, const State& s) {
                 return rocket_dynamics_6dof(
                     time, s, control, wind_speeds,
-                    cfg.Ixx, cfg.Iyy, cfg.Izz, cfg.gimbal_lever
+                    cfg.Ixx, cfg.Iyy, cfg.Izz, cfg.gimbal_lever,
+                    cfg.drag_scale
                 );
             };
             state = Integrator::rk4_step(bound, t, state, dt_inner_v);

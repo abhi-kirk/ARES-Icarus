@@ -2,6 +2,7 @@
 #include "dynamics/constants.h"
 #include "dynamics/state_indices.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace icarus {
@@ -61,7 +62,8 @@ State rocket_dynamics_6dof(
     double Ixx,
     double Iyy,
     double Izz,
-    double gimbal_lever_m
+    double gimbal_lever_m,
+    double drag_scale
 ) {
     (void)t;
 
@@ -75,10 +77,13 @@ State rocket_dynamics_6dof(
     const double tau_rcs_x = control.size() > 3 ? control[3] : 0.0;
     const double tau_rcs_y = control.size() > 4 ? control[4] : 0.0;
 
+    const double fuel = state[FUEL];
+    // An empty tank produces no thrust and no gimbal torque. RCS still acts.
+    const double T_use = (fuel > 0.0) ? T : 0.0;
     double Fx_b = 0.0;
     double Fy_b = 0.0;
     double Fz_b = 0.0;
-    thrust_body(T, dx, dy, Fx_b, Fy_b, Fz_b);
+    thrust_body(T_use, dx, dy, Fx_b, Fy_b, Fz_b);
 
     // Gimbal torque: engine at r = [0, 0, -L].
     const double L = gimbal_lever_m;
@@ -98,21 +103,22 @@ State rocket_dynamics_6dof(
     double Fz_i = 0.0;
     body_to_inertial(roll, pitch, yaw, Fx_b, Fy_b, Fz_b, Fx_i, Fy_i, Fz_i);
 
-    const double fuel = state[FUEL];
-    const double m = MASS_DRY + fuel;
+    const double m = MASS_DRY + std::max(0.0, fuel);
 
     double m_dot = 0.0;
-    if (fuel > 0.0 && T > 0.0) {
-        m_dot = -(T / MAX_THRUST) * MAX_FLOW_RATE;
+    if (fuel > 0.0 && T_use > 0.0) {
+        m_dot = -(T_use / MAX_THRUST) * MAX_FLOW_RATE;
     }
 
     const double vx_rel = state[VEL_X] - wind_x;
     const double vy_rel = state[VEL_Y] - wind_y;
     const double vz_rel = state[VEL_Z] - wind_z;
     const double speed = std::sqrt(vx_rel * vx_rel + vy_rel * vy_rel + vz_rel * vz_rel);
-    const double drag_x = -0.5 * vx_rel * speed;
-    const double drag_y = -0.5 * vy_rel * speed;
-    const double drag_z = -0.5 * vz_rel * speed;
+    // drag_scale = 1 keeps the historical law. 0 is vacuum.
+    const double drag_coeff = 0.5 * std::max(0.0, drag_scale);
+    const double drag_x = -drag_coeff * vx_rel * speed;
+    const double drag_y = -drag_coeff * vy_rel * speed;
+    const double drag_z = -drag_coeff * vz_rel * speed;
 
     const double accel_x = (Fx_i + drag_x) / m;
     const double accel_y = (Fy_i + drag_y) / m;
@@ -157,7 +163,8 @@ State rocket_dynamics_6dof(
 ) {
     return rocket_dynamics_6dof(
         t, state, control, disturbance,
-        IXX_DEFAULT, IYY_DEFAULT, IZZ_DEFAULT, GIMBAL_LEVER_DEFAULT
+        IXX_DEFAULT, IYY_DEFAULT, IZZ_DEFAULT, GIMBAL_LEVER_DEFAULT,
+        1.0
     );
 }
 

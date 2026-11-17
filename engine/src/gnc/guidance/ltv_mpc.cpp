@@ -83,7 +83,8 @@ void LtvMpc::configure(
     double thrust_min,
     double thrust_max,
     double pointing_cone_deg,
-    double glide_cone_deg
+    double glide_cone_deg,
+    double drag_scale
 ) {
     horizon_ = std::max(2, horizon);
     dt_ = std::max(0.05, dt);
@@ -95,6 +96,7 @@ void LtvMpc::configure(
     thrust_max_ = thrust_max;
     pointing_cone_deg_ = pointing_cone_deg;
     glide_cone_deg_ = glide_cone_deg;
+    drag_scale_ = std::max(0.0, drag_scale);
     have_warm_ = false;
     last_U_.resize(0);
 }
@@ -123,15 +125,15 @@ MpcSolveResult LtvMpc::solve(
     const int nU = N * nu;
     const int nX = N * nx;
 
-    // Match the plant drag law drag = -0.5 * v_rel * |v_rel| with a local
-    // linear damping held over the horizon: a_drag ≈ -b (v - w).
+    // Match the plant drag law drag = -0.5 * drag_scale * v_rel * |v_rel|
+    // with a local linear damping held over the horizon: a_drag ≈ -b (v - w).
     const Eigen::Vector3d v_rel(
         state_vel.x() - wind_x,
         state_vel.y() - wind_y,
         state_vel.z()
     );
     const double speed_rel = v_rel.norm();
-    const double b_drag = (0.5 * speed_rel) / m;
+    const double b_drag = (0.5 * drag_scale_ * speed_rel) / m;
     const double damp = std::max(0.0, 1.0 - b_drag * dt_);
 
     // Discrete translation model with drag and constant wind:

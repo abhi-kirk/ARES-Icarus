@@ -17,7 +17,8 @@ State rocket_dynamics_6dof(
     double Ixx,
     double Iyy,
     double Izz,
-    double gimbal_lever_m
+    double gimbal_lever_m,
+    double drag_scale
 );
 
 // Defaults for inertia and lever when the caller has no case overrides.

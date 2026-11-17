@@ -9,7 +9,8 @@ State rocket_dynamics_3dof(
     double t,
     const State& state,
     const ControlInput& control,
-    const Disturbance& disturbance
+    const Disturbance& disturbance,
+    double drag_scale
 );
 
 }  // namespace icarus

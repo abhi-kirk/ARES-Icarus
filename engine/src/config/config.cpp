@@ -64,6 +64,7 @@ bool apply_config(const json& j, Config& config) {
         config.simulation.glide_pull         = j["simulation"].value("glide_pull", 0.5);
         config.simulation.thrust_tau         = j["simulation"].value("thrust_tau", 0.0);
         config.simulation.thrust_slew        = j["simulation"].value("thrust_slew", 0.0);
+        config.simulation.drag_scale         = j["simulation"].value("drag_scale", 1.0);
 
         config.simulation.use_6dof           = j["simulation"].value("use_6dof", true);
         config.simulation.Ixx                = j["simulation"].value("Ixx", 2000.0);

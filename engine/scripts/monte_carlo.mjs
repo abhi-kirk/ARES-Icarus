@@ -7,6 +7,7 @@
 //   node scripts/monte_carlo.mjs --scenario constrained --n 40 --seed 1
 //   node scripts/monte_carlo.mjs --scenario storm --n 40 --seed 1 --jobs 8
 //   node scripts/monte_carlo.mjs --scenario landing_bench --n 40 --seed 1
+//   node scripts/monte_carlo.mjs --scenario vacuum_divert --n 40 --seed 1
 
 import { spawn } from "node:child_process";
 import { cpus } from "node:os";
@@ -103,6 +104,35 @@ const SCENARIOS = {
     wind_sigma: 4.0,
     gust_sigma: 2.0,
     sample_falcon: true,
+  },
+  // Regime 2. Vacuum (drag_scale 0, wind off), Earth g, same throttle band
+  // and cones. Long offset inside the glide cone, fuel cut so the burn is
+  // propellant-limited. Lunar g waits until the throttle floor can hover.
+  vacuum_divert: {
+    label: "vacuum_divert",
+    fixed: {
+      glide_cone_deg: WALLS.glide_cone_deg,
+      pointing_cone_deg: WALLS.pointing_cone_deg,
+      thrust_max: WALLS.thrust_max_N,
+      thrust_min: WALLS.thrust_min_N,
+      initial_z_pos: PLANT.nominal_z_m,
+      initial_z_velocity: PLANT.nominal_vz_mps,
+      initial_x_velocity: 0.0,
+      initial_y_velocity: 0.0,
+      wind_x_velocity: 0.0,
+      wind_y_velocity: 0.0,
+      gust_magnitude: 0.0,
+      drag_scale: 0.0,
+      initial_fuel: 80.0,
+      initial_pad_x_velocity: 0.0,
+      initial_pad_y_velocity: 0.0,
+      initial_x_pos: 70,
+      initial_y_pos: -40,
+    },
+    thrust_scale_min: 1.0,
+    wind_sigma: 0.0,
+    gust_sigma: 0.0,
+    sample_divert: true,
   },
 };
 
@@ -273,6 +303,10 @@ function makeDraw(rng, sim, scenarioCfg) {
   let z0;
   let vz0;
   let falconMeta = null;
+  let dragScale = sim.drag_scale ?? 1.0;
+  let fuel = sim.initial_fuel ?? 600.0;
+  let vx0 = sim.initial_x_velocity ?? 0.0;
+  let vy0 = sim.initial_y_velocity ?? 0.0;
 
   if (scenarioCfg.sample_falcon) {
     // Scale Falcon landing-burn alt/tau into the plant hop. Horizontal is
@@ -304,6 +338,26 @@ function makeDraw(rng, sim, scenarioCfg) {
       allow,
       inside_glide_draw: inside,
     };
+  } else if (scenarioCfg.sample_divert) {
+    // Long divert that still sits inside the cone most of the time.
+    // Fuel is the scarce resource; thrust is not also derated.
+    dragScale = 0.0;
+    // Probe at 100 kg: PID burned ~108 kg and arrived empty, MPC burned ~53 kg.
+    // 80 kg sits between those two bills.
+    fuel = clamp((sim.initial_fuel ?? 80.0) + 8.0 * randn(rng), 65.0, 95.0);
+    vx0 = 0.0;
+    vy0 = 0.0;
+    z0 = sim.initial_z_pos;
+    vz0 = clamp(sim.initial_z_velocity + 1.5 * randn(rng), -32.0, -12.0);
+    const glide = sim.glide_cone_deg ?? 20.0;
+    const tanGlide = Math.tan((glide * Math.PI) / 180.0);
+    const allow = z0 * tanGlide + GLIDE_PAD_RADIUS;
+    const inside = rng() < 0.85;
+    const frac = inside ? 0.65 + 0.3 * rng() : 1.08 + 0.2 * rng();
+    const range = allow * frac;
+    const az = 2.0 * Math.PI * rng();
+    x0 = range * Math.cos(az);
+    y0 = range * Math.sin(az);
   } else {
     x0 = sim.initial_x_pos + 15.0 * randn(rng);
     y0 = sim.initial_y_pos + 15.0 * randn(rng);
@@ -320,6 +374,10 @@ function makeDraw(rng, sim, scenarioCfg) {
     thrust_min: thrustMin,
     pointing_cone_deg: sim.pointing_cone_deg,
     glide_cone_deg: sim.glide_cone_deg,
+    drag_scale: dragScale,
+    initial_fuel: fuel,
+    initial_x_velocity: vx0,
+    initial_y_velocity: vy0,
     initial_x_pos: x0,
     initial_y_pos: y0,
     initial_z_pos: z0,
@@ -343,6 +401,10 @@ function buildCase(draw, controller, scenarioCfg) {
     thrust_min: draw.thrust_min,
     pointing_cone_deg: draw.pointing_cone_deg,
     glide_cone_deg: draw.glide_cone_deg,
+    drag_scale: draw.drag_scale,
+    initial_fuel: draw.initial_fuel,
+    initial_x_velocity: draw.initial_x_velocity,
+    initial_y_velocity: draw.initial_y_velocity,
     initial_x_pos: draw.initial_x_pos,
     initial_y_pos: draw.initial_y_pos,
     initial_z_pos: draw.initial_z_pos,
@@ -578,6 +640,7 @@ for (const draw of draws) {
 console.log(
   `Monte Carlo: scenario=${scenario} n=${n} seed=${seed} jobs=${jobs} ` +
     `glide=${sim.glide_cone_deg}° point=${sim.pointing_cone_deg}° ` +
+    `drag=${sim.drag_scale ?? 1} fuel0=${sim.initial_fuel ?? 600} ` +
     `thrust=[${sim.thrust_min ?? 0}, ${sim.thrust_max}] N binary=${binary}`
 );
 console.log(
@@ -613,6 +676,8 @@ const runResults = await mapPool(jobs_list, jobs, async (job) => {
       thrust_scale: job.draw.thrust_scale,
       pointing_cone_deg: job.draw.pointing_cone_deg,
       glide_cone_deg: job.draw.glide_cone_deg,
+      drag_scale: job.draw.drag_scale,
+      initial_fuel: job.draw.initial_fuel,
       initial_x_pos: job.draw.initial_x_pos,
       initial_y_pos: job.draw.initial_y_pos,
       initial_z_pos: job.draw.initial_z_pos,
