@@ -4,8 +4,8 @@
 //
 // Usage:
 //   node scripts/monte_carlo.mjs
-//   node scripts/monte_carlo.mjs --n 100 --seed 2 --jobs 8
-//   node scripts/monte_carlo.mjs [path/to/IcarusStream]
+//   node scripts/monte_carlo.mjs --scenario constrained --n 40 --seed 1
+//   node scripts/monte_carlo.mjs --scenario storm --n 40 --seed 1 --jobs 8
 
 import { spawn } from "node:child_process";
 import { cpus } from "node:os";
@@ -23,10 +23,65 @@ const SUCCESS = {
   maxT: 80.0,
 };
 
+// Scenarios pick the fixed case envelope. Draws still jitter wind/state/thrust.
+// Throttle band is engine-like: floor ~40% of ceiling (cannot command zero
+// during the burn), ceiling near soft-land demand for this plant.
+const THROTTLE_MAX = 18000.0;
+const THROTTLE_MIN = 0.4 * THROTTLE_MAX; // 7200 N
+
+const SCENARIOS = {
+  // Open cones, comfortable thrust — baseline from make mc.
+  default: {
+    label: "default",
+    fixed: {},
+    thrust_scale_min: 0.7,
+    wind_sigma: 5.0,
+    gust_sigma: 2.0,
+  },
+  // Real throttle band + tighter keep-out + pointing limit.
+  constrained: {
+    label: "constrained",
+    fixed: {
+      glide_cone_deg: 20.0,
+      pointing_cone_deg: 25.0,
+      thrust_max: THROTTLE_MAX,
+      thrust_min: THROTTLE_MIN,
+      initial_x_pos: 100,
+      initial_y_pos: -60,
+      initial_z_pos: 280,
+      initial_z_velocity: -22,
+    },
+    thrust_scale_min: 0.9,
+    wind_sigma: 4.0,
+    gust_sigma: 2.0,
+  },
+  // Same throttle/cones, stronger unmodeled wind/gust.
+  storm: {
+    label: "storm",
+    fixed: {
+      glide_cone_deg: 20.0,
+      pointing_cone_deg: 25.0,
+      thrust_max: THROTTLE_MAX,
+      thrust_min: THROTTLE_MIN,
+      initial_x_pos: 100,
+      initial_y_pos: -60,
+      initial_z_pos: 280,
+      initial_z_velocity: -22,
+      wind_x_velocity: 8.0,
+      wind_y_velocity: 4.0,
+      gust_magnitude: 5.0,
+    },
+    thrust_scale_min: 0.9,
+    wind_sigma: 6.0,
+    gust_sigma: 3.0,
+  },
+};
+
 function parseArgs(argv) {
   let n = 50;
   let seed = 1;
   let jobs = Math.max(1, cpus().length);
+  let scenario = "default";
   let binary = join(root, "build", "IcarusStream");
 
   for (let i = 0; i < argv.length; ++i) {
@@ -37,14 +92,21 @@ function parseArgs(argv) {
       seed = parseInt(argv[++i], 10) || seed;
     } else if (a === "--jobs" && argv[i + 1] != null) {
       jobs = Math.max(1, parseInt(argv[++i], 10) || jobs);
+    } else if (a === "--scenario" && argv[i + 1] != null) {
+      scenario = argv[++i];
     } else if (!a.startsWith("-")) {
       binary = a;
     }
   }
-  return { n, seed, jobs, binary };
+  if (!SCENARIOS[scenario]) {
+    console.error(
+      `unknown scenario "${scenario}"; use ${Object.keys(SCENARIOS).join("|")}`
+    );
+    process.exit(2);
+  }
+  return { n, seed, jobs, binary, scenario };
 }
 
-// Mulberry32 — deterministic uint32 stream from a seed.
 function mulberry32(seed) {
   let t = seed >>> 0;
   return function next() {
@@ -56,7 +118,6 @@ function mulberry32(seed) {
 }
 
 function randn(rng) {
-  // Box-Muller
   const u = Math.max(1e-12, rng());
   const v = rng();
   return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
@@ -80,41 +141,75 @@ function percentile(xs, p) {
   return sorted[idx];
 }
 
-function makeDraw(rng, sim) {
-  const windX = clamp(sim.wind_x_velocity + 5.0 * randn(rng), -20, 20);
-  const windY = clamp(sim.wind_y_velocity + 5.0 * randn(rng), -20, 20);
-  const gust = clamp(sim.gust_magnitude + 2.0 * randn(rng), 0, 15);
-  // Thrust shortfall: scale in [0.7, 1.0]
-  const thrustScale = clamp(1.0 - 0.15 * Math.abs(randn(rng)), 0.7, 1.0);
-  const x0 = sim.initial_x_pos + 20.0 * randn(rng);
-  const y0 = sim.initial_y_pos + 20.0 * randn(rng);
+function baseSim(scenario) {
+  const sim = { ...base.simulation, ...SCENARIOS[scenario].fixed };
+  return sim;
+}
+
+function makeDraw(rng, sim, scenarioCfg) {
+  const windX = clamp(
+    sim.wind_x_velocity + scenarioCfg.wind_sigma * randn(rng),
+    -25,
+    25
+  );
+  const windY = clamp(
+    sim.wind_y_velocity + scenarioCfg.wind_sigma * randn(rng),
+    -25,
+    25
+  );
+  const gust = clamp(
+    sim.gust_magnitude + scenarioCfg.gust_sigma * randn(rng),
+    0,
+    18
+  );
+  const thrustScale = clamp(
+    1.0 - 0.5 * (1.0 - scenarioCfg.thrust_scale_min) * Math.abs(randn(rng)),
+    scenarioCfg.thrust_scale_min,
+    1.0
+  );
+  const thrustMin = sim.thrust_min ?? 0.0;
+  // Ceiling shortfall cannot collapse the throttle band; keep a 5% gap.
+  let thrustMax = sim.thrust_max * thrustScale;
+  if (thrustMin > 0.0) {
+    thrustMax = Math.max(thrustMax, thrustMin * 1.05);
+  }
+  const x0 = sim.initial_x_pos + 15.0 * randn(rng);
+  const y0 = sim.initial_y_pos + 15.0 * randn(rng);
   const vz0 = clamp(sim.initial_z_velocity + 3.0 * randn(rng), -40, -5);
 
   return {
     wind_x_velocity: windX,
     wind_y_velocity: windY,
     gust_magnitude: gust,
-    thrust_max: sim.thrust_max * thrustScale,
+    thrust_max: thrustMax,
     thrust_scale: thrustScale,
+    thrust_min: thrustMin,
+    pointing_cone_deg: sim.pointing_cone_deg,
+    glide_cone_deg: sim.glide_cone_deg,
     initial_x_pos: x0,
     initial_y_pos: y0,
+    initial_z_pos: sim.initial_z_pos,
     initial_z_velocity: vz0,
   };
 }
 
-function buildCase(draw, controller) {
+function buildCase(draw, controller, scenarioCfg) {
   const next = structuredClone(base);
   next.simulation.use_rerun = false;
   next.simulation.rerun_spawn_viewer = false;
   next.simulation.rerun_save_rrd = false;
   next.simulation.controller = controller;
-  Object.assign(next.simulation, {
+  Object.assign(next.simulation, scenarioCfg.fixed, {
     wind_x_velocity: draw.wind_x_velocity,
     wind_y_velocity: draw.wind_y_velocity,
     gust_magnitude: draw.gust_magnitude,
     thrust_max: draw.thrust_max,
+    thrust_min: draw.thrust_min,
+    pointing_cone_deg: draw.pointing_cone_deg,
+    glide_cone_deg: draw.glide_cone_deg,
     initial_x_pos: draw.initial_x_pos,
     initial_y_pos: draw.initial_y_pos,
+    initial_z_pos: draw.initial_z_pos,
     initial_z_velocity: draw.initial_z_velocity,
   });
   return next;
@@ -186,9 +281,11 @@ function runOne(binary, caseObj) {
       stderr += chunk;
     });
 
+    // Horizon-50 OSQP under a full job pool can push a single landing past
+    // 90 s wall; killing mid-flight falsely scores "did not land".
     const timer = setTimeout(() => {
       child.kill("SIGTERM");
-    }, 90_000);
+    }, 180_000);
 
     child.on("close", () => {
       clearTimeout(timer);
@@ -244,6 +341,11 @@ function summarize(label, rows) {
   const vzAbs = okRows.map((r) => Math.abs(r.score.vz)).filter((x) => x != null);
   const fuels = okRows.map((r) => r.score.fuel).filter((x) => x != null);
   const rate = rows.length === 0 ? 0 : okRows.length / rows.length;
+  const reasons = {};
+  for (const r of rows) {
+    if (r.score.ok) continue;
+    reasons[r.score.reason] = (reasons[r.score.reason] || 0) + 1;
+  }
 
   return {
     controller: label,
@@ -255,26 +357,62 @@ function summarize(label, rows) {
     mean_abs_vz: mean(vzAbs),
     p90_abs_vz: percentile(vzAbs, 90),
     mean_fuel: mean(fuels),
+    fail_reasons: reasons,
   };
 }
 
 function printSummary(s) {
   const pct = (100 * s.success_rate).toFixed(1);
+  const fails =
+    Object.keys(s.fail_reasons).length === 0
+      ? ""
+      : `  fails=${JSON.stringify(s.fail_reasons)}`;
   console.log(
     `${s.controller.padEnd(4)}  ${s.successes}/${s.n} (${pct}%)  ` +
       `miss mean=${s.mean_miss.toFixed(1)} p90=${s.p90_miss.toFixed(1)}  ` +
       `|vz| mean=${s.mean_abs_vz.toFixed(2)} p90=${s.p90_abs_vz.toFixed(2)}  ` +
-      `fuel mean=${s.mean_fuel.toFixed(1)}`
+      `fuel mean=${s.mean_fuel.toFixed(1)}${fails}`
   );
 }
 
-const { n, seed, jobs, binary } = parseArgs(process.argv.slice(2));
+function pairedWins(runResults) {
+  const byId = {};
+  for (const r of runResults) {
+    byId[r.id] = byId[r.id] || {};
+    byId[r.id][r.controller] = r;
+  }
+  let miss = 0;
+  let vz = 0;
+  let fuel = 0;
+  let bothOk = 0;
+  let onlyPid = 0;
+  let onlyMpc = 0;
+  for (const id of Object.keys(byId)) {
+    const p = byId[id].pid;
+    const m = byId[id].mpc;
+    if (!p || !m) continue;
+    if (p.score.ok && m.score.ok) {
+      bothOk += 1;
+      if (m.score.miss < p.score.miss) miss += 1;
+      if (Math.abs(m.score.vz) < Math.abs(p.score.vz)) vz += 1;
+      if (m.score.fuel > p.score.fuel) fuel += 1;
+    } else if (p.score.ok && !m.score.ok) {
+      onlyPid += 1;
+    } else if (!p.score.ok && m.score.ok) {
+      onlyMpc += 1;
+    }
+  }
+  return { bothOk, onlyPid, onlyMpc, mpc_better_miss: miss, mpc_better_vz: vz, mpc_better_fuel: fuel };
+}
+
+const { n, seed, jobs, binary, scenario } = parseArgs(process.argv.slice(2));
+const scenarioCfg = SCENARIOS[scenario];
 const rng = mulberry32(seed);
-const sim = base.simulation;
+const sim = baseSim(scenario);
 
 const draws = [];
 for (let i = 0; i < n; ++i) {
-  draws.push({ id: i, ...makeDraw(rng, sim) });
+  draws.push({ id: i, ...makeDraw(rng, sim, scenarioCfg) });
 }
 
 const controllers = ["pid", "mpc"];
@@ -286,7 +424,9 @@ for (const draw of draws) {
 }
 
 console.log(
-  `Monte Carlo: n=${n} seed=${seed} jobs=${jobs} controllers=${controllers.join(",")} binary=${binary}`
+  `Monte Carlo: scenario=${scenario} n=${n} seed=${seed} jobs=${jobs} ` +
+    `glide=${sim.glide_cone_deg}° point=${sim.pointing_cone_deg}° ` +
+    `thrust=[${sim.thrust_min ?? 0}, ${sim.thrust_max}] N binary=${binary}`
 );
 
 let done = 0;
@@ -294,7 +434,7 @@ const total = jobs_list.length;
 const t0 = Date.now();
 
 const runResults = await mapPool(jobs_list, jobs, async (job) => {
-  const caseObj = buildCase(job.draw, job.controller);
+  const caseObj = buildCase(job.draw, job.controller, scenarioCfg);
   const out = await runOne(binary, caseObj);
   done += 1;
   if (done % Math.max(1, Math.floor(total / 10)) === 0 || done === total) {
@@ -310,8 +450,11 @@ const runResults = await mapPool(jobs_list, jobs, async (job) => {
       gust_magnitude: job.draw.gust_magnitude,
       thrust_max: job.draw.thrust_max,
       thrust_scale: job.draw.thrust_scale,
+      pointing_cone_deg: job.draw.pointing_cone_deg,
+      glide_cone_deg: job.draw.glide_cone_deg,
       initial_x_pos: job.draw.initial_x_pos,
       initial_y_pos: job.draw.initial_y_pos,
+      initial_z_pos: job.draw.initial_z_pos,
       initial_z_velocity: job.draw.initial_z_velocity,
     },
     score: out.score,
@@ -327,10 +470,19 @@ console.log("");
 const summaries = controllers.map((c) => summarize(c, byController[c]));
 for (const s of summaries) printSummary(s);
 
+const paired = pairedWins(runResults);
+console.log(
+  `paired: both_ok=${paired.bothOk} only_pid=${paired.onlyPid} only_mpc=${paired.onlyMpc} ` +
+    `mpc_better_miss=${paired.mpc_better_miss} mpc_better_vz=${paired.mpc_better_vz} ` +
+    `mpc_better_fuel=${paired.mpc_better_fuel}`
+);
+
 const outDir = join(root, "src", "results", "mc");
 mkdirSync(outDir, { recursive: true });
-const outPath = join(outDir, `mc_${seed}_${n}.json`);
+const outPath = join(outDir, `mc_${scenario}_${seed}_${n}.json`);
 const payload = {
+  scenario,
+  scenario_fixed: scenarioCfg.fixed,
   seed,
   n,
   jobs,
@@ -338,6 +490,7 @@ const payload = {
   binary,
   elapsed_s: (Date.now() - t0) / 1000,
   summaries,
+  paired,
   runs: runResults,
 };
 writeFileSync(outPath, JSON.stringify(payload, null, 2));

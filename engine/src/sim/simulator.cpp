@@ -179,6 +179,7 @@ void Simulator::run(
             mass0,
             cfg.thrust_min,
             cfg.thrust_max,
+            cfg.pointing_cone_deg,
             cfg.mpc_dt,
             pad0[0],
             pad0[1]
@@ -198,13 +199,16 @@ void Simulator::run(
         mpc.set_reference(&soft_ref);
         mpc_divider = std::max(1, static_cast<int>(std::lround(cfg.mpc_dt / dt_inner_v)));
 
+        Eigen::Vector3d wind0 = wind_model.wind_velocity(t);
         last_plan = mpc.solve(
             t,
             Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
             Eigen::Vector3d(state[VEL_X], state[VEL_Y], state[VEL_Z]),
             mass0,
             pad0[0],
-            pad0[1]
+            pad0[1],
+            wind0.x(),
+            wind0.y()
         );
         Fx_cmd = last_plan.force.x();
         Fy_cmd = last_plan.force.y();
@@ -241,17 +245,21 @@ void Simulator::run(
                     mass,
                     cfg.thrust_min,
                     cfg.thrust_max,
+                    cfg.pointing_cone_deg,
                     cfg.mpc_dt,
                     pad_pos[0],
                     pad_pos[1]
                 );
+                Eigen::Vector3d wind_now = wind_model.wind_velocity(t);
                 last_plan = mpc.solve(
                     t,
                     Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
                     Eigen::Vector3d(state[VEL_X], state[VEL_Y], state[VEL_Z]),
                     mass,
                     pad_pos[0],
-                    pad_pos[1]
+                    pad_pos[1],
+                    wind_now.x(),
+                    wind_now.y()
                 );
                 Fx_cmd = last_plan.force.x();
                 Fy_cmd = last_plan.force.y();

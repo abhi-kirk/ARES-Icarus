@@ -109,7 +109,9 @@ MpcSolveResult LtvMpc::solve(
     const Eigen::Vector3d& state_vel,
     double mass,
     double pad_x,
-    double pad_y
+    double pad_y,
+    double wind_x,
+    double wind_y
 ) {
     MpcSolveResult result;
     result.plan_pos.push_back(state_pos);
@@ -121,15 +123,37 @@ MpcSolveResult LtvMpc::solve(
     const int nU = N * nu;
     const int nX = N * nx;
 
+    // Match the plant drag law drag = -0.5 * v_rel * |v_rel| with a local
+    // linear damping held over the horizon: a_drag ≈ -b (v - w).
+    const Eigen::Vector3d v_rel(
+        state_vel.x() - wind_x,
+        state_vel.y() - wind_y,
+        state_vel.z()
+    );
+    const double speed_rel = v_rel.norm();
+    const double b_drag = (0.5 * speed_rel) / m;
+    const double damp = std::max(0.0, 1.0 - b_drag * dt_);
+
+    // Discrete translation model with drag and constant wind:
+    //   v+ = damp * v + (dt/m) F + dt * g_vec + (1-damp) * w
+    //   p+ = p + dt * v
     Eigen::MatrixXd A = Eigen::MatrixXd::Identity(nx, nx);
     A.block(0, 3, 3, 3) = dt_ * Eigen::Matrix3d::Identity();
+    A(3, 3) = damp;
+    A(4, 4) = damp;
+    A(5, 5) = damp;
 
     Eigen::MatrixXd B = Eigen::MatrixXd::Zero(nx, nu);
     B.block(0, 0, 3, 3) = (0.5 * dt_ * dt_ / m) * Eigen::Matrix3d::Identity();
     B.block(3, 0, 3, 3) = (dt_ / m) * Eigen::Matrix3d::Identity();
 
     Eigen::VectorXd c = Eigen::VectorXd::Zero(nx);
+    const double wind_push = 1.0 - damp;
+    c(0) = 0.5 * dt_ * wind_push * wind_x;
+    c(1) = 0.5 * dt_ * wind_push * wind_y;
     c(2) = -0.5 * dt_ * dt_ * GRAVITY;
+    c(3) = wind_push * wind_x;
+    c(4) = wind_push * wind_y;
     c(5) = -dt_ * GRAVITY;
 
     Eigen::VectorXd x0(nx);
@@ -185,7 +209,12 @@ MpcSolveResult LtvMpc::solve(
 
         const double w_p = (k == N - 1) ? w_terminal_ * w_pos_ : w_pos_;
         const double w_v = (k == N - 1) ? w_terminal_ * w_vel_ : w_vel_;
-        Q.block(k * nx + 0, k * nx + 0, 3, 3) = w_p * Eigen::Matrix3d::Identity();
+        // Lateral position is weighted harder than altitude when a glide cone
+        // is active, so the QP spends scarce tilt on staying in the funnel.
+        const double w_xy = (glide_cone_deg_ < 89.9) ? (2.0 * w_p) : w_p;
+        Q(k * nx + 0, k * nx + 0) = w_xy;
+        Q(k * nx + 1, k * nx + 1) = w_xy;
+        Q(k * nx + 2, k * nx + 2) = w_p;
         Q.block(k * nx + 3, k * nx + 3, 3, 3) = w_v * Eigen::Matrix3d::Identity();
         R.block(k * nu, k * nu, nu, nu) = w_u_ * Eigen::Matrix3d::Identity();
     }
@@ -213,7 +242,9 @@ MpcSolveResult LtvMpc::solve(
     const double tan_glide = (glide_cone_deg_ >= 89.9) ? 1.0e6 : std::tan(glide_rad);
     const double pad_radius = 5.0;
     const int n_glide = (glide_cone_deg_ < 89.9) ? N * 4 : 0;
-    const double w_glide_slack = 2.0e3;
+    // Tighter cones get a heavier slack penalty so the corridor binds for real.
+    const double w_glide_slack =
+        (glide_cone_deg_ < 50.0) ? 1.0e4 : 2.0e3;
 
     // Decision vector z = [U; s]. Pointing stays hard on U only.
     const int n_var = nU + n_glide;

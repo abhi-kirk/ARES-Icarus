@@ -84,12 +84,12 @@ struct SimConfig {
 
     // MPC horizon length (steps) and step size (s). Weights are diagonal
     // costs on position, velocity, and force effort.
-    int mpc_horizon = 40;
+    int mpc_horizon = 50;
     double mpc_dt = 0.1;
-    double mpc_w_pos = 25.0;
-    double mpc_w_vel = 40.0;
+    double mpc_w_pos = 40.0;
+    double mpc_w_vel = 50.0;
     double mpc_w_u = 1.0e-9;
-    double mpc_w_terminal = 80.0;
+    double mpc_w_terminal = 120.0;
 
     bool use_rerun          = false;
     bool rerun_spawn_viewer = true;

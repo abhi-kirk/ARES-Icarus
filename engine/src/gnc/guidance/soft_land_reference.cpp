@@ -14,6 +14,7 @@ void SoftLandReference::build(
     double mass,
     double thrust_min,
     double thrust_max,
+    double pointing_cone_deg,
     double dt,
     double pad_x,
     double pad_y
@@ -83,14 +84,43 @@ void SoftLandReference::build(
     double a_x = -2.0 * x0 / (tf_xy * tf_xy) - 2.0 * vx0 / tf_xy;
     double a_y = -2.0 * y0 / (tf_xy * tf_xy) - 2.0 * vy0 / tf_xy;
 
+    const double point_rad = pointing_cone_deg * (3.14159265358979323846 / 180.0);
+    const double tan_point =
+        (pointing_cone_deg >= 89.9) ? 1.0e6 : std::tan(point_rad);
+
     auto force_from_accel = [&](double ax, double ay, double az) {
         Eigen::Vector3d F;
         F.x() = m * ax;
         F.y() = m * ay;
         F.z() = m * (az + GRAVITY);
+        // Keep vertical braking first when the pointing cone is tight: clip
+        // side force to tan(point)*Fz instead of shrinking the whole vector.
+        if (pointing_cone_deg < 89.9 && F.z() > 1e-9) {
+            const double lat_max = tan_point * F.z();
+            const double lat = std::hypot(F.x(), F.y());
+            if (lat > lat_max && lat > 1e-9) {
+                F.x() *= lat_max / lat;
+                F.y() *= lat_max / lat;
+            }
+        }
         double mag = F.norm();
         if (mag > thrust_max && mag > 1e-9) {
-            F *= thrust_max / mag;
+            // Under a tight ceiling, protect Fz (braking) and cut lateral.
+            if (F.z() > thrust_max) {
+                F.z() = thrust_max;
+                F.x() = 0.0;
+                F.y() = 0.0;
+            } else {
+                const double lat_budget = std::sqrt(
+                    std::max(0.0, thrust_max * thrust_max - F.z() * F.z())
+                );
+                const double lat = std::hypot(F.x(), F.y());
+                if (lat > lat_budget && lat > 1e-9) {
+                    F.x() *= lat_budget / lat;
+                    F.y() *= lat_budget / lat;
+                }
+            }
+            mag = F.norm();
         }
         if (mag < thrust_min && mag > 1e-9) {
             F *= thrust_min / mag;

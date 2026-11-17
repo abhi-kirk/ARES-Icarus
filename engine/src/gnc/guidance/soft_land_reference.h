@@ -26,6 +26,7 @@ public:
         double mass,
         double thrust_min,
         double thrust_max,
+        double pointing_cone_deg,
         double dt,
         double pad_x,
         double pad_y
