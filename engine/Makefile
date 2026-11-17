@@ -1,7 +1,7 @@
 BUILD_DIR := build
 CMAKE := cmake
 
-.PHONY: all configure build clean rebuild run regress
+.PHONY: all configure build clean rebuild run regress mc
 
 all: build
 
@@ -21,3 +21,6 @@ run: build
 
 regress: build
 	node scripts/mpc_regress.mjs
+
+mc: build
+	node scripts/monte_carlo.mjs
