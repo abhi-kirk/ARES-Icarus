@@ -6,6 +6,7 @@
 //   node scripts/monte_carlo.mjs
 //   node scripts/monte_carlo.mjs --scenario constrained --n 40 --seed 1
 //   node scripts/monte_carlo.mjs --scenario storm --n 40 --seed 1 --jobs 8
+//   node scripts/monte_carlo.mjs --scenario landing_bench --n 40 --seed 1
 
 import { spawn } from "node:child_process";
 import { cpus } from "node:os";
@@ -15,6 +16,11 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const base = JSON.parse(readFileSync(join(root, "config.json"), "utf8"));
+const FALCON_ENVELOPE = JSON.parse(
+  readFileSync(join(root, "scripts", "data", "falcon_landing_envelope.json"), "utf8")
+);
+const WALLS = FALCON_ENVELOPE.academic_walls;
+const PLANT = FALCON_ENVELOPE.plant_scale;
 
 const SUCCESS = {
   maxZ: 0.5,
@@ -74,6 +80,29 @@ const SCENARIOS = {
     thrust_scale_min: 0.9,
     wind_sigma: 6.0,
     gust_sigma: 3.0,
+  },
+  // Falcon webcast landing-burn shape (tau = h/|v|) scaled into the plant hop,
+  // plus the same academic throttle/cone walls. Horizontal/wind are academic
+  // (webcast has no horiz fields). See scripts/data/falcon_landing_envelope.json.
+  landing_bench: {
+    label: "landing_bench",
+    fixed: {
+      glide_cone_deg: WALLS.glide_cone_deg,
+      pointing_cone_deg: WALLS.pointing_cone_deg,
+      thrust_max: WALLS.thrust_max_N,
+      thrust_min: WALLS.thrust_min_N,
+      initial_x_pos: 80,
+      initial_y_pos: -40,
+      initial_z_pos: PLANT.nominal_z_m,
+      initial_z_velocity: PLANT.nominal_vz_mps,
+      wind_x_velocity: 3.0,
+      wind_y_velocity: 1.5,
+      gust_magnitude: 2.0,
+    },
+    thrust_scale_min: 0.9,
+    wind_sigma: 4.0,
+    gust_sigma: 2.0,
+    sample_falcon: true,
   },
 };
 
@@ -190,6 +219,27 @@ function classifyDraw(draw, fuel) {
   };
 }
 
+// Sample a value from a committed percentile table (p10..p90).
+function samplePercentiles(rng, dist) {
+  const knots = [
+    [0.1, dist.p10],
+    [0.25, dist.p25],
+    [0.5, dist.p50],
+    [0.75, dist.p75],
+    [0.9, dist.p90],
+  ];
+  const u = 0.1 + 0.8 * rng();
+  for (let i = 0; i < knots.length - 1; ++i) {
+    const [p0, v0] = knots[i];
+    const [p1, v1] = knots[i + 1];
+    if (u <= p1) {
+      const a = (u - p0) / (p1 - p0);
+      return v0 + a * (v1 - v0);
+    }
+  }
+  return knots[knots.length - 1][1];
+}
+
 function makeDraw(rng, sim, scenarioCfg) {
   const windX = clamp(
     sim.wind_x_velocity + scenarioCfg.wind_sigma * randn(rng),
@@ -217,11 +267,51 @@ function makeDraw(rng, sim, scenarioCfg) {
   if (thrustMin > 0.0) {
     thrustMax = Math.max(thrustMax, thrustMin * 1.05);
   }
-  const x0 = sim.initial_x_pos + 15.0 * randn(rng);
-  const y0 = sim.initial_y_pos + 15.0 * randn(rng);
-  const vz0 = clamp(sim.initial_z_velocity + 3.0 * randn(rng), -40, -5);
 
-  return {
+  let x0;
+  let y0;
+  let z0;
+  let vz0;
+  let falconMeta = null;
+
+  if (scenarioCfg.sample_falcon) {
+    // Scale Falcon landing-burn alt/tau into the plant hop. Horizontal is
+    // academic: most draws sit inside the glide cone; a few sit outside so
+    // the feasible/envelope split still maps the boundary.
+    const falcon = FALCON_ENVELOPE.falcon;
+    const altF = samplePercentiles(rng, falcon.landing_burn_alt_m);
+    const tau = samplePercentiles(rng, falcon.tau_s);
+    const scale = PLANT.nominal_z_m / PLANT.falcon_alt_ref_m;
+    z0 = clamp(altF * scale, 200.0, 360.0);
+    vz0 = clamp(-z0 / Math.max(8.0, tau), -40.0, -8.0);
+
+    const glide = sim.glide_cone_deg ?? 20.0;
+    const tanGlide = Math.tan((glide * Math.PI) / 180.0);
+    const allow = z0 * tanGlide + GLIDE_PAD_RADIUS;
+    // ~85% inside cone (uniform in disk), ~15% outside for envelope scoring.
+    const inside = rng() < 0.85;
+    const range = inside
+      ? allow * Math.sqrt(rng()) * 0.9
+      : allow * (1.05 + 0.35 * rng());
+    const az = 2.0 * Math.PI * rng();
+    x0 = range * Math.cos(az);
+    y0 = range * Math.sin(az);
+    falconMeta = {
+      falcon_alt_m: altF,
+      falcon_tau_s: tau,
+      plant_scale: scale,
+      range,
+      allow,
+      inside_glide_draw: inside,
+    };
+  } else {
+    x0 = sim.initial_x_pos + 15.0 * randn(rng);
+    y0 = sim.initial_y_pos + 15.0 * randn(rng);
+    z0 = sim.initial_z_pos;
+    vz0 = clamp(sim.initial_z_velocity + 3.0 * randn(rng), -40, -5);
+  }
+
+  const draw = {
     wind_x_velocity: windX,
     wind_y_velocity: windY,
     gust_magnitude: gust,
@@ -232,9 +322,11 @@ function makeDraw(rng, sim, scenarioCfg) {
     glide_cone_deg: sim.glide_cone_deg,
     initial_x_pos: x0,
     initial_y_pos: y0,
-    initial_z_pos: sim.initial_z_pos,
+    initial_z_pos: z0,
     initial_z_velocity: vz0,
   };
+  if (falconMeta) draw.falcon = falconMeta;
+  return draw;
 }
 
 function buildCase(draw, controller, scenarioCfg) {
@@ -525,6 +617,7 @@ const runResults = await mapPool(jobs_list, jobs, async (job) => {
       initial_y_pos: job.draw.initial_y_pos,
       initial_z_pos: job.draw.initial_z_pos,
       initial_z_velocity: job.draw.initial_z_velocity,
+      falcon: job.draw.falcon ?? null,
     },
     score: out.score,
   };
@@ -568,6 +661,15 @@ const outPath = join(outDir, `mc_${scenario}_${seed}_${n}.json`);
 const payload = {
   scenario,
   scenario_fixed: scenarioCfg.fixed,
+  falcon_envelope:
+    scenarioCfg.sample_falcon
+      ? {
+          n_landings: FALCON_ENVELOPE.source.n_landings,
+          plant_scale: FALCON_ENVELOPE.plant_scale,
+          falcon_tau_s: FALCON_ENVELOPE.falcon.tau_s,
+          falcon_alt_m: FALCON_ENVELOPE.falcon.landing_burn_alt_m,
+        }
+      : null,
   seed,
   n,
   jobs,

@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "source": {
+    "corpus": "local flight-telemetry Falcon landings",
+    "filter": "vehicle=falcon, booster_touchdown_tracked, status=processed, touchdown_t present",
+    "n_landings": 162,
+    "landing_types": { "ASDS": 155, "RTLS": 7 },
+    "method": "Landing burn = last booster_engines_lit rising edge before touchdown (entry burn ~60 km excluded). Speed during the lit window is usually blank on the webcast engine diagram; pre-burn speed is the last valid booster_speed_mps in the 30 s before that edge. tau = alt / speed at that pre-burn sample."
+  },
+  "falcon": {
+    "landing_burn_alt_m": {
+      "p10": 3000.0,
+      "p25": 3100.0,
+      "p50": 3200.0,
+      "p75": 3200.0,
+      "p90": 3300.0,
+      "mean": 3803.7
+    },
+    "preburn_speed_mps": {
+      "p10": 256.1,
+      "p25": 260.0,
+      "p50": 265.6,
+      "p75": 269.2,
+      "p90": 275.0,
+      "mean": 283.3
+    },
+    "tau_s": {
+      "p10": 11.45,
+      "p25": 11.70,
+      "p50": 11.94,
+      "p75": 12.14,
+      "p90": 12.37,
+      "mean": 12.09
+    },
+    "burn_duration_s": {
+      "p10": 22.76,
+      "p25": 23.02,
+      "p50": 23.46,
+      "p75": 24.59,
+      "p90": 24.93,
+      "mean": 24.65
+    },
+    "h_norm_vs_burn_frac": {
+      "0.00": 1.0,
+      "0.25": 0.625,
+      "0.50": 0.323,
+      "0.75": 0.125,
+      "1.00": 0.0
+    },
+    "missing": [
+      "mass / thrust / throttle",
+      "attitude / gimbal",
+      "horizontal position and velocity"
+    ]
+  },
+  "plant_scale": {
+    "method": "Keep Falcon tau = h/|v|; map altitude into the Icarus hop height. Do not replay raw km.",
+    "nominal_z_m": 280.0,
+    "falcon_alt_ref_m": 3200.0,
+    "nominal_vz_mps": -23.5
+  },
+  "academic_walls": {
+    "glide_cone_deg": 20.0,
+    "pointing_cone_deg": 25.0,
+    "thrust_max_N": 18000.0,
+    "thrust_min_N": 7200.0,
+    "note": "Horizontal offset and wind have no Falcon webcast field; walls match the constrained MC envelope."
+  }
+}
