@@ -15,10 +15,10 @@ namespace icarus {
 // new thrust near the thrust the mass was frozen at. With mass frozen, the
 // motion is linear, so this slice does not add a fake extra acceleration.
 //
-// The thrust ball (minimum and maximum strength, any direction) is a cone.
-// OSQP only solves problems with straight-line limits, so the ball is a
-// many-sided inner approximation. The tilt limit is the same diamond the
-// current planner uses.
+// The thrust length limit is a ball. A slack variable sits between the
+// floor and the ceiling, and the thrust arrow is no longer than that slack.
+// The 15 degree tilt stays four straight cuts around vertical. QOCO solves
+// this cone problem. The tracking planner still uses OSQP.
 //
 // Several flight durations are tried. Shorter flights use less fuel on this
 // plant, because the engine cannot shut off. The shortest duration that

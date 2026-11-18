@@ -47,6 +47,42 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(osqp)
 
+# QOCO solves the fuel plan's thrust ball (a second-order cone). OSQP stays
+# the solver for the tracking planner, which is a plain quadratic program.
+# The two libraries share QDLDL symbol names, so QOCO is built on its own
+# and those copies are prefixed. See cmake/qoco_symbol_prefix.h.
+include(ExternalProject)
+set(QOCO_ROOT ${CMAKE_BINARY_DIR}/_deps/qoco)
+# Empty GIT_SUBMODULES means "no submodules" only under this policy. QOCO's
+# test-problem submodule is about 300 MB and the fuel plan does not use it.
+cmake_policy(PUSH)
+cmake_policy(SET CMP0097 NEW)
+ExternalProject_Add(qoco_ext
+    GIT_REPOSITORY https://github.com/qoco-org/qoco.git
+    GIT_TAG v0.3.2
+    GIT_SHALLOW TRUE
+    GIT_SUBMODULES ""
+    PREFIX ${QOCO_ROOT}
+    SOURCE_DIR ${QOCO_ROOT}/src/qoco
+    BINARY_DIR ${QOCO_ROOT}/build
+    UPDATE_COMMAND ""
+    PATCH_COMMAND ${CMAKE_COMMAND} -DSRC=${QOCO_ROOT}/src/qoco -P ${CMAKE_SOURCE_DIR}/cmake/qoco_inject_prefix.cmake
+    CMAKE_ARGS
+        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        -DCMAKE_INSTALL_PREFIX=${QOCO_ROOT}/install
+        -DCMAKE_INSTALL_LIBDIR=lib
+        -DBUILD_QOCO_DEMO=OFF
+        -DENABLE_TESTING=OFF
+    BUILD_BYPRODUCTS ${QOCO_ROOT}/install/lib/libqocostatic.a
+)
+cmake_policy(POP)
+add_library(qocostatic STATIC IMPORTED GLOBAL)
+set_target_properties(qocostatic PROPERTIES
+    IMPORTED_LOCATION ${QOCO_ROOT}/install/lib/libqocostatic.a
+)
+add_dependencies(qocostatic qoco_ext)
+
 # Dependency order: math <- config <- dynamics/environment <- control <- guidance <- sim
 add_subdirectory(modules/math)
 add_subdirectory(src/config)

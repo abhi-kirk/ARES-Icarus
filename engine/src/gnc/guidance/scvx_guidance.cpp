@@ -4,10 +4,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <iostream>
 #include <vector>
 
-#include <osqp.h>
+#include <qoco.h>
 
 namespace icarus {
 
@@ -16,81 +17,88 @@ namespace {
 const double kVe = MAX_THRUST / MAX_FLOW_RATE;
 const double kDt = 0.5;
 const int kPasses = 5;
-const double kInnerBall = 0.90;
 
-csc* owned_csc_from_triplets(
-    int rows,
-    int cols,
-    const std::vector<c_int>& row_idx,
-    const std::vector<c_float>& values,
-    const std::vector<c_int>& col_ptr
-) {
-    const c_int nnz = static_cast<c_int>(values.size());
-    csc* M = csc_spalloc(rows, cols, nnz, 1, 0);
-    if (M == nullptr) return nullptr;
-    for (c_int k = 0; k < nnz; ++k) {
-        M->i[k] = row_idx[static_cast<size_t>(k)];
-        M->x[k] = values[static_cast<size_t>(k)];
-    }
-    for (int c = 0; c <= cols; ++c) {
-        M->p[c] = col_ptr[static_cast<size_t>(c)];
-    }
-    return M;
+// One straight cut, a'x <= h. Columns are the decision variables that cut touches.
+struct ConeCut {
+    std::vector<int> cols;
+    std::vector<double> vals;
+    double h = 0.0;
+};
+
+void add_coeff(ConeCut& cut, int col, double value) {
+    if (std::abs(value) < 1.0e-16) return;
+    cut.cols.push_back(col);
+    cut.vals.push_back(value);
 }
 
-csc* dense_to_csc_upper(const Eigen::MatrixXd& dense) {
+// sign * (one row of H), which is a cut on the thrust list.
+ConeCut cut_from_row(const Eigen::MatrixXd& H, int row, double sign) {
+    ConeCut cut;
+    for (int col = 0; col < H.cols(); ++col) {
+        add_coeff(cut, col, sign * H(row, col));
+    }
+    return cut;
+}
+
+struct OwnedCsc {
+    std::vector<QOCOFloat> x;
+    std::vector<QOCOInt> i;
+    std::vector<QOCOInt> p;
+    QOCOCscMatrix mat{};
+};
+
+// Upper triangle, including the diagonal. QOCO reads P that way.
+OwnedCsc upper_triangle(const Eigen::MatrixXd& dense) {
+    OwnedCsc out;
     const int n = static_cast<int>(dense.rows());
-    std::vector<c_int> row_idx;
-    std::vector<c_float> values;
-    std::vector<c_int> col_ptr(static_cast<size_t>(n + 1), 0);
+    out.p.assign(static_cast<size_t>(n + 1), 0);
     for (int col = 0; col < n; ++col) {
-        col_ptr[static_cast<size_t>(col)] = static_cast<c_int>(values.size());
+        out.p[static_cast<size_t>(col)] = static_cast<QOCOInt>(out.x.size());
         for (int row = 0; row <= col; ++row) {
-            const double v = dense(row, col);
-            if (std::abs(v) < 1e-16) continue;
-            row_idx.push_back(row);
-            values.push_back(v);
+            const double value = dense(row, col);
+            if (std::abs(value) < 1.0e-16) continue;
+            out.i.push_back(row);
+            out.x.push_back(value);
         }
     }
-    col_ptr[static_cast<size_t>(n)] = static_cast<c_int>(values.size());
-    return owned_csc_from_triplets(n, n, row_idx, values, col_ptr);
+    out.p[static_cast<size_t>(n)] = static_cast<QOCOInt>(out.x.size());
+    qoco_set_csc(
+        &out.mat, n, n, static_cast<QOCOInt>(out.x.size()),
+        out.x.data(), out.p.data(), out.i.data()
+    );
+    return out;
 }
 
-csc* dense_to_csc(const Eigen::MatrixXd& dense) {
-    const int rows = static_cast<int>(dense.rows());
-    const int cols = static_cast<int>(dense.cols());
-    std::vector<c_int> row_idx;
-    std::vector<c_float> values;
-    std::vector<c_int> col_ptr(static_cast<size_t>(cols + 1), 0);
-    for (int col = 0; col < cols; ++col) {
-        col_ptr[static_cast<size_t>(col)] = static_cast<c_int>(values.size());
-        for (int row = 0; row < rows; ++row) {
-            const double v = dense(row, col);
-            if (std::abs(v) < 1e-16) continue;
-            row_idx.push_back(row);
-            values.push_back(v);
+OwnedCsc cuts_to_csc(const std::vector<ConeCut>& cuts, int n_var) {
+    OwnedCsc out;
+    const int n_rows = static_cast<int>(cuts.size());
+    std::vector<int> count(static_cast<size_t>(n_var), 0);
+    for (const ConeCut& cut : cuts) {
+        for (int col : cut.cols) count[static_cast<size_t>(col)] += 1;
+    }
+    out.p.assign(static_cast<size_t>(n_var + 1), 0);
+    for (int col = 0; col < n_var; ++col) {
+        out.p[static_cast<size_t>(col + 1)] =
+            out.p[static_cast<size_t>(col)] + count[static_cast<size_t>(col)];
+    }
+    const int nnz = static_cast<int>(out.p.back());
+    out.x.assign(static_cast<size_t>(nnz), 0.0);
+    out.i.assign(static_cast<size_t>(nnz), 0);
+    std::vector<int> next(out.p.begin(), out.p.end() - 1);
+    for (int row = 0; row < n_rows; ++row) {
+        const ConeCut& cut = cuts[static_cast<size_t>(row)];
+        for (size_t t = 0; t < cut.cols.size(); ++t) {
+            const int dest = next[static_cast<size_t>(cut.cols[t])];
+            next[static_cast<size_t>(cut.cols[t])] = dest + 1;
+            out.i[static_cast<size_t>(dest)] = row;
+            out.x[static_cast<size_t>(dest)] = cut.vals[t];
         }
     }
-    col_ptr[static_cast<size_t>(cols)] = static_cast<c_int>(values.size());
-    return owned_csc_from_triplets(rows, cols, row_idx, values, col_ptr);
-}
-
-std::vector<Eigen::Vector3d> ball_directions() {
-    std::vector<Eigen::Vector3d> dirs;
-    dirs.push_back(Eigen::Vector3d(0.0, 0.0, 1.0));
-    const double elev[2] = {20.0 * M_PI / 180.0, 45.0 * M_PI / 180.0};
-    for (double el : elev) {
-        for (int i = 0; i < 8; ++i) {
-            const double az = (2.0 * M_PI * i) / 8.0;
-            const double s = std::sin(el);
-            dirs.push_back(Eigen::Vector3d(
-                s * std::cos(az),
-                s * std::sin(az),
-                std::cos(el)
-            ));
-        }
-    }
-    return dirs;
+    qoco_set_csc(
+        &out.mat, n_rows, n_var, nnz,
+        out.x.data(), out.p.data(), out.i.data()
+    );
+    return out;
 }
 
 Eigen::Vector3d drag_accel(
@@ -272,8 +280,6 @@ QpStep solve_qp(
     const int N = static_cast<int>(u_ref.size());
     if (N < 2) return step;
 
-    const auto dirs = ball_directions();
-    const int n_dir = static_cast<int>(dirs.size());
     const bool limit_tilt = tan_point < 1.0e5;
     const bool limit_glide = tan_glide < 1.0e5;
     const double fuel_avail = std::max(0.0, mass0 - MASS_DRY);
@@ -345,98 +351,104 @@ QpStep solve_qp(
     for (int k = 0; k < N; ++k) q(isig(k)) = kScale * dt / kVe;
     for (int s = 0; s < nG; ++s) P(ig(s), ig(s)) = 2.0 * w_glide;
     for (int i = 0; i < n_var; ++i) P(i, i) += 1e-6;
+    // The tracking cost is huge next to the thrust bounds. Scaling the whole
+    // cost leaves the best thrust unchanged and keeps the cone solver's
+    // Newton steps in range.
+    const double cost_scale = 1.0 / std::max(1.0, std::max(P.norm(), q.norm()));
+    P *= cost_scale;
+    q *= cost_scale;
 
-    const int n_point = limit_tilt ? N * 4 : 0;
-    const int n_ball = N * n_dir;
-    // Final knot: slow, near the pad, and on the ground. These are hard
-    // limits so the fuel term cannot buy a landing that is still too fast.
-    const int n_term = 6;
-    const int nA = n_point + n_ball + nU + nSig + N + 1 + n_term + nG + nG;
-    Eigen::MatrixXd A = Eigen::MatrixXd::Zero(nA, n_var);
-    Eigen::VectorXd l = Eigen::VectorXd::Constant(nA, -OSQP_INFTY);
-    Eigen::VectorXd u = Eigen::VectorXd::Constant(nA, OSQP_INFTY);
-    int row = 0;
+    // Straight cuts first. The ball comes after them, one cone per knot.
+    // QOCO wants h - Gx inside the cone, so a'x <= rhs is stored as that row of G.
+    std::vector<ConeCut> cuts;
 
     if (limit_tilt) {
         for (int k = 0; k < N; ++k) {
-            A(row, iu(k, 0)) = 1.0;
-            A(row, iu(k, 2)) = -tan_point;
-            u(row) = 0.0;
-            ++row;
-            A(row, iu(k, 0)) = -1.0;
-            A(row, iu(k, 2)) = -tan_point;
-            u(row) = 0.0;
-            ++row;
-            A(row, iu(k, 1)) = 1.0;
-            A(row, iu(k, 2)) = -tan_point;
-            u(row) = 0.0;
-            ++row;
-            A(row, iu(k, 1)) = -1.0;
-            A(row, iu(k, 2)) = -tan_point;
-            u(row) = 0.0;
-            ++row;
-        }
-    }
-
-    for (int k = 0; k < N; ++k) {
-        for (int d = 0; d < n_dir; ++d) {
-            A(row, iu(k, 0)) = dirs[static_cast<size_t>(d)].x();
-            A(row, iu(k, 1)) = dirs[static_cast<size_t>(d)].y();
-            A(row, iu(k, 2)) = dirs[static_cast<size_t>(d)].z();
-            A(row, isig(k)) = -kInnerBall;
-            u(row) = 0.0;
-            ++row;
+            const int axis[4] = {0, 0, 1, 1};
+            const double sign[4] = {1.0, -1.0, 1.0, -1.0};
+            for (int c = 0; c < 4; ++c) {
+                ConeCut cut;
+                add_coeff(cut, iu(k, axis[c]), sign[c]);
+                add_coeff(cut, iu(k, 2), -tan_point);
+                cut.h = 0.0;
+                cuts.push_back(cut);
+            }
         }
     }
 
     for (int k = 0; k < N; ++k) {
         for (int i = 0; i < 3; ++i) {
             const double center = u_ref[static_cast<size_t>(k)](i);
-            A(row, iu(k, i)) = 1.0;
-            l(row) = (center - rho) / kScale;
-            u(row) = (center + rho) / kScale;
-            ++row;
+            const double lo = (center - rho) / kScale;
+            const double hi = (center + rho) / kScale;
+            ConeCut upper;
+            add_coeff(upper, iu(k, i), 1.0);
+            upper.h = hi;
+            cuts.push_back(upper);
+            ConeCut lower;
+            add_coeff(lower, iu(k, i), -1.0);
+            lower.h = -lo;
+            cuts.push_back(lower);
         }
     }
     for (int k = 0; k < N; ++k) {
-        A(row, isig(k)) = 1.0;
-        l(row) = thrust_min / kScale;
-        u(row) = thrust_max / kScale;
-        ++row;
+        const double lo = thrust_min / kScale;
+        const double hi = thrust_max / kScale;
+        ConeCut upper;
+        add_coeff(upper, isig(k), 1.0);
+        upper.h = hi;
+        cuts.push_back(upper);
+        ConeCut lower;
+        add_coeff(lower, isig(k), -1.0);
+        lower.h = -lo;
+        cuts.push_back(lower);
     }
     for (int k = 0; k < N; ++k) {
-        A.block(row, 0, 1, nU) = H_at[static_cast<size_t>(k)].row(2);
-        const double zmin = 0.0;
-        l(row) = zmin - aff_at[static_cast<size_t>(k)](2);
-        u(row) = OSQP_INFTY;
-        ++row;
+        // Altitude stays above the ground: H z + aff >= 0.
+        ConeCut above = cut_from_row(H_at[static_cast<size_t>(k)], 2, -1.0);
+        above.h = aff_at[static_cast<size_t>(k)](2);
+        cuts.push_back(above);
     }
     {
+        // Final knot: slow, near the pad, and on the ground. These are hard
+        // limits so the fuel term cannot buy a landing that is still too fast.
         const Eigen::MatrixXd& HT = H_at.back();
         const Eigen::VectorXd& aT = aff_at.back();
         const double v_cap = 1.0;
         const double xy_cap = 5.0;
         for (int i = 0; i < 3; ++i) {
-            A.block(row, 0, 1, nU) = HT.row(3 + i);
-            l(row) = -v_cap - aT(3 + i);
-            u(row) = v_cap - aT(3 + i);
-            ++row;
+            ConeCut upper = cut_from_row(HT, 3 + i, 1.0);
+            upper.h = v_cap - aT(3 + i);
+            cuts.push_back(upper);
+            ConeCut lower = cut_from_row(HT, 3 + i, -1.0);
+            lower.h = v_cap + aT(3 + i);
+            cuts.push_back(lower);
         }
         for (int i = 0; i < 2; ++i) {
-            A.block(row, 0, 1, nU) = HT.row(i);
-            l(row) = -xy_cap - aT(i);
-            u(row) = xy_cap - aT(i);
-            ++row;
+            ConeCut upper = cut_from_row(HT, i, 1.0);
+            upper.h = xy_cap - aT(i);
+            cuts.push_back(upper);
+            ConeCut lower = cut_from_row(HT, i, -1.0);
+            lower.h = xy_cap + aT(i);
+            cuts.push_back(lower);
         }
-        A.block(row, 0, 1, nU) = HT.row(2);
-        l(row) = -OSQP_INFTY;
-        u(row) = 1.0 - aT(2);
-        ++row;
+        ConeCut on_ground = cut_from_row(HT, 2, 1.0);
+        on_ground.h = 1.0 - aT(2);
+        cuts.push_back(on_ground);
     }
-    for (int k = 0; k < N; ++k) A(row, isig(k)) = kScale * dt / kVe;
-    l(row) = 0.0;
-    u(row) = fuel_avail;
-    ++row;
+    {
+        ConeCut under;
+        ConeCut over;
+        for (int k = 0; k < N; ++k) {
+            const double per_step = kScale * dt / kVe;
+            add_coeff(under, isig(k), -per_step);
+            add_coeff(over, isig(k), per_step);
+        }
+        under.h = 0.0;
+        over.h = fuel_avail;
+        cuts.push_back(under);
+        cuts.push_back(over);
+    }
 
     if (limit_glide) {
         const double pad_radius = 5.0;
@@ -447,95 +459,114 @@ QpStep solve_qp(
             const Eigen::MatrixXd& Hk = H_at[static_cast<size_t>(k)];
             const Eigen::VectorXd& ak = aff_at[static_cast<size_t>(k)];
             for (int c = 0; c < 4; ++c) {
-                A.block(row, 0, 1, nU) =
-                    sign_x[c] * Hk.row(0) + sign_y[c] * Hk.row(1) - tan_glide * Hk.row(2);
-                A(row, ig(s)) = -1.0;
-                u(row) = pad_radius - (
+                ConeCut glide;
+                for (int col = 0; col < nU; ++col) {
+                    const double coeff = sign_x[c] * Hk(0, col)
+                        + sign_y[c] * Hk(1, col)
+                        - tan_glide * Hk(2, col);
+                    add_coeff(glide, col, coeff);
+                }
+                add_coeff(glide, ig(s), -1.0);
+                glide.h = pad_radius - (
                     sign_x[c] * ak(0) + sign_y[c] * ak(1) - tan_glide * ak(2)
                 );
-                ++row;
+                cuts.push_back(glide);
                 ++s;
             }
         }
         for (int s_i = 0; s_i < nG; ++s_i) {
-            A(row, ig(s_i)) = 1.0;
-            l(row) = 0.0;
-            ++row;
+            ConeCut slack;
+            add_coeff(slack, ig(s_i), -1.0);
+            slack.h = 0.0;
+            cuts.push_back(slack);
         }
     }
 
-    if (row != nA) {
-        std::cerr << "scvx row count " << row << " expected " << nA << "\n";
-        return step;
+    const int n_linear = static_cast<int>(cuts.size());
+    // One ball per knot: slack >= length of the thrust arrow. Same scale on
+    // both, so the 1000 that keeps the numbers small cancels out.
+    for (int k = 0; k < N; ++k) {
+        ConeCut sig;
+        add_coeff(sig, isig(k), -1.0);
+        sig.h = 0.0;
+        cuts.push_back(sig);
+        for (int i = 0; i < 3; ++i) {
+            ConeCut axis;
+            add_coeff(axis, iu(k, i), -1.0);
+            axis.h = 0.0;
+            cuts.push_back(axis);
+        }
     }
 
-    csc* P_csc = dense_to_csc_upper(P);
-    csc* A_csc = dense_to_csc(A);
-    if (P_csc == nullptr || A_csc == nullptr) {
-        if (P_csc) c_free(P_csc);
-        if (A_csc) c_free(A_csc);
-        return step;
-    }
-
-    std::vector<c_float> q_vec(static_cast<size_t>(n_var));
-    std::vector<c_float> l_vec(static_cast<size_t>(nA));
-    std::vector<c_float> u_vec(static_cast<size_t>(nA));
+    OwnedCsc P_csc = upper_triangle(P);
+    OwnedCsc G_csc = cuts_to_csc(cuts, n_var);
+    std::vector<QOCOFloat> q_vec(static_cast<size_t>(n_var));
+    std::vector<QOCOFloat> h_vec(cuts.size());
     for (int i = 0; i < n_var; ++i) q_vec[static_cast<size_t>(i)] = q(i);
-    for (int i = 0; i < nA; ++i) {
-        l_vec[static_cast<size_t>(i)] = l(i);
-        u_vec[static_cast<size_t>(i)] = u(i);
-    }
+    for (size_t r = 0; r < cuts.size(); ++r) h_vec[r] = cuts[r].h;
 
-    OSQPData data;
-    data.n = n_var;
-    data.m = nA;
-    data.P = P_csc;
-    data.q = q_vec.data();
-    data.A = A_csc;
-    data.l = l_vec.data();
-    data.u = u_vec.data();
-
-    OSQPSettings settings;
-    osqp_set_default_settings(&settings);
+    std::vector<QOCOInt> cone_dim(static_cast<size_t>(N), 4);
+    QOCOSettings settings;
+    set_default_settings(&settings);
     settings.verbose = 0;
-    settings.warm_start = 0;
-    settings.max_iter = 8000;
-    settings.eps_abs = 1e-4;
-    settings.eps_rel = 1e-4;
-    settings.polish = 0;
+    settings.max_iters = 200;
+    settings.ruiz_iters = 5;
 
-    OSQPWorkspace* work = nullptr;
-    const c_int setup_status = osqp_setup(&work, &data, &settings);
-    if (setup_status != 0 || work == nullptr) {
-        c_free(P_csc);
-        c_free(A_csc);
+    QOCOSolver* solver = static_cast<QOCOSolver*>(std::calloc(1, sizeof(QOCOSolver)));
+    const QOCOInt setup_status = qoco_setup(
+        solver,
+        n_var,
+        static_cast<QOCOInt>(cuts.size()),
+        0,
+        &P_csc.mat,
+        q_vec.data(),
+        nullptr,
+        nullptr,
+        &G_csc.mat,
+        h_vec.data(),
+        n_linear,
+        N,
+        cone_dim.data(),
+        &settings
+    );
+    if (setup_status != QOCO_NO_ERROR) {
+        std::cerr << "cone setup fail N=" << N << " status=" << setup_status << "\n";
+        std::free(solver);
         return step;
     }
-    osqp_solve(work);
-    const bool solved = work->info != nullptr && (
-        work->info->status_val == OSQP_SOLVED ||
-        work->info->status_val == OSQP_SOLVED_INACCURATE
-    ) && work->info->pri_res < 1.0;
-    if (!solved) {
-        std::cerr << "qp fail N=" << N
-                  << " status=" << (work->info ? work->info->status_val : -999)
-                  << " pri=" << (work->info ? work->info->pri_res : -1)
+    const QOCOInt solve_status = qoco_solve(solver);
+    const bool solved = solver->sol != nullptr && (
+        solve_status == QOCO_SOLVED || solve_status == QOCO_SOLVED_INACCURATE
+    );
+    bool cone_ok = solved && solver->sol->x != nullptr;
+    if (cone_ok) {
+        for (int k = 0; k < N; ++k) {
+            const double ux = solver->sol->x[iu(k, 0)];
+            const double uy = solver->sol->x[iu(k, 1)];
+            const double uz = solver->sol->x[iu(k, 2)];
+            const double sig = solver->sol->x[isig(k)];
+            const double length = std::sqrt(ux * ux + uy * uy + uz * uz);
+            if (sig < -1.0e-3 || length > sig + 1.0e-2) cone_ok = false;
+        }
+    }
+    if (!cone_ok) {
+        std::cerr << "cone fail N=" << N
+                  << " status=" << solve_status
+                  << " pres=" << (solver->sol ? solver->sol->pres : -1)
                   << "\n";
     }
-    if (solved && work->solution != nullptr && work->solution->x != nullptr) {
+    if (cone_ok) {
         step.ok = true;
         step.force.resize(static_cast<size_t>(N));
         for (int k = 0; k < N; ++k) {
             step.force[static_cast<size_t>(k)] = kScale * Eigen::Vector3d(
-                work->solution->x[iu(k, 0)],
-                work->solution->x[iu(k, 1)],
-                work->solution->x[iu(k, 2)]
+                solver->sol->x[iu(k, 0)],
+                solver->sol->x[iu(k, 1)],
+                solver->sol->x[iu(k, 2)]
             );
         }
     }
-    osqp_cleanup(work);
-    c_free(P_csc);
-    c_free(A_csc);
+    qoco_cleanup(solver);
     return step;
 }
 
@@ -804,12 +835,13 @@ MpcSolveResult ScvxGuidance::solve(
             const Eigen::Vector3d sink(0.0, 0.0, sink_fz_);
             for (int extra = 0; extra < 6; ++extra) best.force.push_back(sink);
         }
-        // The real rocket is still about 2 m/s fast when this short plan
-        // says it has stopped. The landings pile up just under the 2 m/s
-        // gate and the misses sit just over it. A small extra upward push,
-        // the same speed change on every short plan, moves that pile clear.
-        if (pos.z() < 80.0 && !best.force.empty()) {
-            const double extra_dv = 0.8;
+        // The real rocket is faster than this point mass when the plan is
+        // flown open loop. A short plan is about 2 m/s fast. A long plan,
+        // with no later correction, is about 3 m/s fast. The same extra
+        // upward push on every plan of that kind keeps the touchdown inside
+        // the 2 m/s gate.
+        if (!best.force.empty()) {
+            const double extra_dv = (pos.z() < 80.0) ? 0.8 : 3.0;
             const double burn_s = static_cast<double>(best.force.size()) * kDt;
             const double extra_fz = mass * extra_dv / std::max(burn_s, 0.5);
             for (Eigen::Vector3d& thrust : best.force) {
