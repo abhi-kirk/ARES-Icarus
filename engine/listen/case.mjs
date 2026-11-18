@@ -108,7 +108,7 @@ export function caseFromRequest(body) {
     const inertia = finite(sim.Ixx);
     if (typeof sim.controller === "string") {
       const mode = sim.controller.toLowerCase();
-      if (mode === "pid" || mode === "mpc") next.simulation.controller = mode;
+      if (mode === "pid" || mode === "mpc" || mode === "scvx") next.simulation.controller = mode;
     }
     if (height !== null) next.simulation.initial_z_pos = height;
     if (offset !== null) next.simulation.initial_x_pos = offset;

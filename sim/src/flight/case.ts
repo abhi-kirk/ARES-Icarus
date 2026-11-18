@@ -45,8 +45,8 @@ export type FlightCase = {
     gimbal_max_deg: number;
     Ixx: number;
     Iyy: number;
-    // Force ask: "pid" cascade or "mpc" LTV-MPC (Phase 5).
-    controller: "pid" | "mpc";
+    // Force ask: "pid" cascade, "mpc" tracking plan, or "scvx" fuel-optimal plan.
+    controller: "pid" | "mpc" | "scvx";
     mpc_horizon: number;
     mpc_dt: number;
     mpc_w_pos: number;

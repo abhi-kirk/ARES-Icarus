@@ -9,6 +9,7 @@
 #include "gnc/control/thrust_lag.h"
 #include "gnc/control/thrust_limits.h"
 #include "gnc/guidance/ltv_mpc.h"
+#include "gnc/guidance/scvx_guidance.h"
 #include "gnc/guidance/soft_land_reference.h"
 
 #include <algorithm>
@@ -162,6 +163,7 @@ void Simulator::run(
     const double tau_kd = cfg.attitude_kd * cfg.Ixx;
 
     const bool use_mpc = (cfg.controller == "mpc");
+    const bool use_scvx = (cfg.controller == "scvx");
     SoftLandReference soft_ref;
     LtvMpc mpc;
     MpcSolveResult last_plan;
@@ -219,11 +221,46 @@ void Simulator::run(
         Fz_act = Fz_cmd;
     }
 
+    ScvxGuidance scvx;
+    bool scvx_refined = false;
+    if (use_scvx) {
+        scvx.configure(
+            cfg.thrust_min,
+            cfg.thrust_max,
+            cfg.pointing_cone_deg,
+            cfg.gimbal_max_deg,
+            cfg.glide_cone_deg,
+            cfg.drag_scale
+        );
+        Eigen::Vector2d pad0 = landing_pad.pad_position(t);
+        Eigen::Vector3d wind0 = wind_model.wind_velocity(t);
+        last_plan = scvx.solve(
+            t,
+            Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
+            Eigen::Vector3d(state[VEL_X], state[VEL_Y], state[VEL_Z]),
+            MASS_DRY + state[FUEL],
+            pad0[0],
+            pad0[1],
+            wind0.x(),
+            wind0.y()
+        );
+        const Eigen::Vector3d f0 = scvx.force_at(t);
+        Fx_cmd = f0.x();
+        Fy_cmd = f0.y();
+        Fz_cmd = f0.z();
+        Fx_act = Fx_cmd;
+        Fy_act = Fy_cmd;
+        Fz_act = Fz_cmd;
+        // The first plan is the divert. One more look happens once the
+        // rocket is low. Looking every few seconds was starting the divert
+        // over, so the tank ran dry before the rocket was down.
+    }
+
     if (emit != nullptr) {
         Eigen::Vector2d pad0 = landing_pad.pad_position(t);
         (*emit)(sample_from(
             t, state, Fx_act, Fy_act, Fz_act, pad0[0], pad0[1], gimbal_x, gimbal_y,
-            use_mpc ? &last_plan : nullptr
+            (use_mpc || use_scvx) ? &last_plan : nullptr
         ));
     }
 
@@ -266,6 +303,30 @@ void Simulator::run(
                 Fy_cmd = last_plan.force.y();
                 Fz_cmd = last_plan.force.z();
             }
+        } else if (use_scvx) {
+            // The point-mass plan arrives about 2 m/s slower than the rocket.
+            // One new plan from the real state, once the divert is mostly
+            // done, is enough to take that speed off. A plan that does not
+            // land leaves the burn we already have.
+            if (!scvx_refined && state[POS_Z] < 40.0 && state[POS_Z] > 8.0) {
+                scvx_refined = true;
+                const double mass = MASS_DRY + state[FUEL];
+                Eigen::Vector3d wind_now = wind_model.wind_velocity(t);
+                last_plan = scvx.solve(
+                    t,
+                    Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
+                    Eigen::Vector3d(state[VEL_X], state[VEL_Y], state[VEL_Z]),
+                    mass,
+                    pad_pos[0],
+                    pad_pos[1],
+                    wind_now.x(),
+                    wind_now.y()
+                );
+            }
+            const Eigen::Vector3d asked = scvx.force_at(t);
+            Fx_cmd = asked.x();
+            Fy_cmd = asked.y();
+            Fz_cmd = asked.z();
         } else {
             ref_vel_z = guidance.compute(state);
             const double feedforward = (MASS_DRY + state[FUEL]) * GRAVITY;
@@ -389,7 +450,7 @@ void Simulator::run(
             Eigen::Vector2d pad_now = landing_pad.pad_position(t);
             (*emit)(sample_from(
                 t, state, Fx_log, Fy_log, Fz_log, pad_now[0], pad_now[1], gimbal_x, gimbal_y,
-                use_mpc ? &last_plan : nullptr
+                (use_mpc || use_scvx) ? &last_plan : nullptr
             ));
         }
     }

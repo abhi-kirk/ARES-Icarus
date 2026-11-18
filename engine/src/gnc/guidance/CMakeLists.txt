@@ -3,6 +3,7 @@ add_library(icarus_guidance
   horizontal_guidance.cpp
   soft_land_reference.cpp
   ltv_mpc.cpp
+  scvx_guidance.cpp
 )
 target_include_directories(icarus_guidance PUBLIC ${CMAKE_SOURCE_DIR}/src)
 # osqpstatic is the static target from OSQP 0.6.x FetchContent.

@@ -8,6 +8,7 @@
 //   node scripts/monte_carlo.mjs --scenario storm --n 40 --seed 1 --jobs 8
 //   node scripts/monte_carlo.mjs --scenario landing_bench --n 40 --seed 1
 //   node scripts/monte_carlo.mjs --scenario vacuum_divert --n 40 --seed 1
+//   node scripts/monte_carlo.mjs --scenario vacuum_divert --n 40 --seed 1 --controllers mpc,scvx
 
 import { spawn } from "node:child_process";
 import { cpus } from "node:os";
@@ -142,6 +143,7 @@ function parseArgs(argv) {
   let jobs = Math.max(1, cpus().length);
   let scenario = "default";
   let binary = join(root, "build", "IcarusStream");
+  let controllers = ["pid", "mpc"];
 
   for (let i = 0; i < argv.length; ++i) {
     const a = argv[i];
@@ -153,6 +155,8 @@ function parseArgs(argv) {
       jobs = Math.max(1, parseInt(argv[++i], 10) || jobs);
     } else if (a === "--scenario" && argv[i + 1] != null) {
       scenario = argv[++i];
+    } else if (a === "--controllers" && argv[i + 1] != null) {
+      controllers = argv[++i].split(",").map((s) => s.trim()).filter((s) => s.length > 0);
     } else if (!a.startsWith("-")) {
       binary = a;
     }
@@ -163,7 +167,7 @@ function parseArgs(argv) {
     );
     process.exit(2);
   }
-  return { n, seed, jobs, binary, scenario };
+  return { n, seed, jobs, binary, scenario, controllers };
 }
 
 function mulberry32(seed) {
@@ -538,6 +542,13 @@ function summarize(label, rows) {
   const misses = okRows.map((r) => r.score.miss).filter((x) => x != null);
   const vzAbs = okRows.map((r) => Math.abs(r.score.vz)).filter((x) => x != null);
   const fuels = okRows.map((r) => r.score.fuel).filter((x) => x != null);
+  const used = okRows
+    .map((r) => {
+      const f0 = r.draw && r.draw.initial_fuel;
+      if (f0 == null || r.score.fuel == null) return null;
+      return f0 - r.score.fuel;
+    })
+    .filter((x) => x != null);
   const rate = rows.length === 0 ? 0 : okRows.length / rows.length;
   const reasons = {};
   for (const r of rows) {
@@ -555,6 +566,7 @@ function summarize(label, rows) {
     mean_abs_vz: mean(vzAbs),
     p90_abs_vz: percentile(vzAbs, 90),
     mean_fuel: mean(fuels),
+    mean_fuel_used: mean(used),
     fail_reasons: reasons,
   };
 }
@@ -569,11 +581,11 @@ function printSummary(s) {
     `${s.controller.padEnd(4)}  ${s.successes}/${s.n} (${pct}%)  ` +
       `miss mean=${s.mean_miss.toFixed(1)} p90=${s.p90_miss.toFixed(1)}  ` +
       `|vz| mean=${s.mean_abs_vz.toFixed(2)} p90=${s.p90_abs_vz.toFixed(2)}  ` +
-      `fuel mean=${s.mean_fuel.toFixed(1)}${fails}`
+      `fuel_left mean=${s.mean_fuel.toFixed(1)}  fuel_used mean=${s.mean_fuel_used.toFixed(1)}${fails}`
   );
 }
 
-function pairedWins(runResults) {
+function pairedWins(runResults, leftName, rightName) {
   const byId = {};
   for (const r of runResults) {
     byId[r.id] = byId[r.id] || {};
@@ -583,24 +595,33 @@ function pairedWins(runResults) {
   let vz = 0;
   let fuel = 0;
   let bothOk = 0;
-  let onlyPid = 0;
-  let onlyMpc = 0;
+  let onlyLeft = 0;
+  let onlyRight = 0;
   for (const id of Object.keys(byId)) {
-    const p = byId[id].pid;
-    const m = byId[id].mpc;
-    if (!p || !m) continue;
-    if (p.score.ok && m.score.ok) {
+    const left = byId[id][leftName];
+    const right = byId[id][rightName];
+    if (!left || !right) continue;
+    if (left.score.ok && right.score.ok) {
       bothOk += 1;
-      if (m.score.miss < p.score.miss) miss += 1;
-      if (Math.abs(m.score.vz) < Math.abs(p.score.vz)) vz += 1;
-      if (m.score.fuel > p.score.fuel) fuel += 1;
-    } else if (p.score.ok && !m.score.ok) {
-      onlyPid += 1;
-    } else if (!p.score.ok && m.score.ok) {
-      onlyMpc += 1;
+      if (right.score.miss < left.score.miss) miss += 1;
+      if (Math.abs(right.score.vz) < Math.abs(left.score.vz)) vz += 1;
+      if (right.score.fuel > left.score.fuel) fuel += 1;
+    } else if (left.score.ok && !right.score.ok) {
+      onlyLeft += 1;
+    } else if (!left.score.ok && right.score.ok) {
+      onlyRight += 1;
     }
   }
-  return { bothOk, onlyPid, onlyMpc, mpc_better_miss: miss, mpc_better_vz: vz, mpc_better_fuel: fuel };
+  return {
+    left: leftName,
+    right: rightName,
+    bothOk,
+    onlyLeft,
+    onlyRight,
+    right_better_miss: miss,
+    right_better_vz: vz,
+    right_better_fuel: fuel,
+  };
 }
 
 function countReasons(classifications) {
@@ -613,7 +634,7 @@ function countReasons(classifications) {
   return counts;
 }
 
-const { n, seed, jobs, binary, scenario } = parseArgs(process.argv.slice(2));
+const { n, seed, jobs, binary, scenario, controllers } = parseArgs(process.argv.slice(2));
 const scenarioCfg = SCENARIOS[scenario];
 const rng = mulberry32(seed);
 const sim = baseSim(scenario);
@@ -629,7 +650,6 @@ for (let i = 0; i < n; ++i) {
 const feasibleDraws = draws.filter((d) => d.ic.feasible);
 const envelopeDraws = draws.filter((d) => !d.ic.feasible);
 
-const controllers = ["pid", "mpc"];
 const jobs_list = [];
 for (const draw of draws) {
   for (const controller of controllers) {
@@ -699,12 +719,22 @@ const summariesFeasible = controllers.map((c) =>
   )
 );
 for (const s of summariesFeasible) printSummary(s);
-const pairedFeasible = pairedWins(feasibleResults);
-console.log(
-  `paired: both_ok=${pairedFeasible.bothOk} only_pid=${pairedFeasible.onlyPid} only_mpc=${pairedFeasible.onlyMpc} ` +
-    `mpc_better_miss=${pairedFeasible.mpc_better_miss} mpc_better_vz=${pairedFeasible.mpc_better_vz} ` +
-    `mpc_better_fuel=${pairedFeasible.mpc_better_fuel}`
-);
+const pairs = [];
+if (controllers.includes("pid") && controllers.includes("mpc")) {
+  pairs.push(pairedWins(feasibleResults, "pid", "mpc"));
+}
+if (controllers.includes("mpc") && controllers.includes("scvx")) {
+  pairs.push(pairedWins(feasibleResults, "mpc", "scvx"));
+}
+for (const paired of pairs) {
+  console.log(
+    `paired ${paired.left} vs ${paired.right}: both_ok=${paired.bothOk} ` +
+      `only_${paired.left}=${paired.onlyLeft} only_${paired.right}=${paired.onlyRight} ` +
+      `${paired.right}_better_miss=${paired.right_better_miss} ` +
+      `${paired.right}_better_vz=${paired.right_better_vz} ` +
+      `${paired.right}_better_fuel=${paired.right_better_fuel}`
+  );
+}
 
 console.log("\n--- Envelope ICs (infeasible cases; not a controller score) ---");
 console.log(
@@ -722,7 +752,12 @@ if (envelopeResults.length > 0) {
 
 const outDir = join(root, "src", "results", "mc");
 mkdirSync(outDir, { recursive: true });
-const outPath = join(outDir, `mc_${scenario}_${seed}_${n}.json`);
+const controllerTag = controllers.join("-");
+const outName =
+  controllerTag === "pid-mpc"
+    ? `mc_${scenario}_${seed}_${n}.json`
+    : `mc_${scenario}_${seed}_${n}_${controllerTag}.json`;
+const outPath = join(outDir, outName);
 const payload = {
   scenario,
   scenario_fixed: scenarioCfg.fixed,
@@ -747,7 +782,8 @@ const payload = {
     envelope_reasons: countReasons(envelopeDraws.map((d) => d.ic)),
   },
   summaries_feasible: summariesFeasible,
-  paired_feasible: pairedFeasible,
+  controllers,
+  paired_feasible: pairs,
   summaries_envelope:
     envelopeResults.length > 0
       ? controllers.map((c) =>
