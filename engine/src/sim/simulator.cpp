@@ -327,6 +327,23 @@ void Simulator::run(
             Fx_cmd = asked.x();
             Fy_cmd = asked.y();
             Fz_cmd = asked.z();
+            // Already slow and within a few metres. A last hard brake here
+            // climbs the rocket back up, and the sink that follows burns
+            // fuel the tracking planner does not spend. Keep a mild descent
+            // so the hop finishes in the landing window.
+            if (state[POS_Z] < 3.0 && state[VEL_Z] > -1.6 && state[VEL_Z] < 0.4) {
+                const double mass_now = MASS_DRY + state[FUEL];
+                const double az = Fz_cmd / std::max(mass_now, 1.0) - GRAVITY;
+                if (az > -0.4 && Fz_cmd > 1.0) {
+                    const double fz_hold = std::max(cfg.thrust_min, mass_now * (GRAVITY - 0.4));
+                    if (fz_hold < Fz_cmd) {
+                        const double scale = fz_hold / Fz_cmd;
+                        Fx_cmd *= scale;
+                        Fy_cmd *= scale;
+                        Fz_cmd = fz_hold;
+                    }
+                }
+            }
         } else {
             ref_vel_z = guidance.compute(state);
             const double feedforward = (MASS_DRY + state[FUEL]) * GRAVITY;
