@@ -137,7 +137,9 @@ int main() {
         vel_ctrl_h_x,
         vel_ctrl_h_y,
         [&](double time, const State& s, const ControlInput& u, const Disturbance& d) {
-            return rocket_dynamics_3dof(time, s, u, d, config.simulation.drag_scale);
+            return rocket_dynamics_3dof(
+                time, s, u, d, config.simulation.drag_scale, config.simulation.gravity
+            );
         },
         wind_model,
         landing_pad,

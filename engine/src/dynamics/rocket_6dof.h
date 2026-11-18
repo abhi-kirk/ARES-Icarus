@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dynamics/constants.h"
 #include "integrator.h"
 
 namespace icarus {
@@ -18,7 +19,8 @@ State rocket_dynamics_6dof(
     double Iyy,
     double Izz,
     double gimbal_lever_m,
-    double drag_scale
+    double drag_scale,
+    double gravity = GRAVITY
 );
 
 // Defaults for inertia and lever when the caller has no case overrides.

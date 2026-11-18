@@ -17,7 +17,8 @@ void SoftLandReference::build(
     double pointing_cone_deg,
     double dt,
     double pad_x,
-    double pad_y
+    double pad_y,
+    double gravity
 ) {
     knots_.clear();
     t0_ = t0;
@@ -40,7 +41,7 @@ void SoftLandReference::build(
     double vz0 = vz_now;
     if (vz_now >= -0.5) {
         if (vz_now > 0.0) {
-            z0 = z_now + (vz_now * vz_now) / (2.0 * GRAVITY);
+            z0 = z_now + (vz_now * vz_now) / (2.0 * gravity);
         }
         vz0 = -0.5;
     }
@@ -49,7 +50,7 @@ void SoftLandReference::build(
     // Vertical soft-land time for constant accel: zf = z0 + vz0*tf + 0.5*a*tf^2 = 0
     // and vzf = vz0 + a*tf = 0 => a = -vz0/tf => tf = -2*z0/vz0 when descending.
     double tf_z = -2.0 * z0 / vz0;
-    const double a_down = GRAVITY - thrust_max / m;
+    const double a_down = gravity - thrust_max / m;
     const double a_cmd = std::min(-2.0, a_down);
     const double tf_ballistic = std::sqrt(std::max(1.0, -2.0 * z0 / a_cmd));
     tf_z = std::max(tf_z, tf_ballistic);
@@ -92,7 +93,7 @@ void SoftLandReference::build(
         Eigen::Vector3d F;
         F.x() = m * ax;
         F.y() = m * ay;
-        F.z() = m * (az + GRAVITY);
+        F.z() = m * (az + gravity);
         // Keep vertical braking first when the pointing cone is tight: clip
         // side force to tan(point)*Fz instead of shrinking the whole vector.
         if (pointing_cone_deg < 89.9 && F.z() > 1e-9) {
@@ -134,7 +135,7 @@ void SoftLandReference::build(
     Eigen::Vector3d F0 = force_from_accel(a_x, a_y, a_z);
     a_x = F0.x() / m;
     a_y = F0.y() / m;
-    a_z = F0.z() / m - GRAVITY;
+    a_z = F0.z() / m - gravity;
 
     duration_ = tf;
     const int steps = std::max(2, static_cast<int>(std::ceil(tf / dt_)));
@@ -142,7 +143,7 @@ void SoftLandReference::build(
 
     // Hover ask used once the profile reaches the pad. Keeping the initial
     // deceleration force F0 on the grounded knots makes the MPC bounce.
-    const Eigen::Vector3d F_hover(0.0, 0.0, m * GRAVITY);
+    const Eigen::Vector3d F_hover(0.0, 0.0, m * gravity);
 
     for (int k = 0; k <= steps; ++k) {
         const double tau = k * step;

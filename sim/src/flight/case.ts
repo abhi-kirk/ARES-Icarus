@@ -40,6 +40,8 @@ export type FlightCase = {
     thrust_tau: number;
     // Quadratic drag multiplier. 1 is the historical plant. 0 is vacuum.
     drag_scale: number;
+    // Surface gravity, m/s^2. 9.81 is Earth. 1.62 is the Moon.
+    gravity: number;
     // 6-DOF / TVC. Gimbal limit in degrees; Ixx (= Iyy) in kg·m².
     use_6dof: boolean;
     gimbal_max_deg: number;
@@ -137,6 +139,7 @@ export const NOMINAL_CASE: FlightCase = {
     glide_cone_deg: 90.0,
     thrust_tau: 0.0,
     drag_scale: 1.0,
+    gravity: 9.81,
     use_6dof: true,
     gimbal_max_deg: 15.0,
     Ixx: 2000.0,
@@ -232,6 +235,7 @@ export function caseFromRequest(body: unknown): FlightCase {
     const glide = finite(sim.glide_cone_deg);
     const lag = finite(sim.thrust_tau);
     const drag = finite(sim.drag_scale);
+    const gravity = finite(sim.gravity);
     const gimbal = finite(sim.gimbal_max_deg);
     const inertia = finite(sim.Ixx);
     if (height !== null) writeKnob(next, "height", height);
@@ -241,12 +245,13 @@ export function caseFromRequest(body: unknown): FlightCase {
     if (wind !== null) writeKnob(next, "wind", wind);
     if (pad !== null) writeKnob(next, "pad", pad);
     if (gust !== null) writeKnob(next, "gust", gust);
-    if (floorN !== null) writeKnob(next, "floor", floorN / 1000);
-    if (ceilingN !== null) writeKnob(next, "ceiling", ceilingN / 1000);
+    if (floorN !== null) next.simulation.thrust_min = floorN;
+    if (ceilingN !== null) next.simulation.thrust_max = ceilingN;
     if (cone !== null) writeKnob(next, "cone", cone);
     if (glide !== null) writeKnob(next, "glide", glide);
     if (lag !== null) writeKnob(next, "lag", lag);
     if (drag !== null) next.simulation.drag_scale = clamp(drag, 0, 2);
+    if (gravity !== null) next.simulation.gravity = clamp(gravity, 1, 12);
     if (gimbal !== null) writeKnob(next, "gimbal", gimbal);
     if (inertia !== null) writeKnob(next, "inertia", inertia);
   }
@@ -254,9 +259,13 @@ export function caseFromRequest(body: unknown): FlightCase {
   if (gain !== null) writeKnob(next, "gain", gain);
 
   for (const spec of KNOBS) {
+    if (spec.key === "floor" || spec.key === "ceiling") continue;
     writeKnob(next, spec.key, clamp(readKnob(next, spec.key), spec.min, spec.max));
   }
-  // Floor cannot sit above the ceiling after both knobs are clamped.
+  // Thrust is clamped to the engine, not the Earth slider. The Moon band
+  // sits near 1.2–3.0 kN, under the slider's 12 kN ceiling.
+  next.simulation.thrust_min = clamp(next.simulation.thrust_min, 0, 25000);
+  next.simulation.thrust_max = clamp(next.simulation.thrust_max, 0, 25000);
   if (next.simulation.thrust_min > next.simulation.thrust_max) {
     next.simulation.thrust_min = next.simulation.thrust_max;
   }

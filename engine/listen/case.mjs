@@ -54,6 +54,7 @@ const NOMINAL = {
     glide_pull: 0.5,
     thrust_tau: 0.0,
     drag_scale: 1.0,
+    gravity: 9.81,
     thrust_slew: 0.0,
     use_6dof: true,
     Ixx: 2000.0,
@@ -104,6 +105,7 @@ export function caseFromRequest(body) {
     const glide = finite(sim.glide_cone_deg);
     const lag = finite(sim.thrust_tau);
     const drag = finite(sim.drag_scale);
+    const gravity = finite(sim.gravity);
     const gimbal = finite(sim.gimbal_max_deg);
     const inertia = finite(sim.Ixx);
     if (typeof sim.controller === "string") {
@@ -123,6 +125,7 @@ export function caseFromRequest(body) {
     if (glide !== null) next.simulation.glide_cone_deg = glide;
     if (lag !== null) next.simulation.thrust_tau = lag;
     if (drag !== null) next.simulation.drag_scale = drag;
+    if (gravity !== null) next.simulation.gravity = gravity;
     if (gimbal !== null) next.simulation.gimbal_max_deg = gimbal;
     if (inertia !== null) {
       next.simulation.Ixx = inertia;
@@ -139,8 +142,8 @@ export function caseFromRequest(body) {
   next.simulation.wind_x_velocity = clamp(next.simulation.wind_x_velocity, KNOBS.wind.min, KNOBS.wind.max);
   next.simulation.initial_pad_x_velocity = clamp(next.simulation.initial_pad_x_velocity, KNOBS.pad.min, KNOBS.pad.max);
   next.simulation.gust_magnitude = clamp(next.simulation.gust_magnitude, KNOBS.gust.min, KNOBS.gust.max);
-  next.simulation.thrust_min = clamp(next.simulation.thrust_min, KNOBS.floor.min, KNOBS.floor.max);
-  next.simulation.thrust_max = clamp(next.simulation.thrust_max, KNOBS.ceiling.min, KNOBS.ceiling.max);
+  next.simulation.thrust_min = clamp(next.simulation.thrust_min, 0, 25000);
+  next.simulation.thrust_max = clamp(next.simulation.thrust_max, 0, 25000);
   if (next.simulation.thrust_min > next.simulation.thrust_max) {
     next.simulation.thrust_min = next.simulation.thrust_max;
   }
@@ -148,6 +151,7 @@ export function caseFromRequest(body) {
   next.simulation.glide_cone_deg = clamp(next.simulation.glide_cone_deg, KNOBS.glide.min, KNOBS.glide.max);
   next.simulation.thrust_tau = clamp(next.simulation.thrust_tau, KNOBS.lag.min, KNOBS.lag.max);
   next.simulation.drag_scale = clamp(next.simulation.drag_scale, 0, 2);
+  next.simulation.gravity = clamp(next.simulation.gravity, 1, 12);
   next.simulation.gimbal_max_deg = clamp(next.simulation.gimbal_max_deg, KNOBS.gimbal.min, KNOBS.gimbal.max);
   next.simulation.Ixx = clamp(next.simulation.Ixx, KNOBS.inertia.min, KNOBS.inertia.max);
   next.simulation.Iyy = next.simulation.Ixx;

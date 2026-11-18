@@ -172,7 +172,8 @@ Rollout rollout_forces(
     double thrust_min,
     double thrust_max,
     double tan_point,
-    double dt
+    double dt,
+    double gravity
 ) {
     Rollout out;
     Eigen::Vector3d pos = pos0;
@@ -189,7 +190,7 @@ Rollout rollout_forces(
             u.setZero();
         }
         const Eigen::Vector3d a = u / mass
-            + Eigen::Vector3d(0.0, 0.0, -GRAVITY)
+            + Eigen::Vector3d(0.0, 0.0, -gravity)
             + drag_accel(vel, wind_x, wind_y, mass, drag_scale);
         pos += dt * vel + 0.5 * dt * dt * a;
         vel += dt * a;
@@ -274,7 +275,8 @@ QpStep solve_qp(
     double tan_point,
     double tan_glide,
     double rho,
-    double dt
+    double dt,
+    double gravity
 ) {
     QpStep step;
     const int N = static_cast<int>(u_ref.size());
@@ -313,7 +315,7 @@ QpStep solve_qp(
         B.block(0, 0, 3, 3) = (c_r * kScale) * Eigen::Matrix3d::Identity();
         B.block(3, 0, 3, 3) = (c_v * kScale) * Eigen::Matrix3d::Identity();
 
-        Eigen::Vector3d offset(0.0, 0.0, -GRAVITY);
+        Eigen::Vector3d offset(0.0, 0.0, -gravity);
         if (drag_scale > 0.0) {
             offset += drag_accel(
                 v_ref[static_cast<size_t>(k)], wind_x, wind_y, m, drag_scale
@@ -583,7 +585,8 @@ std::vector<Eigen::Vector3d> append_sink(
     double drag_scale,
     double thrust_min,
     double thrust_max,
-    double tan_point
+    double tan_point,
+    double gravity
 ) {
     std::vector<Eigen::Vector3d> out = force;
     if (flew.pos.size() < 2 || flew.vel.empty()) return out;
@@ -596,12 +599,12 @@ std::vector<Eigen::Vector3d> append_sink(
         return out;
     }
 
-    Eigen::Vector3d last = Eigen::Vector3d(0.0, 0.0, std::clamp(mass * GRAVITY, thrust_min, thrust_max));
+    Eigen::Vector3d last = Eigen::Vector3d(0.0, 0.0, std::clamp(mass * gravity, thrust_min, thrust_max));
     for (int step = 0; step < 30; ++step) {
         const double sink = (pos.z() > 4.0) ? -1.0 : -0.5;
         double az = (sink - vel.z()) / 1.2;
         az = std::clamp(az, -1.2, 1.0);
-        const double fz = std::clamp(mass * (GRAVITY + az), thrust_min, thrust_max);
+        const double fz = std::clamp(mass * (gravity + az), thrust_min, thrust_max);
         const double fx = mass * std::clamp(-(pos.x() - pad_x) / 6.0, -1.2, 1.2);
         const double fy = mass * std::clamp(-(pos.y() - pad_y) / 6.0, -1.2, 1.2);
         Eigen::Vector3d u = clip_force(
@@ -610,7 +613,7 @@ std::vector<Eigen::Vector3d> append_sink(
         if (mass <= MASS_DRY + 1e-3) u.setZero();
 
         const Eigen::Vector3d a = u / std::max(mass, 1.0)
-            + Eigen::Vector3d(0.0, 0.0, -GRAVITY)
+            + Eigen::Vector3d(0.0, 0.0, -gravity)
             + drag_accel(vel, wind_x, wind_y, mass, drag_scale);
         pos += kDt * vel + 0.5 * kDt * kDt * a;
         vel += kDt * a;
@@ -649,7 +652,8 @@ Attempt plan_duration(
     double thrust_min,
     double thrust_max,
     double tan_point,
-    double tan_glide
+    double tan_glide,
+    double gravity
 ) {
     Attempt attempt;
     const int N = std::max(4, static_cast<int>(std::lround(tf / kDt)));
@@ -683,7 +687,7 @@ Attempt plan_duration(
             const double az = (tk < t1) ? az1 : az2;
             const double c = std::cos(M_PI * tk / T);
             const double m_k = mass_k[static_cast<size_t>(k)];
-            const Eigen::Vector3d asked = m_k * Eigen::Vector3d(ax_amp * c, ay_amp * c, GRAVITY + az);
+            const Eigen::Vector3d asked = m_k * Eigen::Vector3d(ax_amp * c, ay_amp * c, gravity + az);
             u[static_cast<size_t>(k)] = clip_force(asked, thrust_min, thrust_max, tan_point);
         }
         mass_k = mass_along(u, mass, kDt);
@@ -693,7 +697,7 @@ Attempt plan_duration(
     double best_q = 1.0e99;
     Rollout seeded = rollout_forces(
         u, pos, vel, mass, pad_x, pad_y, wind_x, wind_y,
-        drag_scale, thrust_min, thrust_max, tan_point, kDt
+        drag_scale, thrust_min, thrust_max, tan_point, kDt, gravity
     );
     best_pass.ok = true;
     best_pass.force = u;
@@ -706,7 +710,7 @@ Attempt plan_duration(
     for (int pass = 0; pass < kPasses; ++pass) {
         Rollout ref = rollout_forces(
             u, pos, vel, mass, pad_x, pad_y, wind_x, wind_y,
-            drag_scale, thrust_min, thrust_max, tan_point, kDt
+            drag_scale, thrust_min, thrust_max, tan_point, kDt, gravity
         );
         std::vector<Eigen::Vector3d> v_ref(static_cast<size_t>(N), vel);
         for (int k = 0; k < N; ++k) {
@@ -716,7 +720,7 @@ Attempt plan_duration(
 
         QpStep qp = solve_qp(
             u, v_ref, pos, vel, mass, pad_x, pad_y, wind_x, wind_y,
-            drag_scale, thrust_min, thrust_max, tan_point, tan_glide, rho, kDt
+            drag_scale, thrust_min, thrust_max, tan_point, tan_glide, rho, kDt, gravity
         );
         if (!qp.ok) {
             rho = std::max(500.0, rho * 0.5);
@@ -725,7 +729,7 @@ Attempt plan_duration(
 
         Rollout flew = rollout_forces(
             qp.force, pos, vel, mass, pad_x, pad_y, wind_x, wind_y,
-            drag_scale, thrust_min, thrust_max, tan_point, kDt
+            drag_scale, thrust_min, thrust_max, tan_point, kDt, gravity
         );
         // The next pass freezes mass on this thrust. The burn we fly is the
         // pass whose rollout actually lands, which is not always the last one.
@@ -752,7 +756,8 @@ void ScvxGuidance::configure(
     double pointing_cone_deg,
     double gimbal_max_deg,
     double glide_cone_deg,
-    double drag_scale
+    double drag_scale,
+    double gravity
 ) {
     thrust_min_ = std::max(0.0, thrust_min);
     thrust_max_ = std::max(thrust_min_, thrust_max);
@@ -760,6 +765,7 @@ void ScvxGuidance::configure(
     pointing_cone_deg_ = std::clamp(tilt, 0.0, 90.0);
     glide_cone_deg_ = std::clamp(glide_cone_deg, 0.0, 90.0);
     drag_scale_ = std::max(0.0, drag_scale);
+    gravity_ = gravity;
     sink_fz_ = 0.0;
     force_.clear();
     plan_ = MpcSolveResult();
@@ -792,7 +798,7 @@ MpcSolveResult ScvxGuidance::solve(
         const double tf = durations[i_dur];
         Attempt attempt = plan_duration(
             tf, pos, vel, mass, pad_x, pad_y, wind_x, wind_y,
-            drag_scale_, thrust_min_, thrust_max_, tan_point, tan_glide
+            drag_scale_, thrust_min_, thrust_max_, tan_point, tan_glide, gravity_
         );
         if (!attempt.ok) continue;
         if (!best.ok || rollout_quality(attempt.flew, attempt.tf) < rollout_quality(best.flew, best.tf)) {
@@ -803,13 +809,13 @@ MpcSolveResult ScvxGuidance::solve(
     if (best.ok && !best.flew.soft) {
         const std::vector<Eigen::Vector3d> extended = append_sink(
             best.force, best.flew, mass, pad_x, pad_y, wind_x, wind_y,
-            drag_scale_, thrust_min_, thrust_max_, tan_point
+            drag_scale_, thrust_min_, thrust_max_, tan_point, gravity_
         );
         if (extended.size() != best.force.size()) {
             best.force = extended;
             best.flew = rollout_forces(
                 extended, pos, vel, mass, pad_x, pad_y, wind_x, wind_y,
-                drag_scale_, thrust_min_, thrust_max_, tan_point, kDt
+                drag_scale_, thrust_min_, thrust_max_, tan_point, kDt, gravity_
             );
         }
     }
@@ -831,7 +837,7 @@ MpcSolveResult ScvxGuidance::solve(
             // Padding is a vertical sink, not more of the last divert push.
             // Holding that push past the pad is what flew the rocket away.
             const double end_mass = std::max(MASS_DRY, mass - best.flew.fuel_kg);
-            sink_fz_ = std::max(thrust_min_, end_mass * GRAVITY * 0.93);
+            sink_fz_ = std::max(thrust_min_, end_mass * gravity_ * 0.93);
             const Eigen::Vector3d sink(0.0, 0.0, sink_fz_);
             for (int extra = 0; extra < 6; ++extra) best.force.push_back(sink);
         }
@@ -865,7 +871,7 @@ MpcSolveResult ScvxGuidance::solve(
         plan_.ok = false;
         t0_ = t;
         dt_ = kDt;
-        const double hover = std::clamp(mass * GRAVITY, thrust_min_, thrust_max_);
+        const double hover = std::clamp(mass * gravity_, thrust_min_, thrust_max_);
         force_.push_back(Eigen::Vector3d(0.0, 0.0, hover));
         plan_.force = force_.front();
         plan_.plan_pos.push_back(pos);

@@ -63,7 +63,8 @@ State rocket_dynamics_6dof(
     double Iyy,
     double Izz,
     double gimbal_lever_m,
-    double drag_scale
+    double drag_scale,
+    double gravity
 ) {
     (void)t;
 
@@ -122,7 +123,7 @@ State rocket_dynamics_6dof(
 
     const double accel_x = (Fx_i + drag_x) / m;
     const double accel_y = (Fy_i + drag_y) / m;
-    const double accel_z = (Fz_i - m * GRAVITY + drag_z) / m;
+    const double accel_z = (Fz_i - m * gravity + drag_z) / m;
 
     const double wx_dot = (tau_x - (Izz - Iyy) * wy * wz) / Ixx;
     const double wy_dot = (tau_y - (Ixx - Izz) * wz * wx) / Iyy;
@@ -164,7 +165,7 @@ State rocket_dynamics_6dof(
     return rocket_dynamics_6dof(
         t, state, control, disturbance,
         IXX_DEFAULT, IYY_DEFAULT, IZZ_DEFAULT, GIMBAL_LEVER_DEFAULT,
-        1.0
+        1.0, GRAVITY
     );
 }
 

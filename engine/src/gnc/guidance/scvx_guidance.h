@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dynamics/constants.h"
+
 #include <vector>
 
 #include <Eigen/Dense>
@@ -31,7 +33,8 @@ public:
         double pointing_cone_deg,
         double gimbal_max_deg,
         double glide_cone_deg,
-        double drag_scale
+        double drag_scale,
+        double gravity = GRAVITY
     );
 
     // Rebuild the plan from the state at time t. pad and wind are held
@@ -58,6 +61,7 @@ private:
     double pointing_cone_deg_ = 90.0;
     double glide_cone_deg_ = 90.0;
     double drag_scale_ = 1.0;
+    double gravity_ = GRAVITY;
 
     double t0_ = 0.0;
     double dt_ = 0.5;

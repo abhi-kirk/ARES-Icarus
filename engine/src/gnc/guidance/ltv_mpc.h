@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dynamics/constants.h"
+
 #include <vector>
 
 #include <Eigen/Dense>
@@ -33,7 +35,8 @@ public:
         double thrust_max,
         double pointing_cone_deg,
         double glide_cone_deg,
-        double drag_scale
+        double drag_scale,
+        double gravity = GRAVITY
     );
 
     void set_reference(const SoftLandReference* reference);
@@ -64,6 +67,7 @@ private:
     double pointing_cone_deg_ = 90.0;
     double glide_cone_deg_ = 90.0;
     double drag_scale_ = 1.0;
+    double gravity_ = GRAVITY;
     const SoftLandReference* reference_ = nullptr;
 
     // Previous control sequence for OSQP warm start (length 3 * horizon).

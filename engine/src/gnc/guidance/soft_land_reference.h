@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dynamics/constants.h"
+
 #include <vector>
 
 #include <Eigen/Dense>
@@ -29,7 +31,8 @@ public:
         double pointing_cone_deg,
         double dt,
         double pad_x,
-        double pad_y
+        double pad_y,
+        double gravity = GRAVITY
     );
 
     // Sample at absolute flight time t (clamped to the profile).

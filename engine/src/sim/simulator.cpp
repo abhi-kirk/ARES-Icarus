@@ -145,7 +145,8 @@ void Simulator::run(
     Eigen::Vector2d ref_vel_xy = Eigen::Vector2d::Zero();
     double Fx_cmd = vel_ctrl_h_x.compute(state[VEL_X], 0.0);
     double Fy_cmd = vel_ctrl_h_y.compute(state[VEL_Y], 0.0);
-    double Fz_cmd = (MASS_DRY + state[FUEL]) * GRAVITY;
+    const double gravity = cfg.gravity;
+    double Fz_cmd = (MASS_DRY + state[FUEL]) * gravity;
 
     // Lagged force command from the PID / MPC. On the 6-DOF plant this is the
     // ask that becomes thrust + gimbal; samples may show delivered force instead.
@@ -184,7 +185,8 @@ void Simulator::run(
             cfg.pointing_cone_deg,
             cfg.mpc_dt,
             pad0[0],
-            pad0[1]
+            pad0[1],
+            gravity
         );
         mpc.configure(
             cfg.mpc_horizon,
@@ -197,7 +199,8 @@ void Simulator::run(
             cfg.thrust_max,
             cfg.pointing_cone_deg,
             cfg.glide_cone_deg,
-            cfg.drag_scale
+            cfg.drag_scale,
+            gravity
         );
         mpc.set_reference(&soft_ref);
         mpc_divider = std::max(1, static_cast<int>(std::lround(cfg.mpc_dt / dt_inner_v)));
@@ -230,7 +233,8 @@ void Simulator::run(
             cfg.pointing_cone_deg,
             cfg.gimbal_max_deg,
             cfg.glide_cone_deg,
-            cfg.drag_scale
+            cfg.drag_scale,
+            gravity
         );
         Eigen::Vector2d pad0 = landing_pad.pad_position(t);
         Eigen::Vector3d wind0 = wind_model.wind_velocity(t);
@@ -286,7 +290,8 @@ void Simulator::run(
                     cfg.pointing_cone_deg,
                     cfg.mpc_dt,
                     pad_pos[0],
-                    pad_pos[1]
+                    pad_pos[1],
+                    gravity
                 );
                 Eigen::Vector3d wind_now = wind_model.wind_velocity(t);
                 last_plan = mpc.solve(
@@ -333,9 +338,9 @@ void Simulator::run(
             // so the hop finishes in the landing window.
             if (state[POS_Z] < 3.0 && state[VEL_Z] > -1.6 && state[VEL_Z] < 0.4) {
                 const double mass_now = MASS_DRY + state[FUEL];
-                const double az = Fz_cmd / std::max(mass_now, 1.0) - GRAVITY;
+                const double az = Fz_cmd / std::max(mass_now, 1.0) - gravity;
                 if (az > -0.4 && Fz_cmd > 1.0) {
-                    const double fz_hold = std::max(cfg.thrust_min, mass_now * (GRAVITY - 0.4));
+                    const double fz_hold = std::max(cfg.thrust_min, mass_now * (gravity - 0.4));
                     if (fz_hold < Fz_cmd) {
                         const double scale = fz_hold / Fz_cmd;
                         Fx_cmd *= scale;
@@ -346,7 +351,7 @@ void Simulator::run(
             }
         } else {
             ref_vel_z = guidance.compute(state);
-            const double feedforward = (MASS_DRY + state[FUEL]) * GRAVITY;
+            const double feedforward = (MASS_DRY + state[FUEL]) * gravity;
             Fz_cmd = vel_ctrl.compute(state[VEL_Z], ref_vel_z, feedforward);
 
             if (sim_counter % inner_loop_divider == 0) {
@@ -408,7 +413,7 @@ void Simulator::run(
                 return rocket_dynamics_6dof(
                     time, s, control, wind_speeds,
                     cfg.Ixx, cfg.Iyy, cfg.Izz, cfg.gimbal_lever,
-                    cfg.drag_scale
+                    cfg.drag_scale, gravity
                 );
             };
             state = Integrator::rk4_step(bound, t, state, dt_inner_v);

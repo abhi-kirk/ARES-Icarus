@@ -36,6 +36,10 @@ const SUCCESS = {
 // during the burn), ceiling near soft-land demand for this plant.
 const THROTTLE_MAX = 18000.0;
 const THROTTLE_MIN = 0.4 * THROTTLE_MAX; // 7200 N
+const G_EARTH = 9.81;
+const G_MOON = 1.62;
+// Same fraction of weight as the Earth band. 7.2–18 kN cannot hover at 1.62 m/s².
+const MOON_SCALE = G_MOON / G_EARTH;
 
 const SCENARIOS = {
   // Open cones, comfortable thrust — baseline from make mc.
@@ -106,16 +110,18 @@ const SCENARIOS = {
     gust_sigma: 2.0,
     sample_falcon: true,
   },
-  // Regime 2. Vacuum (drag_scale 0, wind off), Earth g, same throttle band
-  // and cones. Long offset inside the glide cone, fuel cut so the burn is
-  // propellant-limited. Lunar g waits until the throttle floor can hover.
+  // Regime 2. Vacuum (drag_scale 0, wind off) at lunar gravity. The thrust
+  // band is the Earth 7.2–18 kN band scaled by 1.62/9.81, so the floor
+  // still sits under lunar weight. Long offset inside the glide cone, fuel
+  // cut so the burn is propellant-limited.
   vacuum_divert: {
     label: "vacuum_divert",
     fixed: {
       glide_cone_deg: WALLS.glide_cone_deg,
       pointing_cone_deg: WALLS.pointing_cone_deg,
-      thrust_max: WALLS.thrust_max_N,
-      thrust_min: WALLS.thrust_min_N,
+      gravity: G_MOON,
+      thrust_max: THROTTLE_MAX * MOON_SCALE,
+      thrust_min: THROTTLE_MIN * MOON_SCALE,
       initial_z_pos: PLANT.nominal_z_m,
       initial_z_velocity: PLANT.nominal_vz_mps,
       initial_x_velocity: 0.0,
@@ -205,7 +211,6 @@ function percentile(xs, p) {
 }
 
 const MASS_DRY = 1000.0;
-const GRAVITY = 9.81;
 const GLIDE_PAD_RADIUS = 5.0;
 
 function baseSim(scenario) {
@@ -226,10 +231,11 @@ function classifyDraw(draw, fuel) {
   const inside_glide = range <= allow;
 
   const m = MASS_DRY + Math.max(0.0, fuel);
-  const hover = m * GRAVITY;
+  const gravity = draw.gravity ?? G_EARTH;
+  const hover = m * gravity;
   const thrustMax = draw.thrust_max;
   const thrustMin = draw.thrust_min ?? 0.0;
-  const aBrakeMax = thrustMax / m - GRAVITY;
+  const aBrakeMax = thrustMax / m - gravity;
 
   const reasons = [];
   if (!inside_glide) reasons.push("outside_glide");
@@ -379,6 +385,7 @@ function makeDraw(rng, sim, scenarioCfg) {
     pointing_cone_deg: sim.pointing_cone_deg,
     glide_cone_deg: sim.glide_cone_deg,
     drag_scale: dragScale,
+    gravity: sim.gravity ?? G_EARTH,
     initial_fuel: fuel,
     initial_x_velocity: vx0,
     initial_y_velocity: vy0,

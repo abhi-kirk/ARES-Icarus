@@ -15,7 +15,8 @@ State rocket_dynamics_3dof(
     const State& state,
     const ControlInput& control,
     const Disturbance& disturbance,
-    double drag_scale
+    double drag_scale,
+    double gravity
 ) {
     (void)t;
 
@@ -52,7 +53,7 @@ State rocket_dynamics_3dof(
 
     const double net_force_x = thrust_x + drag_x;
     const double net_force_y = thrust_y + drag_y;
-    const double net_force_z = thrust_z - (m * GRAVITY) + drag_z;
+    const double net_force_z = thrust_z - (m * gravity) + drag_z;
 
     const double accel_x = net_force_x / m;
     const double accel_y = net_force_y / m;

@@ -71,6 +71,10 @@ struct SimConfig {
     // 0 is vacuum. Wind is a separate field.
     double drag_scale = 1.0;
 
+    // Surface gravity, m/s^2. 9.81 is Earth. 1.62 is the Moon. The thrust
+    // band has to be scaled with it or the floor sits above lunar weight.
+    double gravity = 9.81;
+
     // 6-DOF plant. When use_6dof is true the stream integrates Euler
     // attitude with gimbal TVC; the force PID still sets the ask.
     bool use_6dof = true;

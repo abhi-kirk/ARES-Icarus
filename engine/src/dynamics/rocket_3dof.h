@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dynamics/constants.h"
 #include "integrator.h"
 
 namespace icarus {
@@ -10,7 +11,8 @@ State rocket_dynamics_3dof(
     const State& state,
     const ControlInput& control,
     const Disturbance& disturbance,
-    double drag_scale
+    double drag_scale,
+    double gravity = GRAVITY
 );
 
 }  // namespace icarus

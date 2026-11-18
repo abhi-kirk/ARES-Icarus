@@ -84,7 +84,8 @@ void LtvMpc::configure(
     double thrust_max,
     double pointing_cone_deg,
     double glide_cone_deg,
-    double drag_scale
+    double drag_scale,
+    double gravity
 ) {
     horizon_ = std::max(2, horizon);
     dt_ = std::max(0.05, dt);
@@ -97,6 +98,7 @@ void LtvMpc::configure(
     pointing_cone_deg_ = pointing_cone_deg;
     glide_cone_deg_ = glide_cone_deg;
     drag_scale_ = std::max(0.0, drag_scale);
+    gravity_ = gravity;
     have_warm_ = false;
     last_U_.resize(0);
 }
@@ -153,10 +155,10 @@ MpcSolveResult LtvMpc::solve(
     const double wind_push = 1.0 - damp;
     c(0) = 0.5 * dt_ * wind_push * wind_x;
     c(1) = 0.5 * dt_ * wind_push * wind_y;
-    c(2) = -0.5 * dt_ * dt_ * GRAVITY;
+    c(2) = -0.5 * dt_ * dt_ * gravity_;
     c(3) = wind_push * wind_x;
     c(4) = wind_push * wind_y;
-    c(5) = -dt_ * GRAVITY;
+    c(5) = -dt_ * gravity_;
 
     Eigen::VectorXd x0(nx);
     x0 << state_pos.x() - pad_x,
@@ -198,7 +200,7 @@ MpcSolveResult LtvMpc::solve(
             knot = reference_->at(tk);
         } else {
             knot.pos = Eigen::Vector3d(pad_x, pad_y, 0.0);
-            knot.force = Eigen::Vector3d(0.0, 0.0, m * GRAVITY);
+            knot.force = Eigen::Vector3d(0.0, 0.0, m * gravity_);
         }
 
         Xref.segment(k * nx, nx) << knot.pos.x() - pad_x,
