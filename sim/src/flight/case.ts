@@ -296,7 +296,7 @@ export function withKnob(flight: FlightCase, key: KnobKey, value: number): Fligh
   return next;
 }
 
-export type WorldName = "earth" | "vacuum";
+export type WorldName = "earth" | "moon";
 export type ControllerName = "pid" | "mpc" | "scvx";
 
 const EARTH_G = 9.81;
@@ -306,8 +306,9 @@ const BURN_THRUST_MAX = 18000;
 const BURN_THRUST_MIN = 7200;
 const MOON_SCALE = MOON_G / EARTH_G;
 
-// A world is the air, the gravity, the pad, and the thrust band. The start
-// that belongs to that world comes with it. The controller stays as it was.
+// A world is the air, the gravity, the pad, and the thrust band. The divert
+// is a separate start: 70 m by 40 m off the pad, or a drop over the pad.
+// The controller stays as it was.
 export function withWorld(flight: FlightCase, world: WorldName): FlightCase {
   const next: FlightCase = structuredClone(flight);
   const sim = next.simulation;
@@ -315,15 +316,11 @@ export function withWorld(flight: FlightCase, world: WorldName): FlightCase {
   sim.pointing_cone_deg = 25;
   sim.initial_z_pos = 280;
   sim.initial_z_velocity = -23.5;
-  sim.initial_y_pos = -40;
-  if (world === "vacuum") {
+  if (world === "moon") {
     sim.gravity = MOON_G;
     sim.drag_scale = 0;
     sim.thrust_max = BURN_THRUST_MAX * MOON_SCALE;
     sim.thrust_min = BURN_THRUST_MIN * MOON_SCALE;
-    sim.initial_x_pos = 70;
-    sim.initial_x_velocity = 0;
-    sim.initial_y_velocity = 0;
     sim.wind_x_velocity = 0;
     sim.wind_y_velocity = 0;
     sim.gust_magnitude = 0;
@@ -335,9 +332,6 @@ export function withWorld(flight: FlightCase, world: WorldName): FlightCase {
     sim.drag_scale = 1;
     sim.thrust_max = BURN_THRUST_MAX;
     sim.thrust_min = BURN_THRUST_MIN;
-    sim.initial_x_pos = 80;
-    sim.initial_x_velocity = 8;
-    sim.initial_y_velocity = -5;
     sim.wind_x_velocity = 3;
     sim.wind_y_velocity = 1.5;
     sim.gust_magnitude = 2;
@@ -346,6 +340,29 @@ export function withWorld(flight: FlightCase, world: WorldName): FlightCase {
     sim.initial_fuel = 600;
   }
   if (sim.thrust_min > sim.thrust_max) sim.thrust_min = sim.thrust_max;
+  return next;
+}
+
+const DIVERT_X = 70;
+const DIVERT_Y = -40;
+
+export function divertOn(flight: FlightCase): boolean {
+  return flight.simulation.initial_x_pos === DIVERT_X && flight.simulation.initial_y_pos === DIVERT_Y;
+}
+
+export function dropOn(flight: FlightCase): boolean {
+  const sim = flight.simulation;
+  return sim.initial_x_pos === 0 && sim.initial_y_pos === 0 && sim.initial_x_velocity === 0 && sim.initial_y_velocity === 0;
+}
+
+// On is the scored divert. Off is a drop over the pad. Both have no sideways speed.
+export function withDivert(flight: FlightCase, on: boolean): FlightCase {
+  const next: FlightCase = structuredClone(flight);
+  const sim = next.simulation;
+  sim.initial_x_velocity = 0;
+  sim.initial_y_velocity = 0;
+  sim.initial_x_pos = on ? DIVERT_X : 0;
+  sim.initial_y_pos = on ? DIVERT_Y : 0;
   return next;
 }
 

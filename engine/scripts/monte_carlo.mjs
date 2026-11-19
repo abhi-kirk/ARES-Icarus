@@ -7,8 +7,8 @@
 //   node scripts/monte_carlo.mjs --scenario constrained --n 40 --seed 1
 //   node scripts/monte_carlo.mjs --scenario storm --n 40 --seed 1 --jobs 8
 //   node scripts/monte_carlo.mjs --scenario landing_bench --n 40 --seed 1
-//   node scripts/monte_carlo.mjs --scenario vacuum_divert --n 40 --seed 1
-//   node scripts/monte_carlo.mjs --scenario vacuum_divert --n 40 --seed 1 --controllers mpc,scvx
+//   node scripts/monte_carlo.mjs --scenario moon --n 40 --seed 1
+//   node scripts/monte_carlo.mjs --scenario moon --n 40 --seed 1 --controllers mpc,scvx
 
 import { spawn } from "node:child_process";
 import { cpus } from "node:os";
@@ -110,12 +110,12 @@ const SCENARIOS = {
     gust_sigma: 2.0,
     sample_falcon: true,
   },
-  // Regime 2. Vacuum (drag_scale 0, wind off) at lunar gravity. The thrust
+  // Regime 2. The Moon: no drag, no wind, lunar gravity. The thrust
   // band is the Earth 7.2–18 kN band scaled by 1.62/9.81, so the floor
-  // still sits under lunar weight. Long offset inside the glide cone, fuel
-  // cut so the burn is propellant-limited.
-  vacuum_divert: {
-    label: "vacuum_divert",
+  // still sits under lunar weight. The Simulator flies this same 70 m by 40 m
+  // divert on Earth. Here the tank is cut so the burn is propellant-limited.
+  moon: {
+    label: "moon",
     fixed: {
       glide_cone_deg: WALLS.glide_cone_deg,
       pointing_cone_deg: WALLS.pointing_cone_deg,

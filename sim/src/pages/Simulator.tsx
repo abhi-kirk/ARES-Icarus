@@ -9,8 +9,11 @@ import {
   readKnob,
   sameCase,
   withController,
+  withDivert,
   withKnob,
   withWorld,
+  divertOn,
+  dropOn,
   type ControllerName,
   type FlightCase,
   type KnobKey,
@@ -32,7 +35,7 @@ const LIMITS: KnobKey[] = ["floor", "ceiling", "cone", "glide", "lag", "gimbal",
 
 const WORLDS: { id: WorldName; label: string }[] = [
   { id: "earth", label: "Earth" },
-  { id: "vacuum", label: "Vacuum divert" },
+  { id: "moon", label: "Moon" },
 ];
 
 const CONTROLLERS: { id: ControllerName; label: string; line: string }[] = [
@@ -414,9 +417,17 @@ export function SimulatorPage() {
   }
 
   function chooseWorld(nextWorld: WorldName) {
-    const next = withWorld(draftRef.current, nextWorld);
+    const current = draftRef.current;
+    const useDivert = divertOn(current) || !dropOn(current);
+    const next = withDivert(withWorld(current, nextWorld), useDivert);
     draftRef.current = next;
     setWorld(nextWorld);
+    settle(next);
+  }
+
+  function chooseDivert(on: boolean) {
+    const next = withDivert(draftRef.current, on);
+    draftRef.current = next;
     settle(next);
   }
 
@@ -434,6 +445,9 @@ export function SimulatorPage() {
   const controllerLine = CONTROLLERS.find((item) => item.id === controller)?.line ?? CONTROLLERS[1].line;
   const landed = done && samples.length > 0 && time >= endTime(samples) - 0.05;
   const score = landed ? touchdownOf(samples) : null;
+  const divert = divertOn(flight);
+  const drop = dropOn(flight);
+  const startLine = divert ? "70 m by 40 m off the pad." : drop ? "Over the pad." : "";
   const limitKeys: KnobKey[] = controller === "pid" ? ["gain", ...LIMITS] : LIMITS;
 
   function beginScrub() {
@@ -481,7 +495,7 @@ export function SimulatorPage() {
   return (
     <div className="frame is-sim">
       <div className="sim-shell" style={shellStyle}>
-        <div className={world === "vacuum" ? "sim-view is-vacuum" : "sim-view"}>
+        <div className={world === "moon" ? "sim-view is-moon" : "sim-view"}>
           <FlightView
             sample={shown}
             samples={samples}
@@ -557,6 +571,15 @@ export function SimulatorPage() {
             </section>
             <section>
               <h2 className="sim-group-title">Initial conditions</h2>
+              <div className="sim-choice" role="radiogroup" aria-label="Start">
+                <button type="button" role="radio" aria-checked={drop} onClick={() => chooseDivert(false)}>
+                  Drop
+                </button>
+                <button type="button" role="radio" aria-checked={divert} onClick={() => chooseDivert(true)}>
+                  Divert
+                </button>
+              </div>
+              {startLine ? <p className="sim-lead">{startLine}</p> : null}
               <div className="sim-tapes">
                 {TAPES.map((tape) => (
                   <Tape
@@ -605,7 +628,7 @@ export function SimulatorPage() {
               <div className="sim-figures">
                 {limitKeys.map((key) => {
                   const spec = specFor(key);
-                  const locked = world === "vacuum" && (key === "floor" || key === "ceiling");
+                  const locked = world === "moon" && (key === "floor" || key === "ceiling");
                   if (locked) {
                     const raw = key === "floor" ? flight.simulation.thrust_min / 1000 : flight.simulation.thrust_max / 1000;
                     return (

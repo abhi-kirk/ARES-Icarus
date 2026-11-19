@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// One vacuum-divert hop, flown by the tracking planner and by the fuel planner.
+// One Moon hop, flown by the tracking planner and by the fuel planner.
 // Usage: node scripts/scvx_compare.mjs
 
 import { spawn } from "node:child_process";

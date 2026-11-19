@@ -108,15 +108,15 @@ const SKY_VERT = `
 
 const SKY_FRAG = `
   varying vec3 vDir;
-  uniform float uVacuum;
+  uniform float uMoon;
   void main() {
     float h = normalize(vDir).y;
     vec3 topDay = vec3(0.05, 0.1, 0.16);
     vec3 horizonDay = vec3(0.55, 0.68, 0.74);
     vec3 topNight = vec3(0.008, 0.01, 0.016);
     vec3 horizonNight = vec3(0.07, 0.075, 0.09);
-    vec3 top = mix(topDay, topNight, uVacuum);
-    vec3 horizon = mix(horizonDay, horizonNight, uVacuum);
+    vec3 top = mix(topDay, topNight, uMoon);
+    vec3 horizon = mix(horizonDay, horizonNight, uMoon);
     vec3 color = mix(horizon, top, smoothstep(-0.05, 0.45, h));
     gl_FragColor = vec4(color, 1.0);
   }
@@ -275,7 +275,7 @@ function Scene({
   sample: Sample | null;
   samples: Sample[];
   time: number;
-  world: "earth" | "vacuum";
+  world: "earth" | "moon";
   windX: number;
   windY: number;
   gust: number;
@@ -315,7 +315,7 @@ function Scene({
       new ShaderMaterial({
         side: BackSide,
         depthWrite: false,
-        uniforms: { uVacuum: { value: 0 } },
+        uniforms: { uMoon: { value: 0 } },
         vertexShader: SKY_VERT,
         fragmentShader: SKY_FRAG,
       }),
@@ -460,9 +460,9 @@ function Scene({
   const padX = sample?.padX ?? 0;
   const padY = sample?.padY ?? 0;
   const yaw = padYaw(samples, time);
-  const vacuum = world === "vacuum";
-  const windy = !vacuum && (Math.hypot(windX, windY) > 0.15 || gust > 0.15);
-  skyMat.uniforms.uVacuum.value = vacuum ? 1 : 0;
+  const moon = world === "moon";
+  const windy = !moon && (Math.hypot(windX, windY) > 0.15 || gust > 0.15);
+  skyMat.uniforms.uMoon.value = moon ? 1 : 0;
   const future = pointsOf(samples, time, true);
   const past = pointsOf(samples, time, false);
   const plan = planPoints(sample);
@@ -472,15 +472,15 @@ function Scene({
 
   return (
     <>
-      <color attach="background" args={[vacuum ? "#07090d" : "#8eacb8"]} />
-      <fog attach="fog" args={[vacuum ? "#07090d" : "#7ea4b4", vacuum ? 900 : 2400, vacuum ? 4200 : 7000]} />
+      <color attach="background" args={[moon ? "#07090d" : "#8eacb8"]} />
+      <fog attach="fog" args={[moon ? "#07090d" : "#7ea4b4", moon ? 900 : 2400, moon ? 4200 : 7000]} />
       <mesh scale={4200} material={skyMat}>
         <sphereGeometry args={[1, 32, 16]} />
       </mesh>
-      <hemisphereLight args={[vacuum ? "#9aa4b0" : "#e7eef2", vacuum ? "#2a241c" : "#1a4a52", vacuum ? 0.45 : 1.15]} />
-      <directionalLight position={[240, 280, 80]} intensity={vacuum ? 1.15 : 2.4} color={vacuum ? "#d5dde8" : "#fff6ea"} />
-      <directionalLight position={[-120, 60, -160]} intensity={vacuum ? 0.2 : 0.55} color="#b7d0dc" />
-      {vacuum ? (
+      <hemisphereLight args={[moon ? "#9aa4b0" : "#e7eef2", moon ? "#2a241c" : "#1a4a52", moon ? 0.45 : 1.15]} />
+      <directionalLight position={[240, 280, 80]} intensity={moon ? 1.15 : 2.4} color={moon ? "#d5dde8" : "#fff6ea"} />
+      <directionalLight position={[-120, 60, -160]} intensity={moon ? 0.2 : 0.55} color="#b7d0dc" />
+      {moon ? (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
           <planeGeometry args={[7000, 7000]} />
           <meshStandardMaterial color="#3a3631" roughness={1} metalness={0} />
@@ -493,7 +493,7 @@ function Scene({
       )}
       {windy ? <WindStreaks x={sample?.x ?? 0} y={sample?.y ?? 0} z={sample?.z ?? 120} windX={windX} windY={windY} /> : null}
       <group position={[padX, 0, padY]} rotation={[0, yaw, 0]}>
-        {vacuum ? (
+        {moon ? (
           <>
             <mesh position={[0, 0.08, 0]} rotation={[-Math.PI / 2, 0, 0]}>
               <circleGeometry args={[16, 48]} />
@@ -539,8 +539,8 @@ function Scene({
           </>
         )}
       </group>
-      {!vacuum && padPast.length > 1 ? <Line points={padPast} color="#f4f1e8" lineWidth={2.5} /> : null}
-      {!vacuum && padFuture.length > 1 ? (
+      {!moon && padPast.length > 1 ? <Line points={padPast} color="#f4f1e8" lineWidth={2.5} /> : null}
+      {!moon && padFuture.length > 1 ? (
         <Line points={padFuture} color="#f2c14e" dashed dashSize={4} gapSize={3} lineWidth={2} />
       ) : null}
       {past.length > 1 ? <Line points={past} color="#8ea6b2" lineWidth={1.4} transparent opacity={0.4} /> : null}
@@ -578,7 +578,7 @@ export function FlightView({
   sample: Sample | null;
   samples: Sample[];
   time: number;
-  world: "earth" | "vacuum";
+  world: "earth" | "moon";
   windX: number;
   windY: number;
   gust: number;
