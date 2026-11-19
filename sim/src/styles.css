@@ -194,8 +194,8 @@ body {
   left: 0;
   bottom: 0;
   z-index: 3;
-  display: grid;
-  grid-template-rows: auto minmax(180px, 1fr);
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   border-right: 1px solid rgba(180, 206, 216, 0.2);
   background: #070b10;
@@ -228,16 +228,75 @@ body {
 }
 
 .sim-console {
+  flex: 1;
+  min-height: 0;
   padding: 0.85rem 1rem 0.4rem;
   overflow: auto;
 }
 
 .sim-lead {
-  margin: 0 0 0.2rem;
+  margin: 0.55rem 0 0;
   color: #8aa0ab;
   font-size: 0.82rem;
   line-height: 1.4;
 }
+
+.sim-still {
+  margin-top: 0.95rem;
+}
+
+.sim-choice {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+.sim-choice button {
+  flex: 1;
+  margin: 0;
+  padding: 0.48rem 0.35rem;
+  border: 1px solid rgba(180, 206, 216, 0.28);
+  background: transparent;
+  color: #c5d5de;
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.sim-choice button[aria-checked="true"] {
+  background: #e8eef2;
+  color: #10161c;
+  border-color: #e8eef2;
+}
+
+.sim-choice button:focus-visible {
+  outline: 1px solid rgba(231, 238, 242, 0.55);
+  outline-offset: 2px;
+}
+
+.sim-limits {
+  margin-top: 0.95rem;
+}
+
+.sim-limits summary {
+  cursor: pointer;
+  list-style: none;
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #5d7580;
+}
+
+.sim-limits summary::-webkit-details-marker { display: none; }
+
+.sim-limits summary::before { content: "▸ "; }
+
+.sim-limits[open] summary::before { content: "▾ "; }
+
+.sim-limits[open] summary { color: #8aa0ab; margin-bottom: 0.15rem; }
 
 .sim-group-title {
   margin: 0.95rem 0 0.15rem;
@@ -374,9 +433,54 @@ body {
   border-top: 1px solid rgba(180, 206, 216, 0.16);
 }
 
+.sim-strip {
+  position: absolute;
+  left: var(--sim-side, 480px);
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 210px;
+  background: rgba(7, 11, 16, 0.92);
+  border-top: 1px solid rgba(180, 206, 216, 0.16);
+}
+
+.sim-plots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 0;
+}
+
 .sim-plot {
+  position: relative;
   min-height: 0;
   min-width: 0;
+}
+
+.sim-signal {
+  position: absolute;
+  z-index: 2;
+  top: 2px;
+  left: 6px;
+}
+
+.sim-signal select {
+  margin: 0;
+  padding: 0.1rem 0.15rem;
+  border: none;
+  background: transparent;
+  color: #8aa0ab;
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.sim-signal select:focus-visible {
+  outline: 1px solid rgba(231, 238, 242, 0.55);
+  outline-offset: 2px;
 }
 
 .sim-plot .chart {
@@ -456,10 +560,14 @@ body {
   display: block;
 }
 
+.sim-view.is-vacuum {
+  background: #07090d;
+}
+
 .sim-credit {
   position: absolute;
   right: 1rem;
-  bottom: 0.75rem;
+  bottom: calc(210px + 0.75rem);
   z-index: 2;
   max-width: 22rem;
   margin: 0;
@@ -1793,6 +1901,13 @@ body {
     box-shadow: none;
   }
   .sim-resize { display: none; }
+  .sim-strip {
+    position: relative;
+    left: auto;
+    right: auto;
+    height: 240px;
+  }
+  .sim-credit { bottom: 0.75rem; }
   .sim-charts { min-height: 360px; }
   html, body, #root, .site { height: auto; }
   .site.is-cover .topbar {

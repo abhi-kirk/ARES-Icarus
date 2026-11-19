@@ -1,5 +1,5 @@
 import { Pause, Play } from "lucide-react";
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { ChartView } from "../ChartView";
 import { FlightView } from "../FlightView";
 import {
@@ -8,12 +8,17 @@ import {
   formatKnob,
   readKnob,
   sameCase,
+  withController,
   withKnob,
+  withWorld,
+  type ControllerName,
   type FlightCase,
   type KnobKey,
   type KnobSpec,
+  type WorldName,
 } from "../flight/case";
-import { flightTrace } from "../flight/chart";
+import { FLIGHT_SIGNALS, flightTrace, type FlightSignal } from "../flight/chart";
+import type { EChartsOption } from "echarts";
 import { endTime, parseLines, parseSample, sampleAt, type Sample } from "../flight/samples";
 
 const TAPES: { key: KnobKey; span: number; tick: number }[] = [
@@ -21,11 +26,19 @@ const TAPES: { key: KnobKey; span: number; tick: number }[] = [
   { key: "descent", span: 40, tick: 5 },
 ];
 
-const FIGURES: { title: string; keys: KnobKey[] }[] = [
-  { title: "Initial", keys: ["offset", "fuel"] },
-  { title: "Sea", keys: ["wind", "pad", "gust"] },
-  { title: "Guidance", keys: ["gain", "floor", "ceiling", "cone", "glide", "lag"] },
-  { title: "Attitude", keys: ["gimbal", "inertia"] },
+const START: KnobKey[] = ["offset", "fuel"];
+const SEA: KnobKey[] = ["wind", "pad", "gust"];
+const LIMITS: KnobKey[] = ["floor", "ceiling", "cone", "glide", "lag", "gimbal", "inertia"];
+
+const WORLDS: { id: WorldName; label: string }[] = [
+  { id: "earth", label: "Earth" },
+  { id: "vacuum", label: "Vacuum divert" },
+];
+
+const CONTROLLERS: { id: ControllerName; label: string; line: string }[] = [
+  { id: "pid", label: "PID", line: "PID pushes back on the error in height and position." },
+  { id: "mpc", label: "MPC", line: "MPC recomputes a path to the pad inside the thrust limits." },
+  { id: "scvx", label: "SCvx", line: "SCvx chooses a path that soft-lands on less fuel." },
 ];
 
 const SIDE_MIN = 260;
@@ -43,25 +56,17 @@ function formatRate(value: number): string {
   return `${value.toFixed(1)} m/s`;
 }
 
-function flightMetrics(sample: Sample | null): { label: string; value: string; unit: string }[] {
-  const dx = (sample?.x ?? 0) - (sample?.padX ?? 0);
-  const dy = (sample?.y ?? 0) - (sample?.padY ?? 0);
-  const range = Math.hypot(dx, dy);
-  const speed = Math.hypot(sample?.vx ?? 0, sample?.vy ?? 0);
-  const thrust = Math.hypot(sample?.fx ?? 0, sample?.fy ?? 0, sample?.fz ?? 0) / 1000;
-  const side = Math.hypot(sample?.fx ?? 0, sample?.fy ?? 0) / 1000;
-  const lean = (180 / Math.PI) * Math.hypot(sample?.roll ?? 0, sample?.pitch ?? 0);
-  const gimbal = (180 / Math.PI) * Math.hypot(sample?.gimbalX ?? 0, sample?.gimbalY ?? 0);
-  return [
-    { label: "Range", value: range.toFixed(0), unit: "m" },
-    { label: "Speed", value: speed.toFixed(1), unit: "m/s" },
-    { label: "Along", value: dx.toFixed(0), unit: "m" },
-    { label: "Across", value: dy.toFixed(0), unit: "m" },
-    { label: "Thrust", value: thrust.toFixed(1), unit: "kN" },
-    { label: "Side", value: side.toFixed(1), unit: "kN" },
-    { label: "Lean", value: lean.toFixed(1), unit: "°" },
-    { label: "Gimbal", value: gimbal.toFixed(1), unit: "°" },
-  ];
+function touchdownOf(samples: Sample[]): { miss: string; speed: string; burned: string } | null {
+  if (samples.length === 0) return null;
+  const first = samples[0];
+  const last = samples[samples.length - 1];
+  const miss = Math.hypot(last.x - last.padX, last.y - last.padY);
+  const burned = Math.max(0, first.fuel - last.fuel);
+  return {
+    miss: miss.toFixed(1),
+    speed: Math.abs(last.vz).toFixed(2),
+    burned: burned.toFixed(0),
+  };
 }
 
 function snap(value: number, min: number, max: number, step: number): number {
@@ -111,6 +116,35 @@ function useFigureDrag(
       if (event.key === "ArrowUp" || event.key === "ArrowDown") onCommit();
     },
   };
+}
+
+function SignalPlot({
+  label,
+  signal,
+  onSignal,
+  option,
+  onScrub,
+}: {
+  label: string;
+  signal: FlightSignal;
+  onSignal: (next: FlightSignal) => void;
+  option: EChartsOption;
+  onScrub: (time: number) => void;
+}) {
+  return (
+    <div className="sim-plot">
+      <label className="sim-signal">
+        <select aria-label={label} value={signal} onChange={(event) => onSignal(event.target.value as FlightSignal)}>
+          {FLIGHT_SIGNALS.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <ChartView option={option} onScrub={onScrub} />
+    </div>
+  );
 }
 
 function Tape({
@@ -209,6 +243,9 @@ export function SimulatorPage() {
   const [done, setDone] = useState(false);
   const [note, setNote] = useState("");
   const [sideWidth, setSideWidth] = useState(SIDE_DEFAULT);
+  const [world, setWorld] = useState<WorldName>("earth");
+  const [leftSignal, setLeftSignal] = useState<FlightSignal>("height");
+  const [rightSignal, setRightSignal] = useState<FlightSignal>("rate");
 
   const samplesRef = useRef<Sample[]>([]);
   const playingRef = useRef(true);
@@ -376,10 +413,28 @@ export function SimulatorPage() {
     settle(draftRef.current);
   }
 
+  function chooseWorld(nextWorld: WorldName) {
+    const next = withWorld(draftRef.current, nextWorld);
+    draftRef.current = next;
+    setWorld(nextWorld);
+    settle(next);
+  }
+
+  function chooseController(nextController: ControllerName) {
+    const next = withController(draftRef.current, nextController);
+    draftRef.current = next;
+    settle(next);
+  }
+
   const shown = sampleAt(samples, time);
   const duration = Math.max(endTime(samples), 0.01);
-  const altitude = flightTrace(samples, time, "height");
-  const rate = flightTrace(samples, time, "rate");
+  const altitude = flightTrace(samples, time, leftSignal);
+  const rate = flightTrace(samples, time, rightSignal);
+  const controller = flight.simulation.controller;
+  const controllerLine = CONTROLLERS.find((item) => item.id === controller)?.line ?? CONTROLLERS[1].line;
+  const landed = done && samples.length > 0 && time >= endTime(samples) - 0.05;
+  const score = landed ? touchdownOf(samples) : null;
+  const limitKeys: KnobKey[] = controller === "pid" ? ["gain", ...LIMITS] : LIMITS;
 
   function beginScrub() {
     scrubbing.current = true;
@@ -421,15 +476,33 @@ export function SimulatorPage() {
     window.addEventListener("pointerup", up);
   }
 
+  const shellStyle = { "--sim-side": `${sideWidth}px` } as CSSProperties;
+
   return (
     <div className="frame is-sim">
-      <div className="sim-shell">
-        <div className="sim-view">
-          <FlightView sample={shown} samples={samples} time={time} />
+      <div className="sim-shell" style={shellStyle}>
+        <div className={world === "vacuum" ? "sim-view is-vacuum" : "sim-view"}>
+          <FlightView
+            sample={shown}
+            samples={samples}
+            time={time}
+            world={world}
+            windX={flight.simulation.wind_x_velocity}
+            windY={flight.simulation.wind_y_velocity}
+            gust={flight.simulation.gust_magnitude}
+            thrustFull={flight.simulation.thrust_max}
+          />
           <div className="sim-readout">
             <span>ALT {formatMeters(shown?.z ?? 0)}</span>
             <span>VZ {formatRate(shown?.vz ?? 0)}</span>
             <span>FUEL {(shown?.fuel ?? 0).toFixed(0)} kg</span>
+            {score ? (
+              <>
+                <span>MISS {score.miss} m</span>
+                <span>TOUCH {score.speed} m/s</span>
+                <span>BURNED {score.burned} kg</span>
+              </>
+            ) : null}
           </div>
           <p className="sim-credit">
             Ship model:{" "}
@@ -450,6 +523,39 @@ export function SimulatorPage() {
           />
           <div className="sim-console">
             <section>
+              <h2 className="sim-group-title">Environment</h2>
+              <div className="sim-choice" role="radiogroup" aria-label="Environment">
+                {WORLDS.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={world === item.id}
+                    onClick={() => chooseWorld(item.id)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+            <section>
+              <h2 className="sim-group-title">Controller</h2>
+              <div className="sim-choice" role="radiogroup" aria-label="Controller">
+                {CONTROLLERS.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={controller === item.id}
+                    onClick={() => chooseController(item.id)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <p className="sim-lead">{controllerLine}</p>
+            </section>
+            <section>
               <h2 className="sim-group-title">Initial conditions</h2>
               <div className="sim-tapes">
                 {TAPES.map((tape) => (
@@ -464,12 +570,23 @@ export function SimulatorPage() {
                   />
                 ))}
               </div>
+              <div className="sim-figures">
+                {START.map((key) => (
+                  <Figure
+                    key={key}
+                    spec={specFor(key)}
+                    value={readKnob(flight, key)}
+                    onScrub={(next) => onKnob(key, next)}
+                    onCommit={release}
+                  />
+                ))}
+              </div>
             </section>
-            {FIGURES.map((group) => (
-              <section key={group.title}>
-                {group.title !== "Initial" ? <h2 className="sim-group-title">{group.title}</h2> : null}
+            {world === "earth" ? (
+              <section>
+                <h2 className="sim-group-title">Sea</h2>
                 <div className="sim-figures">
-                  {group.keys.map((key) => (
+                  {SEA.map((key) => (
                     <Figure
                       key={key}
                       spec={specFor(key)}
@@ -480,75 +597,91 @@ export function SimulatorPage() {
                   ))}
                 </div>
               </section>
-            ))}
-            <section>
-              <h2 className="sim-group-title">Now</h2>
+            ) : (
+              <p className="sim-lead sim-still">Still air. The pad stays put.</p>
+            )}
+            <details className="sim-limits">
+              <summary>Limits</summary>
               <div className="sim-figures">
-                {flightMetrics(shown).map((metric) => (
-                  <div key={metric.label} className="sim-figure sim-metric">
-                    <span className="sim-figure-label">{metric.label}</span>
-                    <span className="sim-figure-value">
-                      {metric.value}
-                      <span className="sim-figure-unit">{metric.unit}</span>
-                    </span>
-                  </div>
-                ))}
+                {limitKeys.map((key) => {
+                  const spec = specFor(key);
+                  const locked = world === "vacuum" && (key === "floor" || key === "ceiling");
+                  if (locked) {
+                    const raw = key === "floor" ? flight.simulation.thrust_min / 1000 : flight.simulation.thrust_max / 1000;
+                    return (
+                      <div key={key} className="sim-figure sim-metric">
+                        <span className="sim-figure-label">{spec.label}</span>
+                        <span className="sim-figure-value">
+                          {raw.toFixed(2)}
+                          <span className="sim-figure-unit">{spec.unit}</span>
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <Figure
+                      key={key}
+                      spec={spec}
+                      value={readKnob(flight, key)}
+                      onScrub={(next) => onKnob(key, next)}
+                      onCommit={release}
+                    />
+                  );
+                })}
               </div>
-            </section>
+            </details>
             {note ? <p className="sim-note">{note}</p> : null}
           </div>
-          <div className="sim-charts">
-            <div className="sim-clock">
-              <button
-                type="button"
-                className="play sim-play"
-                aria-label={playing ? "Pause" : "Play"}
-                aria-pressed={playing}
-                onClick={() => {
-                  if (!playing && time >= endTime(samples) - 1e-3 && done) {
-                    timeRef.current = 0;
-                    setTime(0);
-                    setPlaying(true);
-                    playingRef.current = true;
-                    return;
-                  }
-                  playingRef.current = !playing;
-                  setPlaying((value) => !value);
-                }}
-              >
-                {playing ? <Pause size={18} strokeWidth={2.25} /> : <Play size={18} strokeWidth={2.25} />}
-              </button>
-              <label className="sim-clock-label" htmlFor="flight-time">
-                T+ {formatTime(time)}
-              </label>
-              <input
-                id="flight-time"
-                className="sim-scrub"
-                type="range"
-                min={0}
-                max={duration}
-                step={0.01}
-                value={Math.min(time, duration)}
-                onPointerDown={beginScrub}
-                onPointerUp={endScrub}
-                onPointerCancel={endScrub}
-                onKeyDown={(event) => {
-                  if (event.key.startsWith("Arrow")) beginScrub();
-                }}
-                onKeyUp={(event) => {
-                  if (event.key.startsWith("Arrow")) endScrub();
-                }}
-                onChange={(event) => scrub(Number(event.target.value))}
-              />
-            </div>
-            <div className="sim-plot">
-              <ChartView option={altitude} onScrub={scrub} />
-            </div>
-            <div className="sim-plot">
-              <ChartView option={rate} onScrub={scrub} />
-            </div>
-          </div>
         </aside>
+        <div className="sim-strip">
+          <div className="sim-clock">
+            <button
+              type="button"
+              className="play sim-play"
+              aria-label={playing ? "Pause" : "Play"}
+              aria-pressed={playing}
+              onClick={() => {
+                if (!playing && time >= endTime(samples) - 1e-3 && done) {
+                  timeRef.current = 0;
+                  setTime(0);
+                  setPlaying(true);
+                  playingRef.current = true;
+                  return;
+                }
+                playingRef.current = !playing;
+                setPlaying((value) => !value);
+              }}
+            >
+              {playing ? <Pause size={18} strokeWidth={2.25} /> : <Play size={18} strokeWidth={2.25} />}
+            </button>
+            <label className="sim-clock-label" htmlFor="flight-time">
+              T+ {formatTime(time)}
+            </label>
+            <input
+              id="flight-time"
+              className="sim-scrub"
+              type="range"
+              min={0}
+              max={duration}
+              step={0.01}
+              value={Math.min(time, duration)}
+              onPointerDown={beginScrub}
+              onPointerUp={endScrub}
+              onPointerCancel={endScrub}
+              onKeyDown={(event) => {
+                if (event.key.startsWith("Arrow")) beginScrub();
+              }}
+              onKeyUp={(event) => {
+                if (event.key.startsWith("Arrow")) endScrub();
+              }}
+              onChange={(event) => scrub(Number(event.target.value))}
+            />
+          </div>
+          <div className="sim-plots">
+            <SignalPlot label="Left plot" signal={leftSignal} onSignal={setLeftSignal} option={altitude} onScrub={scrub} />
+            <SignalPlot label="Right plot" signal={rightSignal} onSignal={setRightSignal} option={rate} onScrub={scrub} />
+          </div>
+        </div>
       </div>
     </div>
   );

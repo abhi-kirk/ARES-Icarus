@@ -238,6 +238,15 @@ export function caseFromRequest(body: unknown): FlightCase {
     const gravity = finite(sim.gravity);
     const gimbal = finite(sim.gimbal_max_deg);
     const inertia = finite(sim.Ixx);
+    const cross = finite(sim.initial_y_pos);
+    const vx = finite(sim.initial_x_velocity);
+    const vy = finite(sim.initial_y_velocity);
+    const windY = finite(sim.wind_y_velocity);
+    const padY = finite(sim.initial_pad_y_velocity);
+    if (typeof sim.controller === "string") {
+      const mode = sim.controller.toLowerCase();
+      if (mode === "pid" || mode === "mpc" || mode === "scvx") next.simulation.controller = mode;
+    }
     if (height !== null) writeKnob(next, "height", height);
     if (offset !== null) writeKnob(next, "offset", offset);
     if (descent !== null) writeKnob(next, "descent", descent);
@@ -254,6 +263,11 @@ export function caseFromRequest(body: unknown): FlightCase {
     if (gravity !== null) next.simulation.gravity = clamp(gravity, 1, 12);
     if (gimbal !== null) writeKnob(next, "gimbal", gimbal);
     if (inertia !== null) writeKnob(next, "inertia", inertia);
+    if (cross !== null) next.simulation.initial_y_pos = clamp(cross, -300, 300);
+    if (vx !== null) next.simulation.initial_x_velocity = clamp(vx, -40, 40);
+    if (vy !== null) next.simulation.initial_y_velocity = clamp(vy, -40, 40);
+    if (windY !== null) next.simulation.wind_y_velocity = clamp(windY, -15, 15);
+    if (padY !== null) next.simulation.initial_pad_y_velocity = clamp(padY, -4, 4);
   }
   const gain = finite(raw.outer_pid_vertical_position?.gains?.kp);
   if (gain !== null) writeKnob(next, "gain", gain);
@@ -279,6 +293,65 @@ export function withKnob(flight: FlightCase, key: KnobKey, value: number): Fligh
   if (next.simulation.thrust_min > next.simulation.thrust_max) {
     next.simulation.thrust_min = next.simulation.thrust_max;
   }
+  return next;
+}
+
+export type WorldName = "earth" | "vacuum";
+export type ControllerName = "pid" | "mpc" | "scvx";
+
+const EARTH_G = 9.81;
+const MOON_G = 1.62;
+// Earth landing-burn band, 7.2–18 kN. The Moon uses the same fraction of weight.
+const BURN_THRUST_MAX = 18000;
+const BURN_THRUST_MIN = 7200;
+const MOON_SCALE = MOON_G / EARTH_G;
+
+// A world is the air, the gravity, the pad, and the thrust band. The start
+// that belongs to that world comes with it. The controller stays as it was.
+export function withWorld(flight: FlightCase, world: WorldName): FlightCase {
+  const next: FlightCase = structuredClone(flight);
+  const sim = next.simulation;
+  sim.glide_cone_deg = 20;
+  sim.pointing_cone_deg = 25;
+  sim.initial_z_pos = 280;
+  sim.initial_z_velocity = -23.5;
+  sim.initial_y_pos = -40;
+  if (world === "vacuum") {
+    sim.gravity = MOON_G;
+    sim.drag_scale = 0;
+    sim.thrust_max = BURN_THRUST_MAX * MOON_SCALE;
+    sim.thrust_min = BURN_THRUST_MIN * MOON_SCALE;
+    sim.initial_x_pos = 70;
+    sim.initial_x_velocity = 0;
+    sim.initial_y_velocity = 0;
+    sim.wind_x_velocity = 0;
+    sim.wind_y_velocity = 0;
+    sim.gust_magnitude = 0;
+    sim.initial_pad_x_velocity = 0;
+    sim.initial_pad_y_velocity = 0;
+    sim.initial_fuel = 80;
+  } else {
+    sim.gravity = EARTH_G;
+    sim.drag_scale = 1;
+    sim.thrust_max = BURN_THRUST_MAX;
+    sim.thrust_min = BURN_THRUST_MIN;
+    sim.initial_x_pos = 80;
+    sim.initial_x_velocity = 8;
+    sim.initial_y_velocity = -5;
+    sim.wind_x_velocity = 3;
+    sim.wind_y_velocity = 1.5;
+    sim.gust_magnitude = 2;
+    sim.initial_pad_x_velocity = 0.5;
+    sim.initial_pad_y_velocity = -0.3;
+    sim.initial_fuel = 600;
+  }
+  if (sim.thrust_min > sim.thrust_max) sim.thrust_min = sim.thrust_max;
+  return next;
+}
+
+export function withController(flight: FlightCase, controller: ControllerName): FlightCase {
+  const next: FlightCase = structuredClone(flight);
+  next.simulation.controller = controller;
   return next;
 }
 

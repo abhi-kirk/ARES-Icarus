@@ -6,7 +6,6 @@ import type { Group } from "three";
 import { Ship } from "./flight/Ship";
 import { sampleAt, type Sample } from "./flight/samples";
 
-const FLAME_FULL = 25000;
 const FLAME_LENGTH = 14;
 
 const FLAME_VERT = `
@@ -109,10 +108,15 @@ const SKY_VERT = `
 
 const SKY_FRAG = `
   varying vec3 vDir;
+  uniform float uVacuum;
   void main() {
     float h = normalize(vDir).y;
-    vec3 top = vec3(0.05, 0.1, 0.16);
-    vec3 horizon = vec3(0.55, 0.68, 0.74);
+    vec3 topDay = vec3(0.05, 0.1, 0.16);
+    vec3 horizonDay = vec3(0.55, 0.68, 0.74);
+    vec3 topNight = vec3(0.008, 0.01, 0.016);
+    vec3 horizonNight = vec3(0.07, 0.075, 0.09);
+    vec3 top = mix(topDay, topNight, uVacuum);
+    vec3 horizon = mix(horizonDay, horizonNight, uVacuum);
     vec3 color = mix(horizon, top, smoothstep(-0.05, 0.45, h));
     gl_FragColor = vec4(color, 1.0);
   }
@@ -181,6 +185,62 @@ function padYaw(samples: Sample[], time: number): number {
   return -Math.atan2(vy, vx);
 }
 
+function WindStreaks({
+  x,
+  y,
+  z,
+  windX,
+  windY,
+}: {
+  x: number;
+  y: number;
+  z: number;
+  windX: number;
+  windY: number;
+}) {
+  const slide = useRef<Group>(null);
+  const speed = Math.hypot(windX, windY);
+  const dirX = speed > 0.05 ? windX / speed : 1;
+  const dirZ = speed > 0.05 ? windY / speed : 0;
+  const acrossX = -dirZ;
+  const acrossZ = dirX;
+
+  useFrame(({ clock }) => {
+    if (!slide.current) return;
+    const travel = (clock.elapsedTime * (10 + speed * 3)) % 64;
+    slide.current.position.set(-dirX * travel, 0, -dirZ * travel);
+  });
+
+  const streaks = [0, 1, 2, 3, 4, 5];
+  const length = 18;
+  return (
+    <group position={[x, 0, y]}>
+      <group ref={slide}>
+        {streaks.map((index) => {
+          const side = (index - 2.5) * 22;
+          const height = Math.max(30, z * 0.45) + (index % 3) * 22;
+          const along = (index % 2) * 22;
+          const px = dirX * along + acrossX * side;
+          const pz = dirZ * along + acrossZ * side;
+          return (
+            <Line
+              key={index}
+              points={[
+                [px, height, pz],
+                [px + dirX * length, height, pz + dirZ * length],
+              ]}
+              color="#d7e4ec"
+              transparent
+              opacity={0.34}
+              lineWidth={1}
+            />
+          );
+        })}
+      </group>
+    </group>
+  );
+}
+
 function flameMaterial(phase: number, amp: number, heat: number): ShaderMaterial {
   const material = new ShaderMaterial({
     transparent: true,
@@ -202,7 +262,25 @@ function flameMaterial(phase: number, amp: number, heat: number): ShaderMaterial
   return material;
 }
 
-function Scene({ sample, samples, time }: { sample: Sample | null; samples: Sample[]; time: number }) {
+function Scene({
+  sample,
+  samples,
+  time,
+  world,
+  windX,
+  windY,
+  gust,
+  thrustFull,
+}: {
+  sample: Sample | null;
+  samples: Sample[];
+  time: number;
+  world: "earth" | "vacuum";
+  windX: number;
+  windY: number;
+  gust: number;
+  thrustFull: number;
+}) {
   const latest = useRef(sample);
   latest.current = sample;
   const ship = useRef<Group>(null);
@@ -237,6 +315,7 @@ function Scene({ sample, samples, time }: { sample: Sample | null; samples: Samp
       new ShaderMaterial({
         side: BackSide,
         depthWrite: false,
+        uniforms: { uVacuum: { value: 0 } },
         vertexShader: SKY_VERT,
         fragmentShader: SKY_FRAG,
       }),
@@ -327,7 +406,7 @@ function Scene({ sample, samples, time }: { sample: Sample | null; samples: Samp
     ship.current.rotation.x += (leanX - ship.current.rotation.x) * 0.08;
     ship.current.rotation.z += (leanZ - ship.current.rotation.z) * 0.08;
 
-    const thrust = Math.max(0, current.fz / FLAME_FULL);
+    const thrust = Math.max(0, current.fz / Math.max(thrustFull, 1));
     const burning = thrust > 0.04;
     const power = burning ? 0.95 + Math.min(thrust, 1) * 0.4 : 0;
     sheathMat.uniforms.uTime.value = state.clock.elapsedTime;
@@ -381,6 +460,9 @@ function Scene({ sample, samples, time }: { sample: Sample | null; samples: Samp
   const padX = sample?.padX ?? 0;
   const padY = sample?.padY ?? 0;
   const yaw = padYaw(samples, time);
+  const vacuum = world === "vacuum";
+  const windy = !vacuum && (Math.hypot(windX, windY) > 0.15 || gust > 0.15);
+  skyMat.uniforms.uVacuum.value = vacuum ? 1 : 0;
   const future = pointsOf(samples, time, true);
   const past = pointsOf(samples, time, false);
   const plan = planPoints(sample);
@@ -390,19 +472,40 @@ function Scene({ sample, samples, time }: { sample: Sample | null; samples: Samp
 
   return (
     <>
-      <color attach="background" args={["#8eacb8"]} />
-      <fog attach="fog" args={["#7ea4b4", 2400, 7000]} />
+      <color attach="background" args={[vacuum ? "#07090d" : "#8eacb8"]} />
+      <fog attach="fog" args={[vacuum ? "#07090d" : "#7ea4b4", vacuum ? 900 : 2400, vacuum ? 4200 : 7000]} />
       <mesh scale={4200} material={skyMat}>
         <sphereGeometry args={[1, 32, 16]} />
       </mesh>
-      <hemisphereLight args={["#e7eef2", "#1a4a52", 1.15]} />
-      <directionalLight position={[240, 280, 80]} intensity={2.4} color="#fff6ea" />
-      <directionalLight position={[-120, 60, -160]} intensity={0.55} color="#b7d0dc" />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
-        <planeGeometry args={[7000, 7000, 48, 48]} />
-        <primitive object={waterMat} attach="material" />
-      </mesh>
+      <hemisphereLight args={[vacuum ? "#9aa4b0" : "#e7eef2", vacuum ? "#2a241c" : "#1a4a52", vacuum ? 0.45 : 1.15]} />
+      <directionalLight position={[240, 280, 80]} intensity={vacuum ? 1.15 : 2.4} color={vacuum ? "#d5dde8" : "#fff6ea"} />
+      <directionalLight position={[-120, 60, -160]} intensity={vacuum ? 0.2 : 0.55} color="#b7d0dc" />
+      {vacuum ? (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+          <planeGeometry args={[7000, 7000]} />
+          <meshStandardMaterial color="#3a3631" roughness={1} metalness={0} />
+        </mesh>
+      ) : (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+          <planeGeometry args={[7000, 7000, 48, 48]} />
+          <primitive object={waterMat} attach="material" />
+        </mesh>
+      )}
+      {windy ? <WindStreaks x={sample?.x ?? 0} y={sample?.y ?? 0} z={sample?.z ?? 120} windX={windX} windY={windY} /> : null}
       <group position={[padX, 0, padY]} rotation={[0, yaw, 0]}>
+        {vacuum ? (
+          <>
+            <mesh position={[0, 0.08, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <circleGeometry args={[16, 48]} />
+              <meshStandardMaterial color="#2a2826" roughness={0.95} metalness={0.05} />
+            </mesh>
+            <mesh position={[0, 0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[6.2, 7.8, 48]} />
+              <meshBasicMaterial color="#f4f7f8" />
+            </mesh>
+          </>
+        ) : (
+          <>
         <mesh position={[0, -0.9, 0]}>
           <boxGeometry args={[54, 2.8, 26]} />
           <meshStandardMaterial color="#12181e" metalness={0.4} roughness={0.62} />
@@ -433,9 +536,11 @@ function Scene({ sample, samples, time }: { sample: Sample | null; samples: Samp
             <meshBasicMaterial color="#f2c14e" />
           </mesh>
         </group>
+          </>
+        )}
       </group>
-      {padPast.length > 1 ? <Line points={padPast} color="#f4f1e8" lineWidth={2.5} /> : null}
-      {padFuture.length > 1 ? (
+      {!vacuum && padPast.length > 1 ? <Line points={padPast} color="#f4f1e8" lineWidth={2.5} /> : null}
+      {!vacuum && padFuture.length > 1 ? (
         <Line points={padFuture} color="#f2c14e" dashed dashSize={4} gapSize={3} lineWidth={2} />
       ) : null}
       {past.length > 1 ? <Line points={past} color="#8ea6b2" lineWidth={1.4} transparent opacity={0.4} /> : null}
@@ -464,14 +569,33 @@ export function FlightView({
   sample,
   samples,
   time,
+  world,
+  windX,
+  windY,
+  gust,
+  thrustFull,
 }: {
   sample: Sample | null;
   samples: Sample[];
   time: number;
+  world: "earth" | "vacuum";
+  windX: number;
+  windY: number;
+  gust: number;
+  thrustFull: number;
 }) {
   return (
     <Canvas camera={{ position: [80, 160, 420], fov: 32, near: 1, far: 12000 }} dpr={[1, 1.75]}>
-      <Scene sample={sample} samples={samples} time={time} />
+      <Scene
+        sample={sample}
+        samples={samples}
+        time={time}
+        world={world}
+        windX={windX}
+        windY={windY}
+        gust={gust}
+        thrustFull={thrustFull}
+      />
     </Canvas>
   );
 }

@@ -2,36 +2,58 @@ import type { EChartsOption } from "echarts";
 import { STAGE_DATA_COLORS } from "../chartOption";
 import type { Sample } from "./samples";
 
-const GOLD = STAGE_DATA_COLORS[0];
-const TEAL = STAGE_DATA_COLORS[1];
 const GRID = "#1c2a32";
 const MUTED = "#7f97a3";
 
-export function flightTrace(samples: Sample[], time: number, kind: "height" | "rate"): EChartsOption {
+export type FlightSignal = "height" | "rate" | "range" | "fuel" | "thrust" | "side";
+
+export const FLIGHT_SIGNALS: { id: FlightSignal; label: string; unit: string }[] = [
+  { id: "height", label: "Altitude", unit: "m" },
+  { id: "rate", label: "Rate", unit: "m/s" },
+  { id: "range", label: "Range", unit: "m" },
+  { id: "fuel", label: "Fuel", unit: "kg" },
+  { id: "thrust", label: "Thrust", unit: "kN" },
+  { id: "side", label: "Side", unit: "kN" },
+];
+
+function signalOf(id: FlightSignal): { label: string; unit: string; color: string } {
+  const index = FLIGHT_SIGNALS.findIndex((item) => item.id === id);
+  const spec = FLIGHT_SIGNALS[index] ?? FLIGHT_SIGNALS[0];
+  return { label: spec.label, unit: spec.unit, color: STAGE_DATA_COLORS[index] ?? STAGE_DATA_COLORS[0] };
+}
+
+function sampleValue(sample: Sample, id: FlightSignal): number {
+  if (id === "height") return sample.z;
+  if (id === "rate") return sample.vz;
+  if (id === "range") return Math.hypot(sample.x - sample.padX, sample.y - sample.padY);
+  if (id === "fuel") return sample.fuel;
+  if (id === "thrust") return Math.hypot(sample.fx, sample.fy, sample.fz) / 1000;
+  return Math.hypot(sample.fx, sample.fy) / 1000;
+}
+
+export function flightTrace(samples: Sample[], time: number, id: FlightSignal): EChartsOption {
   const shown = samples.filter((sample) => sample.t <= time + 1e-6);
-  const color = kind === "height" ? GOLD : TEAL;
-  const data = shown.map((sample) => [sample.t, kind === "height" ? sample.z : sample.vz]);
+  const spec = signalOf(id);
+  const data = shown.map((sample) => [sample.t, sampleValue(sample, id)]);
   const planData =
-    kind === "height"
+    id === "height"
       ? shown
           .filter((sample) => typeof sample.planZ === "number")
           .map((sample) => [sample.t, sample.planZ as number])
       : [];
-  const title = kind === "height" ? "Altitude" : "Rate";
-  const unit = kind === "height" ? "m" : "m/s";
   const label = { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 10 };
   const series: EChartsOption["series"] = [
     {
-      name: title,
+      name: spec.label,
       type: "line",
       showSymbol: false,
       data,
-      color,
-      lineStyle: { color, width: 2 },
+      color: spec.color,
+      lineStyle: { color: spec.color, width: 2 },
       markLine: {
         silent: true,
         symbol: "none",
-        lineStyle: { color, width: 1, opacity: 0.7 },
+        lineStyle: { color: spec.color, width: 1, opacity: 0.7 },
         label: { show: false },
         data: [{ xAxis: time }],
       },
@@ -51,13 +73,7 @@ export function flightTrace(samples: Sample[], time: number, kind: "height" | "r
   return {
     backgroundColor: "transparent",
     animation: false,
-    title: {
-      text: title,
-      left: 4,
-      top: 0,
-      textStyle: { color: MUTED, fontSize: 11, fontWeight: 400, fontFamily: "Fragment Mono, monospace" },
-    },
-    grid: { left: 44, right: 12, top: 26, bottom: 22 },
+    grid: { left: 46, right: 12, top: 28, bottom: 22 },
     tooltip: { show: false },
     xAxis: {
       type: "value",
@@ -70,11 +86,11 @@ export function flightTrace(samples: Sample[], time: number, kind: "height" | "r
     },
     yAxis: {
       type: "value",
-      name: unit,
+      name: spec.unit,
       nameTextStyle: label,
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { ...label, color },
+      axisLabel: { ...label, color: spec.color },
       splitLine: { lineStyle: { color: GRID } },
     },
     series,

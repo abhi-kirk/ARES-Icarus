@@ -108,6 +108,11 @@ export function caseFromRequest(body) {
     const gravity = finite(sim.gravity);
     const gimbal = finite(sim.gimbal_max_deg);
     const inertia = finite(sim.Ixx);
+    const cross = finite(sim.initial_y_pos);
+    const vx = finite(sim.initial_x_velocity);
+    const vy = finite(sim.initial_y_velocity);
+    const windY = finite(sim.wind_y_velocity);
+    const padY = finite(sim.initial_pad_y_velocity);
     if (typeof sim.controller === "string") {
       const mode = sim.controller.toLowerCase();
       if (mode === "pid" || mode === "mpc" || mode === "scvx") next.simulation.controller = mode;
@@ -131,12 +136,26 @@ export function caseFromRequest(body) {
       next.simulation.Ixx = inertia;
       next.simulation.Iyy = inertia;
     }
+    if (cross !== null) next.simulation.initial_y_pos = cross;
+    if (vx !== null) next.simulation.initial_x_velocity = vx;
+    if (vy !== null) next.simulation.initial_y_velocity = vy;
+    if (windY !== null) next.simulation.wind_y_velocity = windY;
+    if (padY !== null) next.simulation.initial_pad_y_velocity = padY;
   }
   const gain = finite(body?.outer_pid_vertical_position?.gains?.kp);
   if (gain !== null) next.outer_pid_vertical_position.gains.kp = gain;
 
   next.simulation.initial_z_pos = clamp(next.simulation.initial_z_pos, KNOBS.height.min, KNOBS.height.max);
   next.simulation.initial_x_pos = clamp(next.simulation.initial_x_pos, KNOBS.offset.min, KNOBS.offset.max);
+  next.simulation.initial_y_pos = clamp(next.simulation.initial_y_pos, KNOBS.offset.min, KNOBS.offset.max);
+  next.simulation.initial_x_velocity = clamp(next.simulation.initial_x_velocity, -40, 40);
+  next.simulation.initial_y_velocity = clamp(next.simulation.initial_y_velocity, -40, 40);
+  next.simulation.wind_y_velocity = clamp(next.simulation.wind_y_velocity, KNOBS.wind.min, KNOBS.wind.max);
+  next.simulation.initial_pad_y_velocity = clamp(
+    next.simulation.initial_pad_y_velocity,
+    KNOBS.pad.min,
+    KNOBS.pad.max,
+  );
   next.simulation.initial_z_velocity = clamp(next.simulation.initial_z_velocity, KNOBS.descent.min, KNOBS.descent.max);
   next.simulation.initial_fuel = clamp(next.simulation.initial_fuel, KNOBS.fuel.min, KNOBS.fuel.max);
   next.simulation.wind_x_velocity = clamp(next.simulation.wind_x_velocity, KNOBS.wind.min, KNOBS.wind.max);
