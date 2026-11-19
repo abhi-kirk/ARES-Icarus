@@ -226,6 +226,7 @@ void Simulator::run(
 
     ScvxGuidance scvx;
     bool scvx_refined = false;
+    bool scvx_late = false;
     if (use_scvx) {
         scvx.configure(
             cfg.thrust_min,
@@ -309,12 +310,16 @@ void Simulator::run(
                 Fz_cmd = last_plan.force.z();
             }
         } else if (use_scvx) {
-            // The point-mass plan arrives about 2 m/s slower than the rocket.
-            // One new plan from the real state, once the divert is mostly
-            // done, is enough to take that speed off. A plan that does not
-            // land leaves the burn we already have.
-            if (!scvx_refined && state[POS_Z] < 40.0 && state[POS_Z] > 8.0) {
-                scvx_refined = true;
+            // The point-mass plan arrives slower than the rocket, and on a
+            // long lunar burn it is still sliding sideways when the plan
+            // goes vertical. One new plan once the divert is mostly done,
+            // and one more once the rocket is low, take that speed off.
+            // A plan that does not land leaves the burn we already have.
+            const bool mid_update = !scvx_refined && state[POS_Z] < 40.0 && state[POS_Z] > 8.0;
+            const bool late_update = scvx_refined && !scvx_late && state[POS_Z] < 12.0 && state[POS_Z] > 3.0;
+            if (mid_update || late_update) {
+                if (mid_update) scvx_refined = true;
+                if (late_update) scvx_late = true;
                 const double mass = MASS_DRY + state[FUEL];
                 Eigen::Vector3d wind_now = wind_model.wind_velocity(t);
                 last_plan = scvx.solve(
