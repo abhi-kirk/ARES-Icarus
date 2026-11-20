@@ -3,8 +3,10 @@ import { Line } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import { AdditiveBlending, BackSide, DoubleSide, Quaternion, ShaderMaterial, Spherical, Vector3 } from "three";
 import type { Group } from "three";
+import { LandingPicture } from "./flight/LandingPicture";
 import { Ship } from "./flight/Ship";
 import { sampleAt, type Sample } from "./flight/samples";
+import { touchOf } from "./flight/touch";
 
 const FLAME_LENGTH = 14;
 
@@ -289,6 +291,10 @@ function Scene({
   const wake = useRef(new Vector3());
   const plumeDown = useRef(new Vector3(0, -1, 0));
   const shipQuat = useRef(new Quaternion());
+  const tipAxis = useRef(new Vector3());
+  const aftermath = useRef(0);
+  const parkedAt = useRef(-1);
+  const touch = useMemo(() => touchOf(samples), [samples]);
   const rig = useRef({
     theta: 0.6,
     phi: 1.33,
@@ -401,13 +407,39 @@ function Scene({
     if (!current || !ship.current) return;
 
     ship.current.position.set(current.x, current.z, current.y);
+    const end = samples.length > 0 ? samples[samples.length - 1].t : 0;
+    const parked = touch !== null && time >= end - 0.05;
+    if (!parked) {
+      aftermath.current = 0;
+      parkedAt.current = -1;
+    } else if (parkedAt.current < 0) {
+      parkedAt.current = state.clock.elapsedTime;
+      aftermath.current = 0;
+    } else {
+      aftermath.current = state.clock.elapsedTime - parkedAt.current;
+    }
+
     const leanX = Math.max(-0.18, Math.min(0.18, current.vy * 0.008));
     const leanZ = Math.max(-0.18, Math.min(0.18, -current.vx * 0.008));
-    ship.current.rotation.x += (leanX - ship.current.rotation.x) * 0.08;
-    ship.current.rotation.z += (leanZ - ship.current.rotation.z) * 0.08;
+    const tipping = touch !== null && touch.kind === "hard" && aftermath.current > 0;
+    if (tipping && touch) {
+      const sideways = Math.hypot(touch.vx, touch.vy);
+      const alongX = sideways > 0.4 ? touch.vx / sideways : 1;
+      const alongZ = sideways > 0.4 ? touch.vy / sideways : 0;
+      tipAxis.current.set(alongZ, 0, -alongX);
+      const full = Math.min(1.15, 0.5 + sideways * 0.035);
+      const u = Math.min(1, aftermath.current / 1.2);
+      const ease = u * u * (3 - 2 * u);
+      ship.current.quaternion.setFromAxisAngle(tipAxis.current, full * ease);
+    } else {
+      ship.current.rotation.x += (leanX - ship.current.rotation.x) * 0.08;
+      ship.current.rotation.y += (0 - ship.current.rotation.y) * 0.2;
+      ship.current.rotation.z += (leanZ - ship.current.rotation.z) * 0.08;
+    }
 
+    const settled = touch !== null && current.t >= touch.t - 1e-3;
     const thrust = Math.max(0, current.fz / Math.max(thrustFull, 1));
-    const burning = thrust > 0.04;
+    const burning = !settled && thrust > 0.04;
     const power = burning ? 0.95 + Math.min(thrust, 1) * 0.4 : 0;
     sheathMat.uniforms.uTime.value = state.clock.elapsedTime;
     sheathMat.uniforms.uPower.value = power;
@@ -561,6 +593,14 @@ function Scene({
           <Ship flameRef={flame} sheathMat={sheathMat} coreMat={coreMat} />
         </Suspense>
       </group>
+      {touch ? (
+        <LandingPicture
+          key={`${touch.kind}:${touch.t}:${world}`}
+          touch={touch}
+          world={world}
+          age={aftermath}
+        />
+      ) : null}
     </>
   );
 }
