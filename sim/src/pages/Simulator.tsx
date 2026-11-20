@@ -679,6 +679,7 @@ export function SimulatorPage() {
             windX={flight.simulation.wind_x_velocity}
             windY={flight.simulation.wind_y_velocity}
             gust={flight.simulation.gust_magnitude}
+            gustHz={flight.simulation.gust_frequency}
             thrustFull={flight.simulation.thrust_max}
           />
           <div className="sim-readout">

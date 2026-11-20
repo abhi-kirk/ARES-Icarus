@@ -5,6 +5,7 @@ import {
   AdditiveBlending,
   BackSide,
   DoubleSide,
+  InterleavedBufferAttribute,
   MirroredRepeatWrapping,
   MOUSE,
   Quaternion,
@@ -14,7 +15,7 @@ import {
   Vector3,
 } from "three";
 import type { Group } from "three";
-import type { OrbitControls as OrbitRig } from "three-stdlib";
+import { LineMaterial, LineSegments2, LineSegmentsGeometry, type OrbitControls as OrbitRig } from "three-stdlib";
 import { LandingPicture } from "./flight/LandingPicture";
 import { Ship } from "./flight/Ship";
 import { sampleAt, type Sample } from "./flight/samples";
@@ -199,58 +200,135 @@ function padYaw(samples: Sample[], time: number): number {
   return -Math.atan2(vy, vx);
 }
 
+// One steady wind plus a sine gust, the same sum the plant uses.
+// The streaks are drawn faster than those meters so the flow still reads
+// from the landing camera. Direction and the gust stay in proportion.
+const WIND_SHOW = 8;
+const WIND_COUNT = 72;
+const WIND_SPAN = 220;
+
+function unitHash(n: number): number {
+  const value = Math.sin(n * 127.1) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+function wrapSpan(value: number, span: number): number {
+  const half = span * 0.5;
+  return ((value + half) % span + span) % span - half;
+}
+
 function WindStreaks({
   x,
   y,
   z,
+  time,
   windX,
   windY,
+  gust,
+  gustHz,
 }: {
   x: number;
   y: number;
   z: number;
+  time: number;
   windX: number;
   windY: number;
+  gust: number;
+  gustHz: number;
 }) {
-  const slide = useRef<Group>(null);
-  const speed = Math.hypot(windX, windY);
-  const dirX = speed > 0.05 ? windX / speed : 1;
-  const dirZ = speed > 0.05 ? windY / speed : 0;
-  const acrossX = -dirZ;
-  const acrossZ = dirX;
+  const size = useThree((state) => state.size);
+  const seeds = useMemo(() => {
+    const next = new Float32Array(WIND_COUNT * 3);
+    for (let i = 0; i < WIND_COUNT; i += 1) {
+      next[i * 3] = (unitHash(i + 1) - 0.5) * WIND_SPAN;
+      next[i * 3 + 1] = (unitHash(i + 19) - 0.5) * WIND_SPAN;
+      next[i * 3 + 2] = unitHash(i + 47);
+    }
+    return next;
+  }, []);
 
-  useFrame(({ clock }) => {
-    if (!slide.current) return;
-    const travel = (clock.elapsedTime * (10 + speed * 3)) % 64;
-    slide.current.position.set(-dirX * travel, 0, -dirZ * travel);
+  const field = useMemo(() => {
+    const geometry = new LineSegmentsGeometry();
+    const positions = new Float32Array(WIND_COUNT * 6);
+    geometry.setPositions(positions);
+    const colors = new Float32Array(WIND_COUNT * 8);
+    for (let i = 0; i < WIND_COUNT; i += 1) {
+      const offset = i * 8;
+      colors[offset] = 0.82;
+      colors[offset + 1] = 0.9;
+      colors[offset + 2] = 0.94;
+      colors[offset + 3] = 0;
+      colors[offset + 4] = 0.94;
+      colors[offset + 5] = 0.97;
+      colors[offset + 6] = 0.99;
+      colors[offset + 7] = 1;
+    }
+    geometry.setColors(colors, 4);
+    const material = new LineMaterial({
+      color: 0xffffff,
+      vertexColors: true,
+      linewidth: 2,
+      transparent: true,
+      opacity: 0.75,
+      depthWrite: false,
+    });
+    const mesh = new LineSegments2(geometry, material);
+    mesh.frustumCulled = false;
+    return { mesh, positions };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      field.mesh.geometry.dispose();
+      const material = field.mesh.material;
+      if (material instanceof LineMaterial) material.dispose();
+    };
+  }, [field]);
+
+  useFrame(() => {
+    const gustNow = gustHz > 0.001 ? gust * Math.sin(2 * Math.PI * gustHz * time) : 0;
+    const wx = windX + gustNow;
+    const wy = windY + gustNow;
+    const speed = Math.hypot(wx, wy);
+    const dirX = speed > 0.05 ? wx / speed : 1;
+    const dirZ = speed > 0.05 ? wy / speed : 0;
+    let gustDrift = 0;
+    if (gustHz > 0.001) {
+      gustDrift = (gust * (1 - Math.cos(2 * Math.PI * gustHz * time))) / (2 * Math.PI * gustHz);
+    }
+    const driftX = (windX * time + gustDrift) * WIND_SHOW;
+    const driftZ = (windY * time + gustDrift) * WIND_SHOW;
+    const visual = speed * WIND_SHOW;
+    const length = Math.min(Math.max(22, visual * 1.1), 64);
+    const material = field.mesh.material;
+    if (material instanceof LineMaterial) {
+      material.resolution.set(size.width, size.height);
+      material.opacity = Math.min(0.62 + speed * 0.03, 0.88);
+    }
+
+    const mid = Math.max(z, 24);
+    const low = Math.max(8, mid - 70);
+    const high = mid + 48;
+    const buffer = field.positions;
+    for (let i = 0; i < WIND_COUNT; i += 1) {
+      const hx = wrapSpan(seeds[i * 3] + driftX, WIND_SPAN);
+      const hz = wrapSpan(seeds[i * 3 + 1] + driftZ, WIND_SPAN);
+      const hy = low + seeds[i * 3 + 2] * (high - low);
+      const tail = i * 6;
+      buffer[tail] = hx - dirX * length;
+      buffer[tail + 1] = hy;
+      buffer[tail + 2] = hz - dirZ * length;
+      buffer[tail + 3] = hx;
+      buffer[tail + 4] = hy;
+      buffer[tail + 5] = hz;
+    }
+    const start = field.mesh.geometry.getAttribute("instanceStart");
+    if (start instanceof InterleavedBufferAttribute) start.data.needsUpdate = true;
   });
 
-  const streaks = [0, 1, 2, 3, 4, 5];
-  const length = 18;
   return (
     <group position={[x, 0, y]}>
-      <group ref={slide}>
-        {streaks.map((index) => {
-          const side = (index - 2.5) * 22;
-          const height = Math.max(30, z * 0.45) + (index % 3) * 22;
-          const along = (index % 2) * 22;
-          const px = dirX * along + acrossX * side;
-          const pz = dirZ * along + acrossZ * side;
-          return (
-            <Line
-              key={index}
-              points={[
-                [px, height, pz],
-                [px + dirX * length, height, pz + dirZ * length],
-              ]}
-              color="#d7e4ec"
-              transparent
-              opacity={0.34}
-              lineWidth={1}
-            />
-          );
-        })}
-      </group>
+      <primitive object={field.mesh} />
     </group>
   );
 }
@@ -443,6 +521,7 @@ function Scene({
   windX,
   windY,
   gust,
+  gustHz,
   thrustFull,
 }: {
   sample: Sample | null;
@@ -452,6 +531,7 @@ function Scene({
   windX: number;
   windY: number;
   gust: number;
+  gustHz: number;
   thrustFull: number;
 }) {
   const latest = useRef(sample);
@@ -597,7 +677,18 @@ function Scene({
           <primitive object={waterMat} attach="material" />
         </mesh>
       )}
-      {windy ? <WindStreaks x={sample?.x ?? 0} y={sample?.y ?? 0} z={sample?.z ?? 120} windX={windX} windY={windY} /> : null}
+      {windy ? (
+        <WindStreaks
+          x={sample?.x ?? 0}
+          y={sample?.y ?? 0}
+          z={sample?.z ?? 120}
+          time={time}
+          windX={windX}
+          windY={windY}
+          gust={gust}
+          gustHz={gustHz}
+        />
+      ) : null}
       <group position={[padX, 0, padY]} rotation={[0, yaw, 0]}>
         {moon ? (
           <>
@@ -687,6 +778,7 @@ export function FlightView({
   windX,
   windY,
   gust,
+  gustHz,
   thrustFull,
 }: {
   sample: Sample | null;
@@ -696,6 +788,7 @@ export function FlightView({
   windX: number;
   windY: number;
   gust: number;
+  gustHz: number;
   thrustFull: number;
 }) {
   return (
@@ -708,6 +801,7 @@ export function FlightView({
         windX={windX}
         windY={windY}
         gust={gust}
+        gustHz={gustHz}
         thrustFull={thrustFull}
       />
     </Canvas>
