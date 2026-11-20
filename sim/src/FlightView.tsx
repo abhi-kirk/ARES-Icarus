@@ -269,7 +269,7 @@ function WindStreaks({
       vertexColors: true,
       linewidth: 2,
       transparent: true,
-      opacity: 0.75,
+      opacity: 0.38,
       depthWrite: false,
     });
     const mesh = new LineSegments2(geometry, material);
@@ -303,7 +303,7 @@ function WindStreaks({
     const material = field.mesh.material;
     if (material instanceof LineMaterial) {
       material.resolution.set(size.width, size.height);
-      material.opacity = Math.min(0.62 + speed * 0.03, 0.88);
+      material.opacity = Math.min(0.3 + speed * 0.015, 0.45);
     }
 
     const mid = Math.max(z, 24);
