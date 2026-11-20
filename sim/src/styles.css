@@ -264,7 +264,8 @@ body {
   cursor: pointer;
 }
 
-.sim-choice button[aria-checked="true"] {
+.sim-choice button[aria-checked="true"],
+.sim-choice button[aria-pressed="true"] {
   background: #e8eef2;
   color: #10161c;
   border-color: #e8eef2;
@@ -448,6 +449,10 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.15rem 0.8rem;
+}
+
+.sim-figures .sim-figure:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
 }
 
 .sim-figure {

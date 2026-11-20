@@ -29,8 +29,8 @@ const TAPES: { key: KnobKey; span: number; tick: number }[] = [
 ];
 
 const START: KnobKey[] = ["offset", "fuel"];
-const CUSTOM_START: KnobKey[] = ["offset", "cross", "along", "across", "fuel"];
-type StartMode = "drop" | "divert" | "custom";
+const OPEN_START: KnobKey[] = ["offset", "cross", "along", "across", "fuel"];
+type StartMode = "drop" | "divert" | "off";
 const SEA: KnobKey[] = ["wind", "pad", "gust"];
 const LIMITS: KnobKey[] = ["floor", "ceiling", "cone", "glide", "lag", "gimbal", "inertia"];
 
@@ -63,7 +63,7 @@ const CONTROLLERS: { id: ControllerName; label: string; line: string; tip: strin
 const GROUP_TIPS = {
   environment: "Earth has air, wind, and a barge that can drift. The Moon has no air, gravity of 1.62 m/s², and a pad that stays put.",
   controller: "How the ship steers the landing burn. All three use the same engines and the same limits.",
-  start: "Where the burn starts. Drop is over the pad. Divert starts off to the side. Custom keeps the numbers you set.",
+  start: "Where the burn starts. Drop is over the pad. Divert starts off to the side. Select the lit one again and both stay off.",
   sea: "A steady wind, a short gust, and a barge that drifts. The Moon has none of these.",
   limits: "What the engine and the guidance are allowed to do during the burn.",
 };
@@ -73,8 +73,8 @@ const KNOB_TIPS: Record<KnobKey, string> = {
   descent: "Vertical speed at the start. A negative rate is a fall.",
   offset: "Distance ahead of the pad, along the approach, when the burn starts.",
   cross: "Distance to the side of the pad when the burn starts. Divert uses −40 m.",
-  along: "Sideways speed along the approach at the start. Drop and Divert use 0.",
-  across: "Sideways speed across the approach at the start. Drop and Divert use 0.",
+  along: "Speed in the downrange direction at the start. Positive points the same way as a positive downrange.",
+  across: "Speed in the crossrange direction at the start. Positive points the same way as a positive crossrange.",
   fuel: "Propellant on board at the start. The burn stops when this is gone or the ship is down.",
   wind: "A steady sideways wind during the burn.",
   pad: "How fast the landing barge drifts. The ship has to meet a moving deck.",
@@ -226,15 +226,23 @@ function Choice({
   label,
   tip,
   onChoose,
+  toggle = false,
 }: {
   checked: boolean;
   label: string;
   tip: string;
   onChoose: () => void;
+  toggle?: boolean;
 }) {
   return (
     <Tip text={tip} side="bottom">
-      <button type="button" role="radio" aria-checked={checked} onClick={onChoose}>
+      <button
+        type="button"
+        role={toggle ? undefined : "radio"}
+        aria-checked={toggle ? undefined : checked}
+        aria-pressed={toggle ? checked : undefined}
+        onClick={onChoose}
+      >
         {label}
       </button>
     </Tip>
@@ -393,7 +401,7 @@ export function SimulatorPage() {
   const [plotsWidth, setPlotsWidth] = useState(PLOTS_DEFAULT);
   const [world, setWorld] = useState<WorldName>("earth");
   const [limitsOpen, setLimitsOpen] = useState(true);
-  const [startMode, setStartMode] = useState<StartMode>("custom");
+  const [startMode, setStartMode] = useState<StartMode>("off");
   const [signals, setSignals] = useState<FlightSignal[]>(["thrust", "rate"]);
 
   const samplesRef = useRef<Sample[]>([]);
@@ -556,7 +564,7 @@ export function SimulatorPage() {
     const next = withKnob(draftRef.current, key, value);
     draftRef.current = next;
     setFlight(next);
-    if (key === "offset" || key === "cross" || key === "along" || key === "across") setStartMode("custom");
+    if (key === "offset" || key === "cross" || key === "along" || key === "across") setStartMode("off");
   }
 
   function release() {
@@ -579,8 +587,8 @@ export function SimulatorPage() {
     settle(next);
   }
 
-  function chooseCustom() {
-    setStartMode("custom");
+  function clearStart() {
+    setStartMode("off");
   }
 
   function chooseController(nextController: ControllerName) {
@@ -604,13 +612,17 @@ export function SimulatorPage() {
   const controllerLine = CONTROLLERS.find((item) => item.id === controller)?.line ?? CONTROLLERS[1].line;
   const landed = done && samples.length > 0 && time >= endTime(samples) - 0.05;
   const score = landed ? touchdownOf(samples) : null;
-  const startKeys = startMode === "custom" ? CUSTOM_START : START;
+  const startKeys = startMode === "off" ? OPEN_START : START;
+  const down = flight.simulation.initial_x_pos;
+  const side = flight.simulation.initial_y_pos;
+  const downSpeed = flight.simulation.initial_x_velocity;
+  const sideSpeed = flight.simulation.initial_y_velocity;
   const startLine =
     startMode === "divert"
-      ? "70 m by 40 m off the pad."
+      ? "70 m downrange and 40 m to the side. No sideways speed."
       : startMode === "drop"
-        ? "Over the pad."
-        : "Crossrange and sideways speed stay as you set them.";
+        ? "Over the pad. No sideways speed."
+        : `${down.toFixed(0)} m downrange, ${side.toFixed(0)} m crossrange. ${downSpeed.toFixed(1)} m/s down, ${sideSpeed.toFixed(1)} m/s cross.`;
   const limitKeys: KnobKey[] = controller === "pid" ? ["gain", ...LIMITS] : LIMITS;
 
   function beginScrub() {
@@ -767,19 +779,20 @@ export function SimulatorPage() {
             </section>
             <section>
               <GroupTitle title="Initial conditions" text={GROUP_TIPS.start} />
-              <div className="sim-choice" role="radiogroup" aria-label="Start">
-                <Choice checked={startMode === "drop"} label="Drop" tip="Starts above the pad, with no sideways speed." onChoose={() => chooseDivert(false)} />
+              <div className="sim-choice" role="group" aria-label="Start">
                 <Choice
-                  checked={startMode === "divert"}
-                  label="Divert"
-                  tip="Starts 70 m to the side and 40 m downrange, with no sideways speed."
-                  onChoose={() => chooseDivert(true)}
+                  toggle
+                  checked={startMode === "drop"}
+                  label="Drop"
+                  tip="Starts above the pad, with no sideways speed. Select it again to turn it off."
+                  onChoose={() => (startMode === "drop" ? clearStart() : chooseDivert(false))}
                 />
                 <Choice
-                  checked={startMode === "custom"}
-                  label="Custom"
-                  tip="Neither preset. Crossrange and sideways speed stay on the numbers you set."
-                  onChoose={chooseCustom}
+                  toggle
+                  checked={startMode === "divert"}
+                  label="Divert"
+                  tip="Starts 70 m downrange and 40 m to the side, with no sideways speed. Select it again to turn it off."
+                  onChoose={() => (startMode === "divert" ? clearStart() : chooseDivert(true))}
                 />
               </div>
               <p className="sim-lead">{startLine}</p>
@@ -824,7 +837,7 @@ export function SimulatorPage() {
                 </div>
               </section>
             ) : (
-              <p className="sim-lead sim-still">Still air. The pad stays put.</p>
+              <p className="sim-lead sim-still">No air. The pad stays put.</p>
             )}
             <details className="sim-limits" open={limitsOpen} onToggle={(event) => setLimitsOpen(event.currentTarget.open)}>
               <summary>
