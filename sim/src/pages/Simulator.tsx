@@ -13,8 +13,6 @@ import {
   withDivert,
   withKnob,
   withWorld,
-  divertOn,
-  dropOn,
   type ControllerName,
   type FlightCase,
   type KnobKey,
@@ -31,6 +29,8 @@ const TAPES: { key: KnobKey; span: number; tick: number }[] = [
 ];
 
 const START: KnobKey[] = ["offset", "fuel"];
+const CUSTOM_START: KnobKey[] = ["offset", "cross", "along", "across", "fuel"];
+type StartMode = "drop" | "divert" | "custom";
 const SEA: KnobKey[] = ["wind", "pad", "gust"];
 const LIMITS: KnobKey[] = ["floor", "ceiling", "cone", "glide", "lag", "gimbal", "inertia"];
 
@@ -63,7 +63,7 @@ const CONTROLLERS: { id: ControllerName; label: string; line: string; tip: strin
 const GROUP_TIPS = {
   environment: "Earth has air, wind, and a barge that can drift. The Moon has no air, gravity of 1.62 m/s², and a pad that stays put.",
   controller: "How the ship steers the landing burn. All three use the same engines and the same limits.",
-  start: "Where the burn starts. Drop is straight over the pad. Divert starts off to the side and has to fly across.",
+  start: "Where the burn starts. Drop is over the pad. Divert starts off to the side. Custom keeps the numbers you set.",
   sea: "A steady wind, a short gust, and a barge that drifts. The Moon has none of these.",
   limits: "What the engine and the guidance are allowed to do during the burn.",
 };
@@ -72,6 +72,9 @@ const KNOB_TIPS: Record<KnobKey, string> = {
   height: "Height above the ground when the burn starts.",
   descent: "Vertical speed at the start. A negative rate is a fall.",
   offset: "Distance ahead of the pad, along the approach, when the burn starts.",
+  cross: "Distance to the side of the pad when the burn starts. Divert uses −40 m.",
+  along: "Sideways speed along the approach at the start. Drop and Divert use 0.",
+  across: "Sideways speed across the approach at the start. Drop and Divert use 0.",
   fuel: "Propellant on board at the start. The burn stops when this is gone or the ship is down.",
   wind: "A steady sideways wind during the burn.",
   pad: "How fast the landing barge drifts. The ship has to meet a moving deck.",
@@ -390,6 +393,7 @@ export function SimulatorPage() {
   const [plotsWidth, setPlotsWidth] = useState(PLOTS_DEFAULT);
   const [world, setWorld] = useState<WorldName>("earth");
   const [limitsOpen, setLimitsOpen] = useState(true);
+  const [startMode, setStartMode] = useState<StartMode>("custom");
   const [signals, setSignals] = useState<FlightSignal[]>(["thrust", "rate"]);
 
   const samplesRef = useRef<Sample[]>([]);
@@ -552,6 +556,7 @@ export function SimulatorPage() {
     const next = withKnob(draftRef.current, key, value);
     draftRef.current = next;
     setFlight(next);
+    if (key === "offset" || key === "cross" || key === "along" || key === "across") setStartMode("custom");
   }
 
   function release() {
@@ -559,9 +564,9 @@ export function SimulatorPage() {
   }
 
   function chooseWorld(nextWorld: WorldName) {
-    const current = draftRef.current;
-    const useDivert = divertOn(current) || !dropOn(current);
-    const next = withDivert(withWorld(current, nextWorld), useDivert);
+    let next = withWorld(draftRef.current, nextWorld);
+    if (startMode === "divert") next = withDivert(next, true);
+    else if (startMode === "drop") next = withDivert(next, false);
     draftRef.current = next;
     setWorld(nextWorld);
     settle(next);
@@ -570,7 +575,12 @@ export function SimulatorPage() {
   function chooseDivert(on: boolean) {
     const next = withDivert(draftRef.current, on);
     draftRef.current = next;
+    setStartMode(on ? "divert" : "drop");
     settle(next);
+  }
+
+  function chooseCustom() {
+    setStartMode("custom");
   }
 
   function chooseController(nextController: ControllerName) {
@@ -594,9 +604,13 @@ export function SimulatorPage() {
   const controllerLine = CONTROLLERS.find((item) => item.id === controller)?.line ?? CONTROLLERS[1].line;
   const landed = done && samples.length > 0 && time >= endTime(samples) - 0.05;
   const score = landed ? touchdownOf(samples) : null;
-  const divert = divertOn(flight);
-  const drop = dropOn(flight);
-  const startLine = divert ? "70 m by 40 m off the pad." : drop ? "Over the pad." : "";
+  const startKeys = startMode === "custom" ? CUSTOM_START : START;
+  const startLine =
+    startMode === "divert"
+      ? "70 m by 40 m off the pad."
+      : startMode === "drop"
+        ? "Over the pad."
+        : "Crossrange and sideways speed stay as you set them.";
   const limitKeys: KnobKey[] = controller === "pid" ? ["gain", ...LIMITS] : LIMITS;
 
   function beginScrub() {
@@ -754,15 +768,21 @@ export function SimulatorPage() {
             <section>
               <GroupTitle title="Initial conditions" text={GROUP_TIPS.start} />
               <div className="sim-choice" role="radiogroup" aria-label="Start">
-                <Choice checked={drop} label="Drop" tip="Starts above the pad, with no sideways speed." onChoose={() => chooseDivert(false)} />
+                <Choice checked={startMode === "drop"} label="Drop" tip="Starts above the pad, with no sideways speed." onChoose={() => chooseDivert(false)} />
                 <Choice
-                  checked={divert}
+                  checked={startMode === "divert"}
                   label="Divert"
                   tip="Starts 70 m to the side and 40 m downrange, with no sideways speed."
                   onChoose={() => chooseDivert(true)}
                 />
+                <Choice
+                  checked={startMode === "custom"}
+                  label="Custom"
+                  tip="Neither preset. Crossrange and sideways speed stay on the numbers you set."
+                  onChoose={chooseCustom}
+                />
               </div>
-              {startLine ? <p className="sim-lead">{startLine}</p> : null}
+              <p className="sim-lead">{startLine}</p>
               <div className="sim-tapes">
                 {TAPES.map((tape) => (
                   <Tape
@@ -777,7 +797,7 @@ export function SimulatorPage() {
                 ))}
               </div>
               <div className="sim-figures">
-                {START.map((key) => (
+                {startKeys.map((key) => (
                   <Figure
                     key={key}
                     spec={specFor(key)}

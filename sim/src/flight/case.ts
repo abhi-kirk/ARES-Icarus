@@ -64,6 +64,9 @@ export type FlightCase = {
 export type KnobKey =
   | "height"
   | "offset"
+  | "cross"
+  | "along"
+  | "across"
   | "descent"
   | "fuel"
   | "wind"
@@ -90,6 +93,9 @@ export type KnobSpec = {
 export const KNOBS: KnobSpec[] = [
   { key: "height", label: "Altitude", min: 40, max: 600, step: 1, unit: "m" },
   { key: "offset", label: "Downrange", min: -300, max: 300, step: 1, unit: "m" },
+  { key: "cross", label: "Crossrange", min: -300, max: 300, step: 1, unit: "m" },
+  { key: "along", label: "Along", min: -40, max: 40, step: 0.5, unit: "m/s" },
+  { key: "across", label: "Across", min: -40, max: 40, step: 0.5, unit: "m/s" },
   { key: "descent", label: "Rate", min: -60, max: 10, step: 0.5, unit: "m/s" },
   { key: "fuel", label: "Fuel", min: 50, max: 1200, step: 5, unit: "kg" },
   { key: "wind", label: "Wind", min: -15, max: 15, step: 0.1, unit: "m/s" },
@@ -172,6 +178,9 @@ function specFor(key: KnobKey): KnobSpec {
 export function readKnob(flight: FlightCase, key: KnobKey): number {
   if (key === "height") return flight.simulation.initial_z_pos;
   if (key === "offset") return flight.simulation.initial_x_pos;
+  if (key === "cross") return flight.simulation.initial_y_pos;
+  if (key === "along") return flight.simulation.initial_x_velocity;
+  if (key === "across") return flight.simulation.initial_y_velocity;
   if (key === "descent") return flight.simulation.initial_z_velocity;
   if (key === "fuel") return flight.simulation.initial_fuel;
   if (key === "wind") return flight.simulation.wind_x_velocity;
@@ -190,6 +199,9 @@ export function readKnob(flight: FlightCase, key: KnobKey): number {
 function writeKnob(flight: FlightCase, key: KnobKey, value: number): void {
   if (key === "height") flight.simulation.initial_z_pos = value;
   else if (key === "offset") flight.simulation.initial_x_pos = value;
+  else if (key === "cross") flight.simulation.initial_y_pos = value;
+  else if (key === "along") flight.simulation.initial_x_velocity = value;
+  else if (key === "across") flight.simulation.initial_y_velocity = value;
   else if (key === "descent") flight.simulation.initial_z_velocity = value;
   else if (key === "fuel") flight.simulation.initial_fuel = value;
   else if (key === "wind") flight.simulation.wind_x_velocity = value;
@@ -306,8 +318,8 @@ const BURN_THRUST_MAX = 18000;
 const BURN_THRUST_MIN = 7200;
 const MOON_SCALE = MOON_G / EARTH_G;
 
-// A world is the air, the gravity, the pad, and the thrust band. The divert
-// is a separate start: 70 m by 40 m off the pad, or a drop over the pad.
+// A world is the air, the gravity, the pad, and the thrust band. The start
+// stays as it was: a drop, a divert, or the numbers already on the case.
 // The controller stays as it was.
 export function withWorld(flight: FlightCase, world: WorldName): FlightCase {
   const next: FlightCase = structuredClone(flight);
