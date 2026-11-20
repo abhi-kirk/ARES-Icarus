@@ -69,7 +69,7 @@ export function ChartView({
   }, []);
 
   useEffect(() => {
-    chart.current?.setOption(option, { replaceMerge: ["xAxis", "yAxis", "series", "tooltip"], lazyUpdate: false });
+    chart.current?.setOption(option, { replaceMerge: ["xAxis", "yAxis", "series", "tooltip", "legend"], lazyUpdate: false });
   }, [option]);
 
   useEffect(() => {

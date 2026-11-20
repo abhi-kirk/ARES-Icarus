@@ -1,5 +1,6 @@
-import { Pause, Play } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import * as Tooltip from "@radix-ui/react-tooltip";
+import { Info, Pause, Play } from "lucide-react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactElement } from "react";
 import { ChartView } from "../ChartView";
 import { FlightView } from "../FlightView";
 import {
@@ -20,7 +21,7 @@ import {
   type KnobSpec,
   type WorldName,
 } from "../flight/case";
-import { FLIGHT_SIGNALS, flightTrace, type FlightSignal } from "../flight/chart";
+import { FLIGHT_SIGNALS, flightTrace, signalSpec, type FlightSignal } from "../flight/chart";
 import type { EChartsOption } from "echarts";
 import { endTime, parseLines, parseSample, sampleAt, type Sample } from "../flight/samples";
 
@@ -33,19 +34,68 @@ const START: KnobKey[] = ["offset", "fuel"];
 const SEA: KnobKey[] = ["wind", "pad", "gust"];
 const LIMITS: KnobKey[] = ["floor", "ceiling", "cone", "glide", "lag", "gimbal", "inertia"];
 
-const WORLDS: { id: WorldName; label: string }[] = [
-  { id: "earth", label: "Earth" },
-  { id: "moon", label: "Moon" },
+const WORLDS: { id: WorldName; label: string; tip: string }[] = [
+  { id: "earth", label: "Earth", tip: "Air and wind, with a barge that can drift. Gravity is 9.81 m/s²." },
+  { id: "moon", label: "Moon", tip: "No air and no wind. Gravity is 1.62 m/s², and the pad stays put." },
 ];
 
-const CONTROLLERS: { id: ControllerName; label: string; line: string }[] = [
-  { id: "pid", label: "PID", line: "PID pushes back on the error in height and position." },
-  { id: "mpc", label: "MPC", line: "MPC recomputes a path to the pad inside the thrust limits." },
-  { id: "scvx", label: "SCvx", line: "SCvx chooses a path that soft-lands on less fuel." },
+const CONTROLLERS: { id: ControllerName; label: string; line: string; tip: string }[] = [
+  {
+    id: "pid",
+    label: "PID",
+    line: "PID pushes back on the error in height and position.",
+    tip: "Pushes back on the error in height and position. It does not plan the whole burn ahead.",
+  },
+  {
+    id: "mpc",
+    label: "MPC",
+    line: "MPC recomputes a path to the pad inside the thrust limits.",
+    tip: "Recomputes a path to the pad and keeps the thrust between the floor and the ceiling.",
+  },
+  {
+    id: "scvx",
+    label: "SCvx",
+    line: "SCvx chooses a path that soft-lands on less fuel.",
+    tip: "Searches for a path that soft-lands on less fuel. The search is successive convexification.",
+  },
 ];
+
+const GROUP_TIPS = {
+  environment: "Earth has air, wind, and a barge that can drift. The Moon has no air, gravity of 1.62 m/s², and a pad that stays put.",
+  controller: "How the ship steers the landing burn. All three use the same engines and the same limits.",
+  start: "Where the burn starts. Drop is straight over the pad. Divert starts off to the side and has to fly across.",
+  sea: "A steady wind, a short gust, and a barge that drifts. The Moon has none of these.",
+  limits: "What the engine and the guidance are allowed to do during the burn.",
+};
+
+const KNOB_TIPS: Record<KnobKey, string> = {
+  height: "Height above the ground when the burn starts.",
+  descent: "Vertical speed at the start. A negative rate is a fall.",
+  offset: "Distance ahead of the pad, along the approach, when the burn starts.",
+  fuel: "Propellant on board at the start. The burn stops when this is gone or the ship is down.",
+  wind: "A steady sideways wind during the burn.",
+  pad: "How fast the landing barge drifts. The ship has to meet a moving deck.",
+  gust: "A short extra shove of wind on top of the steady wind.",
+  gain: "How hard PID pushes back when height or position is off. Used only with PID.",
+  floor: "The least thrust the engine can make while it is lit. Below this it shuts off.",
+  ceiling: "The most thrust the engine can make.",
+  cone: "How far the thrust may lean off vertical. That lean is the pointing cone.",
+  glide: "How far the ship may fly sideways for the height it has left. A tight glide cannot reach a far divert.",
+  lag: "How long the engine takes to reach a commanded thrust.",
+  gimbal: "How far the engine bell can tilt to steer the ship.",
+  inertia: "How hard the ship is to rotate. A larger number turns more slowly.",
+};
+
+// 400 ms confirms the pointer stopped, so a pass across the panel does not flash.
+// 300 ms is the window where the next tip opens at once.
+const TIP_DELAY_MS = 400;
+const TIP_SKIP_MS = 300;
 
 const SIDE_MIN = 260;
 const SIDE_DEFAULT = 480;
+const PLOTS_MIN = 300;
+const PLOTS_DEFAULT = 420;
+const PICTURE_MIN = 180;
 
 function formatTime(time: number): string {
   return `${time.toFixed(1)} s`;
@@ -121,30 +171,115 @@ function useFigureDrag(
   };
 }
 
+function Tip({
+  text,
+  side,
+  children,
+}: {
+  text: string;
+  side: "top" | "right" | "bottom";
+  children: ReactElement;
+}) {
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content className="tip sim-tip" side={side} align="center" sideOffset={8} collisionPadding={12}>
+          <p>{text}</p>
+          <Tooltip.Arrow className="tip-arrow" width={10} height={6} />
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+}
+
+function InfoMark({ label, text }: { label: string; text: string }) {
+  return (
+    <Tip text={text} side="right">
+      <button
+        type="button"
+        className="info"
+        aria-label={`About ${label}`}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <Info size={13} strokeWidth={1.75} aria-hidden />
+      </button>
+    </Tip>
+  );
+}
+
+function GroupTitle({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="sim-group-head">
+      <h2 className="sim-group-title">{title}</h2>
+      <InfoMark label={title} text={text} />
+    </div>
+  );
+}
+
+function Choice({
+  checked,
+  label,
+  tip,
+  onChoose,
+}: {
+  checked: boolean;
+  label: string;
+  tip: string;
+  onChoose: () => void;
+}) {
+  return (
+    <Tip text={tip} side="bottom">
+      <button type="button" role="radio" aria-checked={checked} onClick={onChoose}>
+        {label}
+      </button>
+    </Tip>
+  );
+}
+
 function SignalPlot({
   label,
   signal,
+  names,
+  unit,
   onSignal,
   option,
   onScrub,
 }: {
   label: string;
-  signal: FlightSignal;
-  onSignal: (next: FlightSignal) => void;
+  signal?: FlightSignal;
+  names?: { label: string; color: string }[];
+  unit: string;
+  onSignal?: (next: FlightSignal) => void;
   option: EChartsOption;
   onScrub: (time: number) => void;
 }) {
   return (
     <div className="sim-plot">
-      <label className="sim-signal">
-        <select aria-label={label} value={signal} onChange={(event) => onSignal(event.target.value as FlightSignal)}>
-          {FLIGHT_SIGNALS.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="sim-plot-head">
+        {signal && onSignal ? (
+          <label className="sim-signal">
+            <select aria-label={label} value={signal} onChange={(event) => onSignal(event.target.value as FlightSignal)}>
+              {FLIGHT_SIGNALS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <span className="sim-plot-names">
+            {(names ?? []).map((item) => (
+              <span key={item.label} className="sim-plot-key">
+                <i className="sim-plot-swatch" style={{ background: item.color }} />
+                {item.label}
+              </span>
+            ))}
+          </span>
+        )}
+        <span className="sim-plot-unit">{unit}</span>
+      </div>
       <ChartView option={option} onScrub={onScrub} />
     </div>
   );
@@ -194,6 +329,9 @@ function Tape({
           </span>
         );
       })}
+      <span className="sim-tape-info">
+        <InfoMark label={spec.label} text={KNOB_TIPS[spec.key]} />
+      </span>
       <span className="sim-tape-read">
         <span className="sim-tape-label">{spec.label}</span>
         <span className="sim-tape-value">{shown}</span>
@@ -229,7 +367,10 @@ function Figure({
       aria-valuetext={formatKnob(spec.key, value)}
       {...handlers}
     >
-      <span className="sim-figure-label">{spec.label}</span>
+      <span className="sim-figure-head">
+        <span className="sim-figure-label">{spec.label}</span>
+        <InfoMark label={spec.label} text={KNOB_TIPS[spec.key]} />
+      </span>
       <span className="sim-figure-value">
         {shown}
         {spec.unit ? <span className="sim-figure-unit">{spec.unit}</span> : null}
@@ -246,9 +387,10 @@ export function SimulatorPage() {
   const [done, setDone] = useState(false);
   const [note, setNote] = useState("");
   const [sideWidth, setSideWidth] = useState(SIDE_DEFAULT);
+  const [plotsWidth, setPlotsWidth] = useState(PLOTS_DEFAULT);
   const [world, setWorld] = useState<WorldName>("earth");
-  const [leftSignal, setLeftSignal] = useState<FlightSignal>("height");
-  const [rightSignal, setRightSignal] = useState<FlightSignal>("rate");
+  const [limitsOpen, setLimitsOpen] = useState(true);
+  const [signals, setSignals] = useState<FlightSignal[]>(["thrust", "rate"]);
 
   const samplesRef = useRef<Sample[]>([]);
   const playingRef = useRef(true);
@@ -439,8 +581,15 @@ export function SimulatorPage() {
 
   const shown = sampleAt(samples, time);
   const duration = Math.max(endTime(samples), 0.01);
-  const altitude = flightTrace(samples, time, leftSignal);
-  const rate = flightTrace(samples, time, rightSignal);
+  const bands = {
+    floorKn: flight.simulation.thrust_min / 1000,
+    ceilingKn: flight.simulation.thrust_max / 1000,
+    gimbalDeg: flight.simulation.gimbal_max_deg,
+  };
+  const pathOption = flightTrace(samples, time, ["height", "range"], bands, false);
+  const plotOptions = signals.map((signal, index) =>
+    flightTrace(samples, time, signal, bands, index === signals.length - 1),
+  );
   const controller = flight.simulation.controller;
   const controllerLine = CONTROLLERS.find((item) => item.id === controller)?.line ?? CONTROLLERS[1].line;
   const landed = done && samples.length > 0 && time >= endTime(samples) - 0.05;
@@ -476,11 +625,11 @@ export function SimulatorPage() {
     if (event.button !== 0) return;
     const startX = event.clientX;
     const startWidth = sideWidth;
+    const room = window.innerWidth - plotsWidth - PICTURE_MIN;
     event.currentTarget.setPointerCapture(event.pointerId);
     function move(next: PointerEvent) {
-      const max = window.innerWidth - 120;
       const width = startWidth + (next.clientX - startX);
-      setSideWidth(Math.min(max, Math.max(SIDE_MIN, width)));
+      setSideWidth(Math.min(room, Math.max(SIDE_MIN, width)));
     }
     function up() {
       window.removeEventListener("pointermove", move);
@@ -490,9 +639,35 @@ export function SimulatorPage() {
     window.addEventListener("pointerup", up);
   }
 
-  const shellStyle = { "--sim-side": `${sideWidth}px` } as CSSProperties;
+  function onPlotsResizeDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return;
+    const startX = event.clientX;
+    const startWidth = plotsWidth;
+    const room = window.innerWidth - sideWidth - PICTURE_MIN;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    function move(next: PointerEvent) {
+      const width = startWidth + (startX - next.clientX);
+      setPlotsWidth(Math.min(room, Math.max(PLOTS_MIN, width)));
+    }
+    function up() {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    }
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
+  function setSignal(index: number, next: FlightSignal) {
+    setSignals((current) => current.map((item, itemIndex) => (itemIndex === index ? next : item)));
+  }
+
+  const shellStyle = {
+    "--sim-side": `${sideWidth}px`,
+    "--sim-plots": `${plotsWidth}px`,
+  } as CSSProperties;
 
   return (
+    <Tooltip.Provider delayDuration={TIP_DELAY_MS} skipDelayDuration={TIP_SKIP_MS}>
     <div className="frame is-sim">
       <div className="sim-shell" style={shellStyle}>
         <div className={world === "moon" ? "sim-view is-moon" : "sim-view"}>
@@ -547,47 +722,44 @@ export function SimulatorPage() {
           />
           <div className="sim-console">
             <section>
-              <h2 className="sim-group-title">Environment</h2>
+              <GroupTitle title="Environment" text={GROUP_TIPS.environment} />
               <div className="sim-choice" role="radiogroup" aria-label="Environment">
                 {WORLDS.map((item) => (
-                  <button
+                  <Choice
                     key={item.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={world === item.id}
-                    onClick={() => chooseWorld(item.id)}
-                  >
-                    {item.label}
-                  </button>
+                    checked={world === item.id}
+                    label={item.label}
+                    tip={item.tip}
+                    onChoose={() => chooseWorld(item.id)}
+                  />
                 ))}
               </div>
             </section>
             <section>
-              <h2 className="sim-group-title">Controller</h2>
+              <GroupTitle title="Controller" text={GROUP_TIPS.controller} />
               <div className="sim-choice" role="radiogroup" aria-label="Controller">
                 {CONTROLLERS.map((item) => (
-                  <button
+                  <Choice
                     key={item.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={controller === item.id}
-                    onClick={() => chooseController(item.id)}
-                  >
-                    {item.label}
-                  </button>
+                    checked={controller === item.id}
+                    label={item.label}
+                    tip={item.tip}
+                    onChoose={() => chooseController(item.id)}
+                  />
                 ))}
               </div>
               <p className="sim-lead">{controllerLine}</p>
             </section>
             <section>
-              <h2 className="sim-group-title">Initial conditions</h2>
+              <GroupTitle title="Initial conditions" text={GROUP_TIPS.start} />
               <div className="sim-choice" role="radiogroup" aria-label="Start">
-                <button type="button" role="radio" aria-checked={drop} onClick={() => chooseDivert(false)}>
-                  Drop
-                </button>
-                <button type="button" role="radio" aria-checked={divert} onClick={() => chooseDivert(true)}>
-                  Divert
-                </button>
+                <Choice checked={drop} label="Drop" tip="Starts above the pad, with no sideways speed." onChoose={() => chooseDivert(false)} />
+                <Choice
+                  checked={divert}
+                  label="Divert"
+                  tip="Starts 70 m to the side and 40 m downrange, with no sideways speed."
+                  onChoose={() => chooseDivert(true)}
+                />
               </div>
               {startLine ? <p className="sim-lead">{startLine}</p> : null}
               <div className="sim-tapes">
@@ -617,7 +789,7 @@ export function SimulatorPage() {
             </section>
             {world === "earth" ? (
               <section>
-                <h2 className="sim-group-title">Sea</h2>
+                <GroupTitle title="Sea" text={GROUP_TIPS.sea} />
                 <div className="sim-figures">
                   {SEA.map((key) => (
                     <Figure
@@ -633,8 +805,11 @@ export function SimulatorPage() {
             ) : (
               <p className="sim-lead sim-still">Still air. The pad stays put.</p>
             )}
-            <details className="sim-limits">
-              <summary>Limits</summary>
+            <details className="sim-limits" open={limitsOpen} onToggle={(event) => setLimitsOpen(event.currentTarget.open)}>
+              <summary>
+                <span>Limits</span>
+                <InfoMark label="Limits" text={GROUP_TIPS.limits} />
+              </summary>
               <div className="sim-figures">
                 {limitKeys.map((key) => {
                   const spec = specFor(key);
@@ -643,7 +818,10 @@ export function SimulatorPage() {
                     const raw = key === "floor" ? flight.simulation.thrust_min / 1000 : flight.simulation.thrust_max / 1000;
                     return (
                       <div key={key} className="sim-figure sim-metric">
-                        <span className="sim-figure-label">{spec.label}</span>
+                        <span className="sim-figure-head">
+                          <span className="sim-figure-label">{spec.label}</span>
+                          <InfoMark label={spec.label} text={KNOB_TIPS[key]} />
+                        </span>
                         <span className="sim-figure-value">
                           {raw.toFixed(2)}
                           <span className="sim-figure-unit">{spec.unit}</span>
@@ -710,12 +888,38 @@ export function SimulatorPage() {
               onChange={(event) => scrub(Number(event.target.value))}
             />
           </div>
-          <div className="sim-plots">
-            <SignalPlot label="Left plot" signal={leftSignal} onSignal={setLeftSignal} option={altitude} onScrub={scrub} />
-            <SignalPlot label="Right plot" signal={rightSignal} onSignal={setRightSignal} option={rate} onScrub={scrub} />
-          </div>
         </div>
+        <aside className="sim-plots-panel" style={{ width: plotsWidth }} aria-label="Plots">
+          <div
+            className="sim-plots-resize"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Plots width"
+            onPointerDown={onPlotsResizeDown}
+          />
+          <div className="sim-plots">
+            <SignalPlot
+              label="Altitude and range"
+              names={[signalSpec("height"), signalSpec("range")]}
+              unit="m"
+              option={pathOption}
+              onScrub={scrub}
+            />
+            {signals.map((signal, index) => (
+              <SignalPlot
+                key={index}
+                label={`Plot ${index + 2}`}
+                signal={signal}
+                unit={signalSpec(signal).unit}
+                onSignal={(next) => setSignal(index, next)}
+                option={plotOptions[index]}
+                onScrub={scrub}
+              />
+            ))}
+          </div>
+        </aside>
       </div>
     </div>
+    </Tooltip.Provider>
   );
 }

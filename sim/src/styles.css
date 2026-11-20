@@ -280,6 +280,9 @@ body {
 }
 
 .sim-limits summary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   cursor: pointer;
   list-style: none;
   font-family: "Fragment Mono", ui-monospace, monospace;
@@ -298,6 +301,13 @@ body {
 
 .sim-limits[open] summary { color: #8aa0ab; margin-bottom: 0.15rem; }
 
+.sim-group-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.95rem 0 0.15rem;
+}
+
 .sim-group-title {
   margin: 0.95rem 0 0.15rem;
   font-family: "Fragment Mono", ui-monospace, monospace;
@@ -306,6 +316,47 @@ body {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #5d7580;
+}
+
+.sim-group-head .sim-group-title {
+  margin: 0;
+}
+
+.sim-figure-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
+.sim-tape-info {
+  position: absolute;
+  top: 0.35rem;
+  left: 0.35rem;
+  z-index: 2;
+}
+
+.sim-tape-info .info,
+.sim-figure-head .info,
+.sim-group-head .info,
+.sim-limits summary .info {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.tip.sim-tip {
+  max-width: 16.5rem;
+  z-index: 30;
+}
+
+.sim-tip[data-state="delayed-open"],
+.sim-tip[data-state="instant-open"] {
+  animation: sim-tip-in 120ms ease-out;
+}
+
+@keyframes sim-tip-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .sim-tapes {
@@ -436,33 +487,111 @@ body {
 .sim-strip {
   position: absolute;
   left: var(--sim-side, 480px);
-  right: 0;
+  right: var(--sim-plots, 420px);
   bottom: 0;
   z-index: 2;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  height: 210px;
   background: rgba(7, 11, 16, 0.92);
   border-top: 1px solid rgba(180, 206, 216, 0.16);
 }
 
-.sim-plots {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.sim-plots-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
+  border-left: 1px solid rgba(180, 206, 216, 0.2);
+  background: #070b10;
+  box-shadow: -12px 0 28px rgba(0, 0, 0, 0.35);
+}
+
+.sim-plots-resize {
+  position: absolute;
+  top: 0;
+  left: -7px;
+  width: 14px;
+  height: 100%;
+  z-index: 4;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.sim-plots-resize::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 6px;
+  width: 2px;
+  background: rgba(197, 213, 222, 0.4);
+}
+
+.sim-plots-resize:hover::after {
+  background: #e8eef2;
+}
+
+.sim-plots {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
 }
 
 .sim-plot {
   position: relative;
-  min-height: 0;
+  flex: 1 0 15rem;
+  min-height: 15rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid rgba(180, 206, 216, 0.16);
+}
+
+.sim-plot-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.75rem 0.1rem 0.45rem;
+}
+
+.sim-plot-names {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
   min-width: 0;
 }
 
+.sim-plot-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #c5d4dc;
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sim-plot-swatch {
+  width: 0.85rem;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.sim-plot-unit {
+  color: #e7eef2;
+  font-family: "Fragment Mono", ui-monospace, monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
 .sim-signal {
-  position: absolute;
-  z-index: 2;
-  top: 2px;
-  left: 6px;
+  position: static;
 }
 
 .sim-signal select {
@@ -484,8 +613,8 @@ body {
 }
 
 .sim-plot .chart {
+  flex: 1;
   width: 100%;
-  height: 100%;
   min-height: 0;
 }
 
@@ -544,7 +673,7 @@ body {
 .sim-readout {
   position: absolute;
   top: 0.85rem;
-  right: 1rem;
+  right: calc(var(--sim-plots, 420px) + 1rem);
   text-align: right;
   z-index: 2;
   margin: 0;
@@ -566,8 +695,8 @@ body {
 
 .sim-credit {
   position: absolute;
-  right: 1rem;
-  bottom: calc(210px + 0.75rem);
+  right: calc(var(--sim-plots, 420px) + 1rem);
+  bottom: 5.4rem;
   z-index: 2;
   max-width: 22rem;
   margin: 0;
@@ -889,7 +1018,13 @@ body {
   cursor: pointer;
 }
 
-.info:hover { color: var(--ink); border-color: var(--ink); }
+.info:hover,
+.info:focus-visible { color: var(--ink); border-color: var(--ink); }
+
+.info:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 2px;
+}
 
 .tip {
   z-index: 40;
@@ -1678,6 +1813,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .sim-tip,
   .door-tip,
   .door-tip-body,
   .landing-doors a::after,
@@ -1900,14 +2036,22 @@ body {
     border-top: 1px solid rgba(180, 206, 216, 0.16);
     box-shadow: none;
   }
-  .sim-resize { display: none; }
+  .sim-resize, .sim-plots-resize { display: none; }
+  .sim-plots-panel {
+    position: relative;
+    width: 100% !important;
+    height: 36rem;
+    border-left: none;
+    border-top: 1px solid rgba(180, 206, 216, 0.16);
+    box-shadow: none;
+  }
   .sim-strip {
     position: relative;
     left: auto;
     right: auto;
-    height: 240px;
   }
-  .sim-credit { bottom: 0.75rem; }
+  .sim-readout { right: 1rem; }
+  .sim-credit { right: 1rem; bottom: 0.75rem; }
   .sim-charts { min-height: 360px; }
   html, body, #root, .site { height: auto; }
   .site.is-cover .topbar {
