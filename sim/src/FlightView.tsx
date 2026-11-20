@@ -1,8 +1,20 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Line } from "@react-three/drei";
-import { Suspense, useEffect, useMemo, useRef } from "react";
-import { AdditiveBlending, BackSide, DoubleSide, Quaternion, ShaderMaterial, Spherical, Vector3 } from "three";
+import { Line, OrbitControls, useTexture } from "@react-three/drei";
+import { Suspense, useEffect, useMemo, useRef, type RefObject } from "react";
+import {
+  AdditiveBlending,
+  BackSide,
+  DoubleSide,
+  MirroredRepeatWrapping,
+  MOUSE,
+  Quaternion,
+  ShaderMaterial,
+  Spherical,
+  SRGBColorSpace,
+  Vector3,
+} from "three";
 import type { Group } from "three";
+import type { OrbitControls as OrbitRig } from "three-stdlib";
 import { LandingPicture } from "./flight/LandingPicture";
 import { Ship } from "./flight/Ship";
 import { sampleAt, type Sample } from "./flight/samples";
@@ -115,8 +127,8 @@ const SKY_FRAG = `
     float h = normalize(vDir).y;
     vec3 topDay = vec3(0.05, 0.1, 0.16);
     vec3 horizonDay = vec3(0.55, 0.68, 0.74);
-    vec3 topNight = vec3(0.008, 0.01, 0.016);
-    vec3 horizonNight = vec3(0.07, 0.075, 0.09);
+    vec3 topNight = vec3(0.03, 0.034, 0.05);
+    vec3 horizonNight = vec3(0.22, 0.24, 0.27);
     vec3 top = mix(topDay, topNight, uMoon);
     vec3 horizon = mix(horizonDay, horizonNight, uMoon);
     vec3 color = mix(horizon, top, smoothstep(-0.05, 0.45, h));
@@ -264,6 +276,165 @@ function flameMaterial(phase: number, amp: number, heat: number): ShaderMaterial
   return material;
 }
 
+// The Apollo Basin frame is 880 m across 1000 pixels, so 0.88 m per pixel.
+// The ground plane is 7 km. Repeating the photo at that scale keeps the craters sharp.
+const METERS_PER_PIXEL = 0.88;
+const FIELD_M = 7000;
+
+function MoonGround() {
+  const texture = useTexture("/moon/apollo-basin.png");
+  const { gl } = useThree();
+  useEffect(() => {
+    const pixels = texture.image.width as number;
+    const copies = FIELD_M / (pixels * METERS_PER_PIXEL);
+    texture.colorSpace = SRGBColorSpace;
+    texture.wrapS = MirroredRepeatWrapping;
+    texture.wrapT = MirroredRepeatWrapping;
+    texture.repeat.set(copies, copies);
+    texture.anisotropy = gl.capabilities.getMaxAnisotropy();
+    texture.needsUpdate = true;
+  }, [texture, gl]);
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+      <planeGeometry args={[FIELD_M, FIELD_M]} />
+      <meshStandardMaterial
+        map={texture}
+        bumpMap={texture}
+        bumpScale={2.5}
+        roughness={0.9}
+        metalness={0}
+        color="#f4f1ea"
+      />
+    </mesh>
+  );
+}
+
+function frameOf(sample: Sample | null) {
+  const z = sample?.z ?? 120;
+  const low = z < 90;
+  const lookY = low ? z + 18 : Math.max(20, z * 0.4);
+  const rise = Math.max(36, z + 24 - lookY);
+  const distance = low ? 200 : Math.max(320, rise / Math.tan((9.5 * Math.PI) / 180));
+  const x = sample ? sample.x * 0.68 + sample.padX * 0.32 : 0;
+  const ground = sample ? sample.y * 0.68 + sample.padY * 0.32 : 0;
+  return { x, y: lookY, z: ground, distance };
+}
+
+function FlightCamera({ sample }: { sample: RefObject<Sample | null> }) {
+  const controls = useRef<OrbitRig>(null);
+  const camera = useThree((state) => state.camera);
+  const gl = useThree((state) => state.gl);
+  const placed = useRef(false);
+  const lastLook = useRef(new Vector3());
+  const lastRadius = useRef(1);
+  const zoom = useRef(1);
+  const offset = useRef(new Vector3());
+  const keys = useRef({ meta: false, ctrl: false, shift: false });
+
+  useEffect(() => {
+    const el = gl.domElement;
+    function syncKey(event: KeyboardEvent) {
+      const down = event.type === "keydown";
+      keys.current.meta = event.key === "Meta" ? down : event.metaKey;
+      keys.current.ctrl = event.key === "Control" ? down : event.ctrlKey;
+      keys.current.shift = event.key === "Shift" ? down : event.shiftKey;
+    }
+    function blur() {
+      keys.current.meta = false;
+      keys.current.ctrl = false;
+      keys.current.shift = false;
+    }
+    // OrbitControls reads Command off the pointer event. A Mac often leaves
+    // that flag off, so the held keys decide the button before the control runs.
+    function choose(event: PointerEvent) {
+      const rig = controls.current;
+      if (!rig) return;
+      const held =
+        keys.current.meta ||
+        keys.current.ctrl ||
+        keys.current.shift ||
+        event.getModifierState("Meta") ||
+        event.getModifierState("Control") ||
+        event.getModifierState("Shift");
+      const onEvent = event.metaKey || event.ctrlKey || event.shiftKey;
+      const pan = held || onEvent;
+      if (event.button === 0) {
+        rig.mouseButtons.LEFT = pan && !onEvent ? MOUSE.PAN : MOUSE.ROTATE;
+      } else if (event.button === 2) {
+        rig.mouseButtons.RIGHT = onEvent ? MOUSE.ROTATE : MOUSE.PAN;
+      }
+    }
+    function resetButtons() {
+      const rig = controls.current;
+      if (!rig) return;
+      rig.mouseButtons.LEFT = MOUSE.ROTATE;
+      rig.mouseButtons.RIGHT = MOUSE.PAN;
+    }
+    window.addEventListener("keydown", syncKey);
+    window.addEventListener("keyup", syncKey);
+    window.addEventListener("blur", blur);
+    el.addEventListener("pointerdown", choose, true);
+    el.addEventListener("pointerup", resetButtons, true);
+    el.addEventListener("pointercancel", resetButtons, true);
+    return () => {
+      window.removeEventListener("keydown", syncKey);
+      window.removeEventListener("keyup", syncKey);
+      window.removeEventListener("blur", blur);
+      el.removeEventListener("pointerdown", choose, true);
+      el.removeEventListener("pointerup", resetButtons, true);
+      el.removeEventListener("pointercancel", resetButtons, true);
+    };
+  }, [gl]);
+
+  useFrame(() => {
+    const rig = controls.current;
+    if (!rig) return;
+    const frame = frameOf(sample.current);
+    if (!placed.current) {
+      rig.target.set(frame.x, frame.y, frame.z);
+      offset.current.setFromSpherical(new Spherical(frame.distance, 1.33, 0.6));
+      camera.position.copy(rig.target).add(offset.current);
+      lastLook.current.set(frame.x, frame.y, frame.z);
+      lastRadius.current = frame.distance;
+      placed.current = true;
+      return;
+    }
+    const dx = frame.x - lastLook.current.x;
+    const dy = frame.y - lastLook.current.y;
+    const dz = frame.z - lastLook.current.z;
+    rig.target.x += dx;
+    rig.target.y += dy;
+    rig.target.z += dz;
+    camera.position.x += dx;
+    camera.position.y += dy;
+    camera.position.z += dz;
+    lastLook.current.set(frame.x, frame.y, frame.z);
+
+    offset.current.copy(camera.position).sub(rig.target);
+    const len = Math.max(offset.current.length(), 1);
+    const ratio = len / lastRadius.current;
+    if (Math.abs(ratio - 1) > 0.002) {
+      zoom.current = Math.min(4, Math.max(0.28, zoom.current * ratio));
+    }
+    const next = frame.distance * zoom.current;
+    offset.current.multiplyScalar(next / len);
+    camera.position.copy(rig.target).add(offset.current);
+    lastRadius.current = next;
+  });
+
+  return (
+    <OrbitControls
+      ref={controls}
+      enableDamping={false}
+      enablePan
+      minPolarAngle={0.22}
+      maxPolarAngle={1.48}
+      minDistance={40}
+      maxDistance={5000}
+    />
+  );
+}
+
 function Scene({
   sample,
   samples,
@@ -295,16 +466,6 @@ function Scene({
   const aftermath = useRef(0);
   const parkedAt = useRef(-1);
   const touch = useMemo(() => touchOf(samples), [samples]);
-  const rig = useRef({
-    theta: 0.6,
-    phi: 1.33,
-    zoom: 1,
-    panX: 0,
-    panY: 0,
-    panZ: 0,
-    distance: 320,
-  });
-  const { gl } = useThree();
   const sheathMat = useMemo(() => flameMaterial(0, 1, 0.2), []);
   const coreMat = useMemo(() => flameMaterial(2.2, 0.55, 1), []);
   const waterMat = useMemo(
@@ -327,79 +488,6 @@ function Scene({
       }),
     [],
   );
-
-  useEffect(() => {
-    const el = gl.domElement;
-    const drag = { mode: "orbit" as "orbit" | "pan", x: 0, y: 0 };
-    let active = false;
-    const offset = new Vector3();
-    const right = new Vector3();
-    const lift = new Vector3();
-
-    function down(event: PointerEvent) {
-      if (event.button !== 0 && event.button !== 1 && event.button !== 2) return;
-      active = true;
-      drag.mode = event.button === 0 && !event.shiftKey ? "orbit" : "pan";
-      drag.x = event.clientX;
-      drag.y = event.clientY;
-      el.setPointerCapture(event.pointerId);
-    }
-
-    function move(event: PointerEvent) {
-      if (!active) return;
-      const dx = event.clientX - drag.x;
-      const dy = event.clientY - drag.y;
-      drag.x = event.clientX;
-      drag.y = event.clientY;
-      const view = rig.current;
-      if (drag.mode === "orbit") {
-        view.theta -= dx * 0.005;
-        const nextPhi = view.phi + dy * 0.004;
-        view.phi = Math.min(1.48, Math.max(0.22, nextPhi));
-        return;
-      }
-      const scale = view.distance * 0.00115;
-      offset.setFromSpherical(new Spherical(1, view.phi, view.theta));
-      offset.negate();
-      right.crossVectors(offset, new Vector3(0, 1, 0));
-      if (right.lengthSq() < 1e-8) right.set(1, 0, 0);
-      right.normalize();
-      lift.crossVectors(right, offset).normalize();
-      view.panX += (-right.x * dx + lift.x * dy) * scale;
-      view.panY += (-right.y * dx + lift.y * dy) * scale;
-      view.panZ += (-right.z * dx + lift.z * dy) * scale;
-    }
-
-    function endDrag() {
-      active = false;
-    }
-
-    function wheel(event: WheelEvent) {
-      event.preventDefault();
-      const view = rig.current;
-      const next = view.zoom * Math.exp(event.deltaY * 0.0014);
-      view.zoom = Math.min(4, Math.max(0.28, next));
-    }
-
-    function menu(event: Event) {
-      event.preventDefault();
-    }
-
-    el.addEventListener("pointerdown", down);
-    el.addEventListener("pointermove", move);
-    el.addEventListener("pointerup", endDrag);
-    el.addEventListener("pointercancel", endDrag);
-    el.addEventListener("wheel", wheel, { passive: false });
-    el.addEventListener("contextmenu", menu);
-    return () => {
-      el.removeEventListener("pointerdown", down);
-      el.removeEventListener("pointermove", move);
-      el.removeEventListener("pointerup", endDrag);
-      el.removeEventListener("pointercancel", endDrag);
-      el.removeEventListener("wheel", wheel);
-      el.removeEventListener("contextmenu", menu);
-    };
-  }, [gl]);
 
   useFrame((state) => {
     waterMat.uniforms.uTime.value = state.clock.elapsedTime;
@@ -473,20 +561,6 @@ function Scene({
       }
     }
 
-    const low = current.z < 90;
-    const lookY = low ? current.z + 18 : Math.max(20, current.z * 0.4);
-    const rise = Math.max(36, current.z + 24 - lookY);
-    const base = low ? 200 : Math.max(320, rise / Math.tan((9.5 * Math.PI) / 180));
-    const view = rig.current;
-    view.distance = base * view.zoom;
-    const look = new Vector3(
-      current.x * 0.68 + current.padX * 0.32 + view.panX,
-      lookY + view.panY,
-      current.y * 0.68 + current.padY * 0.32 + view.panZ,
-    );
-    const offset = new Vector3().setFromSpherical(new Spherical(view.distance, view.phi, view.theta));
-    state.camera.position.copy(look).add(offset);
-    state.camera.lookAt(look);
   });
 
   const padX = sample?.padX ?? 0;
@@ -504,19 +578,19 @@ function Scene({
 
   return (
     <>
-      <color attach="background" args={[moon ? "#07090d" : "#8eacb8"]} />
-      <fog attach="fog" args={[moon ? "#07090d" : "#7ea4b4", moon ? 900 : 2400, moon ? 4200 : 7000]} />
+      <FlightCamera sample={latest} />
+      <color attach="background" args={[moon ? "#14181e" : "#8eacb8"]} />
+      <fog attach="fog" args={[moon ? "#2a3036" : "#7ea4b4", moon ? 2200 : 2400, moon ? 7400 : 7000]} />
       <mesh scale={4200} material={skyMat}>
         <sphereGeometry args={[1, 32, 16]} />
       </mesh>
-      <hemisphereLight args={[moon ? "#9aa4b0" : "#e7eef2", moon ? "#2a241c" : "#1a4a52", moon ? 0.45 : 1.15]} />
-      <directionalLight position={[240, 280, 80]} intensity={moon ? 1.15 : 2.4} color={moon ? "#d5dde8" : "#fff6ea"} />
-      <directionalLight position={[-120, 60, -160]} intensity={moon ? 0.2 : 0.55} color="#b7d0dc" />
+      <hemisphereLight args={[moon ? "#d5dde6" : "#e7eef2", moon ? "#8a8176" : "#1a4a52", moon ? 0.95 : 1.15]} />
+      <directionalLight position={[240, 280, 80]} intensity={moon ? 2.7 : 2.4} color="#fff6ea" />
+      <directionalLight position={[-120, 60, -160]} intensity={0.55} color="#b7d0dc" />
       {moon ? (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
-          <planeGeometry args={[7000, 7000]} />
-          <meshStandardMaterial color="#3a3631" roughness={1} metalness={0} />
-        </mesh>
+        <Suspense fallback={null}>
+          <MoonGround />
+        </Suspense>
       ) : (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
           <planeGeometry args={[7000, 7000, 48, 48]} />
@@ -529,7 +603,7 @@ function Scene({
           <>
             <mesh position={[0, 0.08, 0]} rotation={[-Math.PI / 2, 0, 0]}>
               <circleGeometry args={[16, 48]} />
-              <meshStandardMaterial color="#2a2826" roughness={0.95} metalness={0.05} />
+              <meshStandardMaterial color="#6a6560" roughness={0.92} metalness={0.04} />
             </mesh>
             <mesh position={[0, 0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
               <ringGeometry args={[6.2, 7.8, 48]} />

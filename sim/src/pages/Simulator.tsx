@@ -525,6 +525,16 @@ export function SimulatorPage() {
             </a>{" "}
             by <a href="https://sketchfab.com/clarence365">Clarence365</a>,{" "}
             <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>
+            {world === "moon" ? (
+              <>
+                {" "}
+                Ground:{" "}
+                <a href="https://commons.wikimedia.org/wiki/File:Apollo_Basin-_Mare_in_a_Sea_of_Highlands_(LROCM114953774LE_thumb).png">
+                  Apollo Basin floor
+                </a>
+                , LROC, NASA/GSFC/Arizona State University.
+              </>
+            ) : null}
           </p>
         </div>
         <aside className="sim-side" style={{ width: sideWidth }}>
