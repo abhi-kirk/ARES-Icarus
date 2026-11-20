@@ -111,6 +111,6 @@ Build status as of 2026-11-14: Sessions 1 through 8 are done. The first filler-p
 
 | Item | Blocks | When |
 |---|---|---|
-| Confirm how long Snow Ranch's high-power rail is. 1010 buttons are settled. | Rail exit speed | Nov 18 meeting. The field procedures only publish a 48 inch 1010 rail, on the mid-power pads. |
+| Buy the AeroTech Universal Delay Drilling Tool | Delay drilling | Before Dec 12. Rocket.Supplies does not sell it. About $20 from Sirius or Apogee. |
 | Buy a can of gloss white spray | Fluorescent top coat on the tubes | Before Session 10. Grey primer, then white, then the fluorescent already on hand. |
 | Weigh the finished airframe, find CG, re-sim | Delay drilling | Session 11 |

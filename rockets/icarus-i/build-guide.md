@@ -26,9 +26,9 @@ Where the video and the sheet disagree, the reason is given. Follow the video fo
 | Decision | Holds | Decide by |
 |---|---|---|
 | Buy gloss white. Tubes are fluorescent over that white. Fins and nose cone are gloss black, already bought. | Session 10 | Before spraying |
-| How long is the high-power rail at Snow Ranch? | Rail exit speed, Session 11 | The Nov 18 LUNAR meeting. Size is settled: 1010. |
+| Buy the AeroTech UDDT. The launch vendor does not sell it. | Delay drilling, Session 11 | Before Dec 12. About $20, from Sirius or Apogee. |
 
-The Sept 16 meeting was cancelled. The membership meeting is now **Nov 18**. The buttons on hand are 1010, and that size stays. LUNAR's field procedures list 48 inch 1010 rails on the mid-power pads, Black Sky style rails on the high-power pads, and heavy 1010 and 1515 rails on the away pad. Black Sky style rails take 1010 buttons. An H flight uses the high-power racks, not the away pad. Nov 18 is still the place to ask how long that high-power rail is, and to join NAR. Do not spray paint before the button holes are drilled.
+Heard at the Nov 18 meeting. The high-power rail at Snow Ranch is **6 ft**, and it takes the 1010 buttons already drilled. LUNAR dues are paid at the field on Dec 12. A card should work. Bring cash. Rocket.Supplies will be there and will sell one H100W-14A for the cert flight. NAR Level 2 and Level 3 members will be there to witness. Call (925) 443-8705 the morning of Dec 12. A scrub moves to the following days, or to the January launch once they set it.
 
 Fin edges were rounded on 2026-10-11. OpenRocket has not been started. The Dec 12 flight is the maiden, so the Session 11 weigh-and-sim is the only check on the delay.
 
@@ -370,7 +370,7 @@ Flash is trimmed and the cone is sanded, as of 2026-10-11. Before the colour coa
 ## Session 9: Rail buttons
 
 > [!note] Holes drilled 2026-11-14
-> The 1010 holes are drilled and the screws were dry-fitted. Epoxy waits until the buttons go on after paint. LUNAR's field procedures list 1010 rails, including Black Sky style rails on the high-power pads. The away pad also has 1515 rails, for the really big rockets. An H flight does not use that pad. Nov 18 is still the time to ask how long the high-power rail is. The only published length is 48 inches, on the mid-power pads.
+> The 1010 holes are drilled and the screws were dry-fitted. Epoxy waits until the buttons go on after paint. The high-power rail at Snow Ranch is 6 ft, confirmed at the Nov 18 meeting.
 
 Two buttons, on the reference line from Session 1, **before paint**.
 
@@ -445,7 +445,7 @@ Gather the shroud lines so all are the same length, feed them through the swivel
 | Check | Target |
 |---|---|
 | Stability margin | 1.0 – 2.0 calibers |
-| Rail exit velocity | above ~45 ft/s (ask for the 8 ft rail) |
+| Rail exit velocity | above ~45 ft/s on the 6 ft rail. Near 3 lb this is about 48 ft/s. Near 3.5 lb it falls under 45. |
 | Descent rate | 15 – 20 ft/s on the 42" chute |
 | **Optimum delay** | **drives how many seconds come off the 14 s delay** |
 
