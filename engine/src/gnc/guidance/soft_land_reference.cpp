@@ -85,6 +85,19 @@ void SoftLandReference::build(
     double a_x = -2.0 * x0 / (tf_xy * tf_xy) - 2.0 * vx0 / tf_xy;
     double a_y = -2.0 * y0 / (tf_xy * tf_xy) - 2.0 * vy0 / tf_xy;
 
+    // Constant soft-land accel arrives at the ground using the whole
+    // altitude. Any thrust spent on a divert then hits fast. While stopping
+    // still takes most of the altitude, brake at the ceiling so the ship is
+    // slow while it is high enough to divert. Max thrust leaves no side force.
+    const double a_max = thrust_max / m - gravity;
+    if (a_max > 0.3 && vz_now < -1.0 && z_now > 40.0) {
+        const double d_stop = (vz_now * vz_now) / (2.0 * a_max);
+        const double margin = z_now - d_stop;
+        if (margin > 12.0 && d_stop > 0.45 * z_now) {
+            a_z = a_max;
+        }
+    }
+
     const double point_rad = pointing_cone_deg * (3.14159265358979323846 / 180.0);
     const double tan_point =
         (pointing_cone_deg >= 89.9) ? 1.0e6 : std::tan(point_rad);
