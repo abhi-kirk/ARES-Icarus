@@ -573,10 +573,21 @@ export function SimulatorPage() {
 
   function chooseWorld(nextWorld: WorldName) {
     let next = withWorld(draftRef.current, nextWorld);
-    if (startMode === "divert") next = withDivert(next, true);
-    else if (startMode === "drop") next = withDivert(next, false);
+    // An unset start is the Earth offset, with sideways speed. The Moon's
+    // thrust cannot bring that home, so the pad and the path separate.
+    // The divert is the start the Moon flies to the pad.
+    let mode = startMode;
+    if (nextWorld === "moon" && mode === "off") {
+      next = withDivert(next, true);
+      mode = "divert";
+    } else if (mode === "divert") {
+      next = withDivert(next, true);
+    } else if (mode === "drop") {
+      next = withDivert(next, false);
+    }
     draftRef.current = next;
     setWorld(nextWorld);
+    setStartMode(mode);
     settle(next);
   }
 
