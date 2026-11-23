@@ -820,14 +820,11 @@ MpcSolveResult ScvxGuidance::solve(
         }
     }
 
-    const double touch_t = (best.ok) ? (static_cast<double>(best.flew.pos.size()) - 1.0) * kDt : 0.0;
-    const bool on_time = best.ok && touch_t >= best.tf - 2.0;
-    // An early graze is not a landing we can fly. The thrust after it is a
-    // different burn, and the real rocket follows that burn off the pad.
-    const bool landed = best.ok && best.flew.soft && on_time;
-    // The point-mass check can touch down in the middle of a long burn.
-    // The thrust after that touchdown is a different phase. Flying it on the
-    // real rocket, which is a little late, sends the hop the wrong way.
+    // The point-mass check can touch down before the horizon ends. The thrust
+    // after that contact is a different burn. Keep the burn only up to the
+    // contact. Dropping the whole plan here is what left a soft arrival on
+    // the pad and then hovered the rocket down beside it.
+    const bool landed = best.ok && best.flew.soft;
     if (landed) {
         const int flown = static_cast<int>(best.flew.pos.size()) - 1;
         if (flown > 0 && flown < static_cast<int>(best.force.size())) {

@@ -650,7 +650,10 @@ const fuel0 = sim.initial_fuel ?? 600.0;
 const draws = [];
 for (let i = 0; i < n; ++i) {
   const raw = makeDraw(rng, sim, scenarioCfg);
-  const ic = classifyDraw(raw, fuel0);
+  // The tank on this draw, not the scenario's nominal tank. Two extra
+  // kilograms on a -25 m/s Moon fall is the difference between a stop and
+  // a hit the ceiling cannot prevent.
+  const ic = classifyDraw(raw, raw.initial_fuel ?? fuel0);
   draws.push({ id: i, ...raw, ic });
 }
 
