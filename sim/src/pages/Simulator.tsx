@@ -600,6 +600,9 @@ export function SimulatorPage() {
 
   function clearStart() {
     setStartMode("off");
+    // The numbers stay. The flight still starts again from the top, the same
+    // way a knob does. settle would see an unchanged case and leave it running.
+    void fly(draftRef.current);
   }
 
   function chooseController(nextController: ControllerName) {
