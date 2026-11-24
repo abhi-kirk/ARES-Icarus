@@ -203,15 +203,14 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
           <h1>{spec.title}</h1>
           <p className="lede">{spec.lede}</p>
           <nav className="beats" aria-label="Scenes">
-            {beats.map((item, index) => (
+            {beats.map((item) => (
               <button
                 key={item.sceneId}
                 type="button"
                 aria-current={item.sceneId === scene ? "page" : undefined}
                 onClick={() => openScene(item.sceneId)}
               >
-                <span className="num">0{index + 1}</span>
-                {item.name}
+                {item.name.replace(/^The /, "").replace(/^./, (letter) => letter.toUpperCase())}
               </button>
             ))}
           </nav>
