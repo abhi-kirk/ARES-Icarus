@@ -36,6 +36,8 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
   const prevBeat = sceneIndex > 0 ? beats[sceneIndex - 1] : null;
   const nextBeat = sceneIndex >= 0 && sceneIndex < beats.length - 1 ? beats[sceneIndex + 1] : null;
   const readingScrollRef = useRef<HTMLDivElement>(null);
+  const beatsRef = useRef<HTMLElement>(null);
+  const [beatsScrolls, setBeatsScrolls] = useState(false);
   const chapterLinks = CHAPTERS.map((item) => {
     const first = item.scenes.find((entry) => entry.ready && entry.sceneId);
     if (!first) return null;
@@ -89,6 +91,16 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
   useEffect(() => {
     const box = readingScrollRef.current;
     if (box) box.scrollTop = 0;
+  }, [scene]);
+
+  useEffect(() => {
+    const row = beatsRef.current;
+    if (!row) return;
+    const measure = () => setBeatsScrolls(row.scrollWidth > row.clientWidth + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(row);
+    return () => observer.disconnect();
   }, [scene]);
 
   useEffect(() => {
@@ -200,9 +212,11 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
               </a>
             ))}
           </nav>
-          <h1>{spec.title}</h1>
-          <p className="lede">{spec.lede}</p>
-          <nav className="beats" aria-label="Scenes">
+          <nav
+            className={beatsScrolls ? "beats is-scroll" : "beats"}
+            aria-label="Scenes"
+            ref={beatsRef}
+          >
             {beats.map((item) => (
               <button
                 key={item.sceneId}
@@ -216,6 +230,8 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
           </nav>
         </header>
         <div className="reading-scroll" ref={readingScrollRef}>
+          <h1>{spec.title}</h1>
+          <p className="lede">{spec.lede}</p>
           <Essay scene={scene} knobs={knobs} time={time} onPrompt={remember} />
           <nav className="scene-step" aria-label="Scene progress">
             <button

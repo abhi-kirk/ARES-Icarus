@@ -766,14 +766,14 @@ body {
 
 .reading-head {
   flex: none;
-  padding: 1.4rem 2.4rem 0.4rem 2.2rem;
+  padding: 1.4rem 2.4rem 0 2.2rem;
 }
 
 .reading-scroll {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 0.2rem 2.4rem 1.6rem 2.2rem;
+  padding: 0 2.4rem 1.6rem 2.2rem;
   scrollbar-color: rgba(245, 245, 245, 0.35) transparent;
 }
 
@@ -870,7 +870,7 @@ body {
 }
 
 .reading h1 {
-  margin: 0.35rem 0 0;
+  margin: 1.15rem 0 0;
   font-family: var(--display);
   font-weight: 400;
   font-size: clamp(2.4rem, 4.2vw, 3.6rem);
@@ -885,15 +885,19 @@ body {
 }
 
 .beats {
+  --beat-line: calc(0.44rem + 1.15rem);
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
+  align-content: flex-start;
   gap: 0.15rem 0.1rem;
-  margin-top: 1.15rem;
+  margin-top: 0.85rem;
+  min-height: calc(2 * var(--beat-line) + 0.15rem);
 }
 
 .beats button {
+  flex: none;
   padding: 0.22rem 0.5rem;
   border: 0;
   border-radius: 4px;
@@ -1948,7 +1952,20 @@ body {
 }
 
 .controls {
+  display: grid;
+  /* Time row fits two lines of readouts. Three knob rows stay even when a scene shows fewer. */
+  grid-template-rows: minmax(3.5rem, auto) repeat(3, minmax(3.4rem, auto));
+  align-content: start;
   min-width: 0;
+}
+
+.controls .slider-row:first-child output {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  column-gap: 0.85rem;
+  row-gap: 0.12rem;
 }
 
 .stage-note {
@@ -2111,7 +2128,20 @@ body {
   .reading { min-height: auto; overflow: visible; padding: 1.2rem; }
   .reading-head, .reading-scroll { padding: 0; overflow: visible; }
   .reading h1 { margin-top: 1.2rem; }
-  .beats { flex-direction: row; flex-wrap: wrap; gap: 0.4rem 1rem; }
+  .beats {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 0.15rem 0.1rem;
+    min-height: var(--beat-line);
+    scrollbar-width: none;
+  }
+
+  .beats::-webkit-scrollbar { display: none; }
+
+  .beats.is-scroll {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1.75rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 1.75rem), transparent);
+  }
   .stage { overflow: visible; border-top: 1px solid var(--hairline); flex-direction: column; }
   .viewport { flex: none; height: auto; }
   .drawer { width: 100%; height: 0; border-left: none; transition: height 0.26s cubic-bezier(0.22, 1, 0.36, 1); }
