@@ -52,6 +52,15 @@ import {
   type PropellantId,
   type PropSample,
 } from "./propellantPlant";
+import {
+  freqBode,
+  freqBrief,
+  freqRows,
+  freqSampleAt,
+  FREQ_TIME,
+  type FreqId,
+  type FreqSample,
+} from "./frequencyPlant";
 
 
 export type SceneId =
@@ -89,7 +98,10 @@ export type SceneId =
   | "propEq"
   | "propNozzle"
   | "propStage"
-  | "propLoss";
+  | "propLoss"
+  | "freqMargin"
+  | "freqDelay"
+  | "freqNotch";
 
 export type Column =
   | "height"
@@ -231,6 +243,14 @@ export type Knobs = {
   split: number;
   structure: number;
   throttle: number;
+  // The frequency. Proportional gain, derivative gain, pure delay (s),
+  // sample-and-hold period (s), bend frequency (rad/s), notch on or off.
+  gain: number;
+  damp: number;
+  lag: number;
+  sample: number;
+  bend: number;
+  notch: number;
 };
 
 export const KNOBS: Knobs = {
@@ -281,6 +301,12 @@ export const KNOBS: Knobs = {
   split: 0.75,
   structure: 0.08,
   throttle: 1,
+  gain: 11.2,
+  damp: 5.5,
+  lag: 0,
+  sample: 0.2,
+  bend: 8,
+  notch: 0,
 };
 
 // Undamped spring. Mass 1 kg, stiffness 1 N/m, so one swing takes 2π seconds.
@@ -343,7 +369,13 @@ export type KnobKey =
   | "expand"
   | "split"
   | "structure"
-  | "throttle";
+  | "throttle"
+  | "gain"
+  | "damp"
+  | "lag"
+  | "sample"
+  | "bend"
+  | "notch";
 
 const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   dt: { min: 0.05, max: 0.5 },
@@ -402,6 +434,13 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   split: { min: 0.15, max: 0.9 },
   structure: { min: 0, max: 0.16 },
   throttle: { min: 0.25, max: 1 },
+  // Kp below 5.625 (m μ²) and this hover runs away. 11.2 is 6 dB above that floor.
+  gain: { min: 4, max: 36 },
+  damp: { min: 0, max: 24 },
+  lag: { min: 0, max: 0.8 },
+  sample: { min: 0.02, max: 0.5 },
+  bend: { min: 4, max: 18 },
+  notch: { min: 0, max: 1 },
 };
 
 export function clampNamed(key: KnobKey, value: number): number {
@@ -529,6 +568,39 @@ export const SCENES: {
     askable: ["reference", "continuous", "discrete", "height", "rate", "command", "actual"],
     chartTitle: "Continuous and discrete",
     visual: "The continuous trace updates every instant. The discrete trace holds thrust between samples and may act on delayed height.",
+  },
+  {
+    id: "freqMargin",
+    name: "The margins",
+    title: "The margins",
+    lede: "The chart is the open-loop gain of this hover, magnitude in decibels and phase in degrees. Phase margin is spare lateness before the rocket rings. Gain margin is how far Kp sits above the gain that just holds.",
+    opener: "The mark is the gain crossover, where the magnitude crosses 0 dB. Drag the rocket to add delay. The clock still plays the hover.",
+    live: ["height"],
+    askable: ["height", "rate"],
+    chartTitle: "Open-loop Bode",
+    visual: "Frequency on the horizontal axis, not time. A click on the chart does not move the clock. Magnitude is decibels, phase is degrees, and the mark is the gain crossover.",
+  },
+  {
+    id: "freqDelay",
+    name: "Delay",
+    title: "Delay",
+    lede: "A delay of τ seconds subtracts ωτ radians of phase. A sample-and-hold subtracts about half of that, ωT/2, and trims the magnitude by a sinc. The two knobs stay separate.",
+    opener: "Delay and sample time are different lags. Drag the rocket to change the sample time. The gains stay the ones from The margins.",
+    live: ["height"],
+    askable: ["height", "rate"],
+    chartTitle: "Delay and hold",
+    visual: "The phase curve falls by ωτ from the delay and by about ωT/2 from the hold. The rocket plays that same loop.",
+  },
+  {
+    id: "freqNotch",
+    name: "The notch",
+    title: "The notch",
+    lede: "A bend rings at one frequency, so it is a peak on the Bode plot. A notch tuned to 8 rad/s takes that peak out. The hidden mode in The loop grew with no frequency of its own.",
+    opener: "Notch off, the peak is near +10 dB and the height grows. Turn the notch on and the hover settles. Drag the bend off 8 rad/s and the peak comes back.",
+    live: ["height"],
+    askable: ["height", "rate"],
+    chartTitle: "Bend and notch",
+    visual: "One resonance peak. The notch is fixed at 8 rad/s. Drag moves the bend. The rocket shows the height that peak produces.",
   },
   {
     id: "turnFrames",
@@ -827,6 +899,7 @@ export function durationOf(id: SceneId): number {
   if (isVehicleScene(id)) return vehicleDuration(id);
   if (isDescentScene(id)) return descentDuration(id);
   if (isPropellantScene(id)) return propDuration(id);
+  if (isFrequencyScene(id)) return FREQ_TIME;
   return 5;
 }
 
@@ -848,6 +921,10 @@ export function isDescentScene(id: SceneId): id is DescentId {
 
 export function isPropellantScene(id: SceneId): id is PropellantId {
   return id.startsWith("prop");
+}
+
+export function isFrequencyScene(id: SceneId): id is FreqId {
+  return id.startsWith("freq");
 }
 
 export function clampKnob(id: SceneId, value: number): number {
@@ -885,6 +962,9 @@ export function clampKnob(id: SceneId, value: number): number {
   if (id === "propNozzle") return clampNamed("expand", value);
   if (id === "propStage") return clampNamed("split", value);
   if (id === "propLoss") return clampNamed("throttle", value);
+  if (id === "freqMargin") return clampNamed("lag", value);
+  if (id === "freqDelay") return clampNamed("sample", value);
+  if (id === "freqNotch") return clampNamed("bend", value);
   return value;
 }
 
@@ -1193,6 +1273,14 @@ function fromDescentSample(row: DescentSample): Row {
   return next;
 }
 
+function fromFreqSample(row: FreqSample): Row {
+  const next = blank(row.t);
+  next.height = row.height;
+  next.rate = row.rate;
+  next.thrust = row.thrust;
+  return next;
+}
+
 function fromPropSample(row: PropSample): Row {
   const next = blank(row.t);
   next.height = row.height;
@@ -1207,7 +1295,7 @@ function fromPropSample(row: PropSample): Row {
 }
 
 export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
-  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}|${knobs.schedule}|${knobs.twist}|${knobs.method}|${knobs.x0}|${knobs.v0}|${knobs.lead}|${knobs.cause}|${knobs.ratio}|${knobs.isp}|${knobs.expand}|${knobs.split}|${knobs.structure}|${knobs.throttle}`;
+  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}|${knobs.schedule}|${knobs.twist}|${knobs.method}|${knobs.x0}|${knobs.v0}|${knobs.lead}|${knobs.cause}|${knobs.ratio}|${knobs.isp}|${knobs.expand}|${knobs.split}|${knobs.structure}|${knobs.throttle}|${knobs.gain}|${knobs.damp}|${knobs.lag}|${knobs.sample}|${knobs.bend}|${knobs.notch}`;
   if (rowCache && rowCache.key === key) return rowCache.rows;
 
   let rows: Row[];
@@ -1219,6 +1307,7 @@ export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
   else if (isVehicleScene(id)) rows = vehicleRows(id, knobs).map(fromVehicleSample);
   else if (isDescentScene(id)) rows = descentRows(id, knobs).map(fromDescentSample);
   else if (isPropellantScene(id)) rows = propRows(id, knobs).map(fromPropSample);
+  else if (isFrequencyScene(id)) rows = freqRows(id, knobs).map(fromFreqSample);
   else rows = loopRowsFor(id, knobs).map(fromLoopRow);
 
   rowCache = { key, rows };
@@ -1311,6 +1400,11 @@ export function bodyAt(id: SceneId, t: number, knobs: Knobs): BodyDraw {
       aim: 0,
       estimate: sample.height,
     };
+  }
+  if (isFrequencyScene(id)) {
+    const here = freqSampleAt(id, t, knobs);
+    const flame = Math.min(1, 0.22 + Math.abs(here.thrust) / 50);
+    return still(here.height, here.height, flame);
   }
   if (isPropellantScene(id)) {
     const sample = propAt(id, t, knobs);
@@ -1569,7 +1663,32 @@ function formatReadout(value: number, column: Column): string {
 
 export type ReadoutLine = { name: string; text: string; column?: Column };
 
+function freqReadout(id: FreqId, t: number, knobs: Knobs): ReadoutLine[] {
+  const here = freqSampleAt(id, t, knobs);
+  const margins = freqBode(id, knobs).margins;
+  const height =
+    here.away > 0 ? "runs away" : here.height < 0.05 ? "on the pad" : `${here.height.toFixed(2)} m`;
+  const phase = phaseText(margins.pm);
+  const lines: ReadoutLine[] = [
+    { name: "Time", text: `${t.toFixed(2)} s` },
+    { name: "Height", text: height, column: "height" },
+    { name: "Phase margin", text: phase },
+  ];
+  if (id === "freqDelay") {
+    lines.push({
+      name: "Phase lag",
+      text: `delay ${margins.delayDeg.toFixed(0)}° · hold ${margins.holdDeg.toFixed(0)}°`,
+    });
+  } else if (id === "freqNotch") {
+    lines.push({ name: "Peak", text: margins.covered ? "gone" : `${margins.peakDb.toFixed(0)} dB` });
+  } else {
+    lines.push({ name: "Gain margin", text: `${margins.gmDb.toFixed(1)} dB` });
+  }
+  return lines;
+}
+
 export function readout(id: SceneId, t: number, knobs: Knobs): ReadoutLine[] {
+  if (isFrequencyScene(id)) return freqReadout(id, t, knobs);
   if (id === "state") {
     return [
       { name: "Time", text: `${t.toFixed(2)} s` },
@@ -2063,7 +2182,54 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
       ),
     ];
   }
+  if (isFrequencyScene(id)) return freqKnobs(id, knobs);
   return [];
+}
+
+function phaseText(pm: number | null): string {
+  if (pm === null) return "no crossover";
+  const rounded = Math.round(pm);
+  if (rounded === 0) return "0°";
+  return `${rounded}°`;
+}
+
+function spent(degrees: number): string {
+  if (degrees < 0.5) return "0°";
+  return `−${degrees.toFixed(0)}°`;
+}
+
+function freqKnobs(id: FreqId, knobs: Knobs): KnobControl[] {
+  const margins = freqBode(id, knobs).margins;
+  const phase = margins.pm === null ? "no crossover" : `PM ${phaseText(margins.pm)}`;
+  const gainAside = `GM ${margins.gmDb.toFixed(1)} dB`;
+  if (id === "freqMargin") {
+    return [
+      knob("gain", "Kp", knobs.gain, LIMITS.gain.min, LIMITS.gain.max, 0.1, knobs.gain.toFixed(1), gainAside),
+      knob("damp", "Kd", knobs.damp, LIMITS.damp.min, LIMITS.damp.max, 0.1, knobs.damp.toFixed(1), phase),
+      knob("lag", "Delay", knobs.lag, LIMITS.lag.min, LIMITS.lag.max, 0.01, `${knobs.lag.toFixed(2)} s`, spent(margins.delayDeg)),
+    ];
+  }
+  if (id === "freqDelay") {
+    return [
+      knob("lag", "Delay", knobs.lag, LIMITS.lag.min, LIMITS.lag.max, 0.01, `${knobs.lag.toFixed(2)} s`, spent(margins.delayDeg)),
+      knob(
+        "sample",
+        "Sample",
+        knobs.sample,
+        LIMITS.sample.min,
+        LIMITS.sample.max,
+        0.01,
+        `${knobs.sample.toFixed(2)} s`,
+        spent(margins.holdDeg),
+      ),
+    ];
+  }
+  const peak = margins.covered ? "peak gone" : `peak ${margins.peakDb.toFixed(0)} dB`;
+  const tuned = Math.abs(knobs.bend - 8) < 0.35 ? "on the notch" : "off the notch";
+  return [
+    knob("bend", "Bend", knobs.bend, LIMITS.bend.min, LIMITS.bend.max, 0.1, `${knobs.bend.toFixed(1)} rad/s`, knobs.notch >= 0.5 ? tuned : peak),
+    knob("notch", "Notch", knobs.notch, LIMITS.notch.min, LIMITS.notch.max, 1, knobs.notch >= 0.5 ? "on" : "off", peak),
+  ];
 }
 
 export function dragHint(id: SceneId): string {
@@ -2073,6 +2239,9 @@ export function dragHint(id: SceneId): string {
   if (id === "propNozzle") return "Drag to set the expansion";
   if (id === "propStage") return "Drag to set the split";
   if (id === "propLoss") return "Drag to set the throttle";
+  if (id === "freqMargin") return "Drag to add delay";
+  if (id === "freqDelay") return "Drag to set the sample time";
+  if (id === "freqNotch") return "Drag to move the bend";
   return "Drag the rocket";
 }
 
@@ -2091,6 +2260,10 @@ export function viewSpan(id: SceneId, knobs: Knobs): { min: number; max: number 
     return { min, max };
   }
   if (isTurnScene(id)) return { min: -1, max: 1 };
+  if (isFrequencyScene(id)) {
+    // Fixed frame. A settling hover stays in view. A runaway climbs out the top.
+    return { min: 0, max: 2.4 };
+  }
   const rows = rowsFor(id, knobs);
   if (id === "propStage") {
     let max = 1;
@@ -2241,5 +2414,6 @@ export function chatBrief(id: SceneId, knobs: Knobs): string {
   if (isVehicleScene(id)) return vehicleBrief(id, knobs);
   if (isDescentScene(id)) return `${descentBrief(id, knobs)} Allowed chart columns: ${allowedList(id)}.`;
   if (isPropellantScene(id)) return `${propBrief(id, knobs)} Allowed chart columns: ${allowedList(id)}.`;
+  if (isFrequencyScene(id)) return `${freqBrief(id, knobs)} Allowed chart columns: ${allowedList(id)}. The live chart is a Bode plot, so a click on it does not set the time.`;
   return `${scene.title}. Allowed chart columns: ${allowedList(id)}.`;
 }

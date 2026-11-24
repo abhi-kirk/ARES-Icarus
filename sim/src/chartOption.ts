@@ -5,6 +5,7 @@ import {
   columnLabel,
   columnUnit,
   durationOf,
+  isFrequencyScene,
   plotOf,
   rowsFor,
   sceneById,
@@ -14,6 +15,7 @@ import {
   type Knobs,
   type SceneId,
 } from "./scenes";
+import { freqBode } from "./frequencyPlant";
 
 const GOLD = "#e2a43a";
 const INK = "#d7ded8";
@@ -89,7 +91,202 @@ export function liveOption(scene: SceneId, knobs: Knobs, time: number): EChartsO
   if (scene === "step") {
     return stepPhaseOption(knobs, spec.chartTitle, time);
   }
+  if (isFrequencyScene(scene)) return bodeOption(scene, knobs);
   return option(scene, spec.live, knobs, time, spec.chartTitle, time, true, liveDomain(scene, time), true);
+}
+
+/** Log-frequency Bode plot. The crossover mark is not a time, so this chart does not scrub. */
+function bodeOption(scene: SceneId, knobs: Knobs): EChartsOption {
+  if (!isFrequencyScene(scene)) return option(scene, ["height"], knobs, 0, "", 0);
+  const curve = freqBode(scene, knobs);
+  const margins = curve.margins;
+  const labelFont = { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 10 };
+  const axisLabel = { ...labelFont, formatter: (value: number) => formatAxisValue(value) };
+  let phaseLo = -190;
+  let phaseHi = -80;
+  let magLo = -12;
+  let magHi = 8;
+  for (const point of curve.points) {
+    if (point.w > 16) continue;
+    phaseLo = Math.min(phaseLo, point.phaseDeg);
+    phaseHi = Math.max(phaseHi, point.phaseDeg);
+    magLo = Math.min(magLo, point.magDb);
+    magHi = Math.max(magHi, point.magDb);
+  }
+  phaseHi = Math.min(10, phaseHi + 12);
+  phaseLo = Math.max(-360, phaseLo - 12);
+  magHi += 3;
+  magLo = Math.max(-40, magLo - 3);
+  const title = sceneById(scene).chartTitle;
+  const magColor = STAGE_DATA_COLORS[0];
+  const phaseColor = STAGE_DATA_COLORS[1];
+  const marks: { xAxis?: number; yAxis?: number; label?: object; lineStyle?: object }[] = [
+    {
+      yAxis: 0,
+      label: { show: false },
+      lineStyle: { color: GRID, type: "dashed", width: 1 },
+    },
+  ];
+  if (margins.wc !== null) {
+    marks.push({
+      xAxis: margins.wc,
+      label: {
+        formatter: "crossover",
+        color: GOLD,
+        fontFamily: "Fragment Mono, monospace",
+        fontSize: 10,
+        position: "insideEndTop",
+      },
+      lineStyle: { color: GOLD, type: "solid", width: 1 },
+    });
+  }
+
+  return {
+    animation: false,
+    backgroundColor: "transparent",
+    title: {
+      text: title,
+      left: 8,
+      top: 4,
+      textStyle: { color: INK, fontSize: 13, fontWeight: 500, fontFamily: "Barlow, Helvetica Neue, sans-serif" },
+    },
+    legend: {
+      left: 8,
+      top: 26,
+      textStyle: { color: INK, fontFamily: "Fragment Mono, monospace", fontSize: 11, fontWeight: 700 },
+      itemWidth: 26,
+      itemHeight: 5,
+      itemGap: 18,
+    },
+    grid: { left: 64, right: 64, top: 52, bottom: 36 },
+    tooltip: {
+      show: true,
+      trigger: "axis",
+      confine: true,
+      backgroundColor: PANEL,
+      borderColor: GRID,
+      borderWidth: 1,
+      padding: [8, 10],
+      textStyle: { color: INK, fontFamily: "Fragment Mono, monospace", fontSize: 11 },
+      axisPointer: {
+        type: "line",
+        lineStyle: { color: GOLD, width: 1 },
+        label: {
+          show: true,
+          backgroundColor: PANEL,
+          borderColor: GRID,
+          borderWidth: 1,
+          color: INK,
+          fontFamily: "Fragment Mono, monospace",
+          fontSize: 10,
+          formatter: (params) => {
+            const value = typeof params.value === "number" ? params.value : Number(params.value);
+            return `ω = ${formatAxisValue(value)}`;
+          },
+        },
+      },
+      formatter: (raw) => {
+        const items = (Array.isArray(raw) ? raw : [raw]).filter(Boolean);
+        if (!items.length) return "";
+        const head = items[0] as { axisValue?: number; data?: [number, number] | number };
+        const freq = typeof head.axisValue === "number" ? head.axisValue : 0;
+        const lines = [`<span style="color:${MUTED}">ω</span> = ${formatAxisValue(freq)} rad/s`];
+        for (const item of items) {
+          const pair = (item as { data?: [number, number] | number }).data;
+          const y = Array.isArray(pair) ? pair[1] : Number(pair);
+          const name = (item as { seriesName?: string; marker?: string }).seriesName ?? "";
+          const marker = (item as { marker?: string }).marker ?? "";
+          const suffix = name.startsWith("Phase") ? "°" : " dB";
+          lines.push(`${marker}<span style="color:${INK}">${name}</span>: ${formatAxisValue(y)}${suffix}`);
+        }
+        return lines.join("<br/>");
+      },
+    },
+    xAxis: {
+      id: "w",
+      type: "log",
+      min: 0.25,
+      max: 30,
+      logBase: 10,
+      name: "ω (rad/s)",
+      nameLocation: "middle",
+      nameGap: 22,
+      nameTextStyle: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 11 },
+      axisLine: { lineStyle: { color: GRID } },
+      axisTick: { show: false },
+      axisLabel,
+      splitLine: { lineStyle: { color: GRID } },
+    },
+    yAxis: [
+      {
+        id: "db",
+        type: "value",
+        min: magLo,
+        max: magHi,
+        name: "dB",
+        nameLocation: "middle",
+        nameGap: 40,
+        nameTextStyle: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 11 },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel,
+        splitLine: { lineStyle: { color: GRID } },
+      },
+      {
+        id: "deg",
+        type: "value",
+        min: phaseLo,
+        max: phaseHi,
+        name: "deg",
+        nameLocation: "middle",
+        nameGap: 40,
+        nameTextStyle: { color: MUTED, fontFamily: "Fragment Mono, monospace", fontSize: 11 },
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel,
+        splitLine: { show: false },
+      },
+    ],
+    series: [
+      {
+        name: "Magnitude",
+        type: "line",
+        yAxisIndex: 0,
+        showSymbol: false,
+        clip: true,
+        data: curve.points.map((point) => [point.w, point.magDb]),
+        color: magColor,
+        lineStyle: { color: magColor, width: DATA_LINE_WIDTH },
+        markLine: {
+          silent: true,
+          symbol: "none",
+          data: marks,
+        },
+      },
+      {
+        name: "Phase",
+        type: "line",
+        yAxisIndex: 1,
+        showSymbol: false,
+        clip: true,
+        data: curve.points.map((point) => [point.w, point.phaseDeg]),
+        color: phaseColor,
+        lineStyle: { color: phaseColor, width: DATA_LINE_WIDTH },
+        markLine: {
+          silent: true,
+          symbol: "none",
+          label: {
+            formatter: "−180°",
+            color: MUTED,
+            fontFamily: "Fragment Mono, monospace",
+            fontSize: 10,
+          },
+          lineStyle: { color: MUTED, type: "dashed", width: 1 },
+          data: [{ yAxis: -180 }],
+        },
+      },
+    ],
+  };
 }
 
 export function chartOption(scene: SceneId, knobs: Knobs, columns: Column[], title: string, mark: number, x?: Column): EChartsOption {

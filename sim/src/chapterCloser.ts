@@ -18,6 +18,8 @@ const RECAP: Record<CatalogChapter["id"], string> = {
     "Height, rate, mass, and thrust are the numbers the rest of the course will steer. The engine taught that a command and the force the vehicle feels can differ.",
   loop:
     "Open loop drifts. Feedback answers an error from the gap, the lingering gap, and the rate. Sample time and delay decide how fresh that answer is.",
+  frequency:
+    "Phase margin is spare lag before the hover rings. Gain margin is how far the proportional gain sits above the gain that just holds. A delay spends phase equal to frequency times the delay, and a sample-and-hold spends about half as much. A bend is a peak at one frequency, and a notch tuned to it takes the peak out.",
   turn:
     "Attitude lives in frames. Quaternions keep a pitch past vertical. Allocation turns force and moment commands into limited gimbal angles.",
   vehicle:

@@ -363,5 +363,35 @@
     "eli5": {
       "beginner": "Full thrust and half thrust burn the same tank. Which one hands more speed to gravity?"
     }
+  },
+  "freqMargin": {
+    "margins": {
+      "beginner": "On this hover, is the gain margin room to raise $K_p$, or room above the gain that just holds?",
+      "intermediate": "At $K_p = 11.2$ and $K_d = 5.5$, what are the phase margin and the gain margin?",
+      "advanced": "$K_d$ is 0. Where does the phase sit, and what does the height do?"
+    },
+    "eli5": {
+      "beginner": "The chart has two curves. What does the phase curve say, and what happens to the hover when that spare lateness is used up?"
+    }
+  },
+  "freqDelay": {
+    "lag": {
+      "beginner": "What does a pure delay of $\\tau$ seconds do to the phase at frequency $\\omega$?",
+      "intermediate": "Delay and sample time are both 0.2 s. About how many degrees does each one take at the crossover?",
+      "advanced": "Why is the hold about half of the pure delay when the two times are equal?"
+    },
+    "eli5": {
+      "beginner": "A late reading and a sample-and-hold both make the answer late. Which one takes more phase for the same length of time?"
+    }
+  },
+  "freqNotch": {
+    "peak": {
+      "beginner": "How is this bend different from the hidden mode in The loop?",
+      "intermediate": "With the notch off and the bend at 8 rad/s, what happens to the height?",
+      "advanced": "The notch stays at 8 rad/s and the bend moves to 5. What comes back on the Bode plot, and what does the hover do?"
+    },
+    "eli5": {
+      "beginner": "The bend rings at one frequency. What does turning the notch on do to that peak, and to the height?"
+    }
   }
 }

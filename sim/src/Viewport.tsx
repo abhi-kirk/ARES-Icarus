@@ -128,6 +128,9 @@ function dragValue(dy: number, scene: SceneId): void {
   if (scene === "propNozzle") setKnob("expand", clampKnob(scene, knobs.expand + dy * 0.12));
   if (scene === "propStage") setKnob("split", clampKnob(scene, knobs.split + dy * 0.0016));
   if (scene === "propLoss") setKnob("throttle", clampKnob(scene, knobs.throttle + dy * 0.002));
+  if (scene === "freqMargin") setKnob("lag", clampKnob(scene, knobs.lag + dy * 0.004));
+  if (scene === "freqDelay") setKnob("sample", clampKnob(scene, knobs.sample + dy * 0.0025));
+  if (scene === "freqNotch") setKnob("bend", clampKnob(scene, knobs.bend + dy * 0.04));
 }
 
 // Coil from the mount down to the mass. The ends pull in to the center line

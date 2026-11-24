@@ -1573,6 +1573,110 @@ Quarter thrust reaches liftoff mass at 289 s.`,
       },
     ],
   },
+  freqMargin: {
+    threads: [
+      plain(
+        "Spare lag, spare gain",
+        ["The chart is how strongly the loop answers, and how late", "45° of spare lateness and 6 dB of spare gain"],
+        [
+          "The chart shows this hover at every speed of wiggle. One curve is how strongly the rocket answers. The other is how late that answer is. [That pair is a Bode plot](https://en.wikipedia.org/wiki/Bode_plot). Drag the rocket to add delay. The hover and the chart move together.",
+          "The usual aim is about 45° of spare lateness and 6 dB of spare gain. Spare gain here is room above the gain that just holds this hover. Lower that gain through the floor and the rocket runs away. Spend the spare lateness, with the delay or by taking Kd down to 0, and the rocket rings.",
+        ],
+      ),
+      {
+        id: "margins",
+        title: "Where the loop crosses 0 dB",
+        focus: ["Phase margin is spare lag at the gain crossover", "Gain margin is room above the hold", "Kd at 0 rings, and Kp under the floor runs away"],
+        segments: [
+          {
+            kind: "look",
+            text: "The gold line is magnitude in decibels. The teal line is phase in degrees. The mark is the gain crossover, where the magnitude crosses 0 dB. The clock plays the hover. A click on the chart does not move that clock.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`L(s)=\frac{K_p+K_d s}{m(s^2-\mu^2)}`,
+            stake: "This is the open-loop gain of the same hover as The loop. $m$ is 2.5 kg and $\\mu$ is 1.5 per second, so $m\\mu^2$ is 5.625 N/m. The controller is $K_p$ plus $K_d$ times $s$. At the default, $K_p$ is 11.2 and $K_d$ is 5.5.",
+            gloss: String.raw`Phase margin is $\arctan(\omega_c K_d/K_p)$, in degrees, then minus the delay $\omega_c\tau$.
+Gain margin is $20\log_{10}(K_p/(m\mu^2))$. It is how far $K_p$ sits above the floor. Raising $K_p$ adds margin. Lowering it through 5.625 lets the hover run away.`,
+          },
+          {
+            kind: "trace",
+            text: "At these gains the crossover is 2.01 rad/s, the phase margin is 45°, and the gain margin is 6.0 dB. A delay of 0.39 s spends that phase margin. Kd at 0 leaves the phase on −180° and the hover rings without settling. Kp at 4 sits 3.0 dB under the floor, there is no crossover, and the height runs away without ringing. The hover scene in The loop uses Kp 22 and Kd 15 on this same rocket, which is 11.8 dB and about 76°.",
+          },
+        ],
+      },
+    ],
+  },
+  freqDelay: {
+    threads: [
+      plain(
+        "Late on purpose",
+        ["A delay costs phase equal to frequency times the wait", "A sample-and-hold costs about half of that"],
+        [
+          "A height reading that arrives late is answering a rocket that has already moved. [That lateness is a phase lag of frequency times the delay](https://en.wikipedia.org/wiki/Time_delay). It spends the spare lateness from the margins scene.",
+          "A sample-and-hold is a second, smaller lag. The loop waits for the next sample and then holds the thrust. [That hold costs about half the phase of a pure delay of the same length](https://en.wikipedia.org/wiki/Zero-order_hold). Drag the rocket to change the sample time. The delay knob is the other lag.",
+        ],
+      ),
+      {
+        id: "lag",
+        title: "Two different lags",
+        focus: ["Delay keeps the magnitude and spends ωτ", "The hold spends about ωT/2 and trims the magnitude", "Together they spend the phase margin"],
+        segments: [
+          {
+            kind: "look",
+            text: "The gains stay the ones from The margins. The delay knob moves only the phase. The sample knob moves the phase a smaller amount and also trims the magnitude.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`e^{-s\tau},\qquad \frac{1-e^{-sT}}{sT}`,
+            stake: "The first factor is a pure delay of $\\tau$ seconds. Its magnitude is 1, and its phase is $-\\omega\\tau$ radians. The second is a zero-order hold of $T$ seconds. Its phase is about $-\\omega T/2$, and its magnitude is $\\mathrm{sinc}(\\omega T/2)$.",
+            gloss: String.raw`$\omega$ is the frequency in rad/s.
+At the gain crossover those two phases come straight off the phase margin.
+Equal times do not cost equal phase: the hold is about half the delay.`,
+          },
+          {
+            kind: "trace",
+            text: "Set the delay and the sample time both to 0.2 s. At the crossover near 2.0 rad/s the delay takes 23° and the hold takes 11°, and the phase margin falls to 10°. Raise the delay toward 0.39 s, with the sample time small, and the margin reaches 0°. The hover starts to grow.",
+          },
+        ],
+      },
+    ],
+  },
+  freqNotch: {
+    threads: [
+      plain(
+        "One frequency, then take it out",
+        ["A bend rings at one frequency", "A notch tuned to that frequency removes the peak"],
+        [
+          "A bend in the airframe rings at one frequency. On the Bode plot that ring is a peak. The hidden mode in The loop was a different thing: it grew on its own, with no frequency to point at.",
+          "[A notch is a filter tuned to one frequency](https://en.wikipedia.org/wiki/Band-stop_filter). Turn it on and the peak at 8 rad/s leaves, and the ring that was growing in the height settles. Drag the rocket to move the bend off that frequency and the peak comes back.",
+        ],
+      ),
+      {
+        id: "peak",
+        title: "The peak, then the notch",
+        focus: ["The bend is a light resonance on the thrust", "The notch cancels that resonance only at 8 rad/s", "Off the notch, the peak and the runaway come back"],
+        segments: [
+          {
+            kind: "look",
+            text: "Notch off, the gold line has a spike and the rocket's height grows. Notch on, with the bend at 8 rad/s, the spike is gone and the hover settles. Drag the bend away from 8 and the spike returns.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`\frac{\omega_b^2}{s^2+2\zeta\omega_b s+\omega_b^2}`,
+            stake: "The bend multiplies the hover plant. $\\omega_b$ is the bend frequency and $\\zeta$ is 0.045, light enough that the spike is tall. The notch is tuned to 8 rad/s. It cancels that spike and leaves a wider, calmer pair of poles. It does not cancel a bend that has moved off 8.",
+            gloss: String.raw`The notch zeros use the same light damping, at 8 rad/s.
+Its poles use damping 0.55, so the spike is replaced by a low hump.
+This is not $\ddot q=\lambda^2 q$ from The loop. That mode grew on its own, with no frequency to point at. This one rings at one frequency.`,
+          },
+          {
+            kind: "trace",
+            text: "Notch off, bend at 8 rad/s: the magnitude there is +10 dB, the phase margin is −78°, and the height grows until it hits the stop. Notch on at that same bend: the peak is gone, the phase margin is 29°, and the hover settles at 1.2 m. Move the bend to 5 rad/s with the notch still on and the peak is back near +10 dB, and the hover runs away again.",
+          },
+        ],
+      },
+    ],
+  },
 };
 
 export function readingFor(id: SceneId) {

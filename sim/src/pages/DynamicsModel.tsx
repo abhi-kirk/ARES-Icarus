@@ -6,7 +6,7 @@ import { liveOption, liveSeriesColor } from "../chartOption";
 import { CHAPTERS, chapterForSceneId, pathForEntry, readyScenesInChapter } from "../catalog";
 import { Essay } from "../Essay";
 import { pathForScene } from "../paths";
-import { dragHint, durationOf, knobsOf, readout, sceneById, type SceneId } from "../scenes";
+import { dragHint, durationOf, isFrequencyScene, knobsOf, readout, sceneById, type SceneId } from "../scenes";
 import { SCENE_VEIL_IN_MS, SCENE_VEIL_OUT_MS, sceneMotionOk } from "../sceneTransition";
 import { setKnob, setTime, togglePlay, useKnobs, usePlaying, useScene, useTime } from "../sceneStore";
 import { soundOn, toggleSound, unlock } from "../sound";
@@ -350,10 +350,14 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
               option={live}
               layoutKey={readingPx}
               sceneKey={scene}
-              onScrub={(next) => {
-                void unlock();
-                setTime(next);
-              }}
+              onScrub={
+                isFrequencyScene(scene)
+                  ? undefined
+                  : (next) => {
+                      void unlock();
+                      setTime(next);
+                    }
+              }
             />
             <div className={stageVeil ? "stage-veil is-active" : "stage-veil"} aria-hidden />
           </div>

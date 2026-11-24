@@ -17,6 +17,11 @@ const BY_CHAPTER: Record<ChapterId, string[]> = {
     "What is feedback for?",
     "Why can an unstable hover still land?",
   ],
+  frequency: [
+    "What is a phase margin?",
+    "Why does a delay subtract phase?",
+    "What does a notch do to a bending peak?",
+  ],
   turn: [
     "Why do we need more than one axis?",
     "What is gimbal lock?",
