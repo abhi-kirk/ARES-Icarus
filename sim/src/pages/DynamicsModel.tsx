@@ -1,5 +1,5 @@
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ChartView } from "../ChartView";
 import { ChatDock } from "../chat/ChatDock";
 import { liveOption, liveSeriesColor } from "../chartOption";
@@ -15,6 +15,12 @@ import { visit } from "../route";
 import { Viewport } from "../Viewport";
 
 const HINT_KEY = "icarus-drag-hint";
+
+function fillOf(value: number, min: number, max: number): CSSProperties {
+  const span = max - min;
+  const ratio = span <= 0 ? 0 : Math.min(1, Math.max(0, (value - min) / span));
+  return { "--fill": `${(ratio * 100).toFixed(1)}%` } as CSSProperties;
+}
 
 function hintStillOn(): boolean {
   try {
@@ -37,7 +43,9 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
   const nextBeat = sceneIndex >= 0 && sceneIndex < beats.length - 1 ? beats[sceneIndex + 1] : null;
   const readingScrollRef = useRef<HTMLDivElement>(null);
   const beatsRef = useRef<HTMLElement>(null);
+  const telemetryRef = useRef<HTMLDivElement>(null);
   const [beatsScrolls, setBeatsScrolls] = useState(false);
+  const [telemetryScrolls, setTelemetryScrolls] = useState(false);
   const chapterLinks = CHAPTERS.map((item) => {
     const first = item.scenes.find((entry) => entry.ready && entry.sceneId);
     if (!first) return null;
@@ -49,6 +57,9 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
     ...line,
     color: line.column ? liveSeriesColor(scene, line.column) : null,
   }));
+  const clock = lines.find((line) => line.name === "Time");
+  const meters = lines.filter((line) => line.name !== "Time");
+  const meterKey = meters.map((line) => `${line.name}:${line.text}`).join("|");
   const [hintOn, setHintOn] = useState(hintStillOn);
   const forgetHint = useCallback(() => {
     setHintOn(false);
@@ -102,6 +113,13 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
     observer.observe(row);
     return () => observer.disconnect();
   }, [scene]);
+
+  useLayoutEffect(() => {
+    const row = telemetryRef.current;
+    if (!row) return;
+    const next = row.scrollWidth > row.clientWidth + 1;
+    setTelemetryScrolls((prev) => (prev === next ? prev : next));
+  }, [scene, meterKey]);
 
   useEffect(() => {
     return () => {
@@ -286,8 +304,11 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
               {hintOn ? <p className="drag-hint">{dragHint(scene)}</p> : null}
             </div>
             <div className="controls">
-              <div className="slider-row">
-                <label htmlFor="time">Time</label>
+              <div className="slider-row is-time">
+                <div className="knob-name">
+                  <label htmlFor="time">Time</label>
+                  <output>{clock?.text}</output>
+                </div>
                 <div className="transport">
                   <button
                     type="button"
@@ -319,32 +340,33 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
                   step={0.01}
                   value={time}
                   aria-label="Time"
-                  aria-valuetext={lines[0]?.text}
+                  aria-valuetext={clock?.text}
+                  style={fillOf(time, 0, durationOf(scene))}
                   onChange={(event) => {
                     void unlock();
                     setTime(Number(event.target.value));
                   }}
                 />
-                <output>
-                  {lines.map((line) => (
-                    <span key={line.name} style={line.color ? { color: line.color } : undefined}>
-                      {line.name === "Time" ? (
-                        line.text
-                      ) : (
-                        <>
-                          <span className="readout-name">{line.name}</span>
-                          {line.text}
-                        </>
-                      )}
-                    </span>
-                  ))}
-                </output>
+              </div>
+              <div
+                className={telemetryScrolls ? "telemetry is-scroll" : "telemetry"}
+                ref={telemetryRef}
+              >
+                {meters.map((line) => (
+                  <span className="telemetry-item" key={line.name}>
+                    <span className="readout-name">{line.name}</span>
+                    <span style={line.color ? { color: line.color } : undefined}>{line.text}</span>
+                  </span>
+                ))}
               </div>
               {controls.map((knob) => (
                 <div className="slider-row" key={knob.key}>
+                <div className="knob-name">
                   <label htmlFor={`knob-${knob.key}`}>{knob.label}</label>
-                  <span />
-                  <input
+                  <output>{knob.show}</output>
+                  {knob.aside ? <span className="knob-aside">{knob.aside}</span> : null}
+                </div>
+                <input
                     id={`knob-${knob.key}`}
                     type="range"
                     min={knob.min}
@@ -353,12 +375,9 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
                     value={knob.value}
                     aria-label={knob.label}
                     aria-valuetext={knob.aside ? `${knob.show}, ${knob.aside}` : knob.show}
+                    style={fillOf(knob.value, knob.min, knob.max)}
                     onChange={(event) => setKnob(knob.key, Number(event.target.value))}
                   />
-                  <output>
-                    <span>{knob.show}</span>
-                    {knob.aside ? <span className="gold">{knob.aside}</span> : null}
-                  </output>
                 </div>
               ))}
             </div>
