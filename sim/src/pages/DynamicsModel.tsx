@@ -190,12 +190,13 @@ export function DynamicsModel({ open, onClose }: { open: boolean; onClose: () =>
                 key={item.id}
                 href={item.href}
                 className={item.id === chapter.id ? "chapter-link is-current" : "chapter-link"}
+                aria-current={item.id === chapter.id ? "page" : undefined}
                 onClick={(event) => {
                   event.preventDefault();
                   visit(item.href);
                 }}
               >
-                {item.title}
+                {item.title.replace(/^The /, "")}
               </a>
             ))}
           </nav>
