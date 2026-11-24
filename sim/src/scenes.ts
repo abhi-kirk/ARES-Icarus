@@ -39,6 +39,19 @@ import {
   type DescentId,
   type DescentSample,
 } from "./descentPlant";
+import {
+  eqBurnout,
+  lossScore,
+  nozzleFlow,
+  propAt,
+  propBrief,
+  propDuration,
+  propMarkers,
+  propRows,
+  stageScore,
+  type PropellantId,
+  type PropSample,
+} from "./propellantPlant";
 
 
 export type SceneId =
@@ -72,7 +85,11 @@ export type SceneId =
   | "desScvx"
   | "desGusto"
   | "desReplan"
-  | "desMiss";
+  | "desMiss"
+  | "propEq"
+  | "propNozzle"
+  | "propStage"
+  | "propLoss";
 
 export type Column =
   | "height"
@@ -111,7 +128,10 @@ export type Column =
   | "offset"
   | "downrange"
   | "estimate"
-  | "aim";
+  | "aim"
+  | "ideal"
+  | "isp"
+  | "push";
 
 export type Row = {
   t: number;
@@ -152,6 +172,9 @@ export type Row = {
   downrange: number;
   estimate: number;
   aim: number;
+  ideal: number;
+  isp: number;
+  push: number;
 };
 
 export type Knobs = {
@@ -200,6 +223,14 @@ export type Knobs = {
   lead: number;
   // Miss scene: 0 = fuel budget miss, 1 = low-ceiling INFEASIBLE.
   cause: number;
+  // The propellant. Mass ratio, specific impulse (s), nozzle expansion,
+  // first-stage propellant share, structure fraction, and throttle.
+  ratio: number;
+  isp: number;
+  expand: number;
+  split: number;
+  structure: number;
+  throttle: number;
 };
 
 export const KNOBS: Knobs = {
@@ -244,6 +275,12 @@ export const KNOBS: Knobs = {
   v0: 0,
   lead: 0,
   cause: 0,
+  ratio: 4,
+  isp: 300,
+  expand: 16,
+  split: 0.75,
+  structure: 0.08,
+  throttle: 1,
 };
 
 // Undamped spring. Mass 1 kg, stiffness 1 N/m, so one swing takes 2π seconds.
@@ -300,7 +337,13 @@ export type KnobKey =
   | "x0"
   | "v0"
   | "lead"
-  | "cause";
+  | "cause"
+  | "ratio"
+  | "isp"
+  | "expand"
+  | "split"
+  | "structure"
+  | "throttle";
 
 const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   dt: { min: 0.05, max: 0.5 },
@@ -353,6 +396,12 @@ const LIMITS: Record<KnobKey, { min: number; max: number }> = {
   v0: { min: -1.5, max: 1.5 },
   lead: { min: 0, max: 1 },
   cause: { min: 0, max: 1 },
+  ratio: { min: 1.5, max: 8 },
+  isp: { min: 200, max: 450 },
+  expand: { min: 4, max: 80 },
+  split: { min: 0.15, max: 0.9 },
+  structure: { min: 0, max: 0.16 },
+  throttle: { min: 0.25, max: 1 },
 };
 
 export function clampNamed(key: KnobKey, value: number): number {
@@ -712,6 +761,50 @@ export const SCENES: {
     chartTitle: "Height and rate",
     visual: "Fuel-out leaves speed at the pad. A low ceiling is INFEASIBLE: no soft landing exists under that thrust bound.",
   },
+  {
+    id: "propEq",
+    name: "The rocket equation",
+    title: "The rocket equation",
+    lede: "Gravity is off and there is no air, so the final speed is the exhaust speed times the log of the mass ratio. Drag sets the ratio. The Isp knob sets the exhaust speed.",
+    opener: "Speed and acceleration. At the default ratio of 4 the tank goes from 4000 kg to 1000 kg in 10 s.",
+    live: ["rate", "accel"],
+    askable: ["rate", "accel", "mass", "height"],
+    chartTitle: "Speed and acceleration",
+    visual: "Ratio 4 and Isp 300 s finish at 4078 m/s. Acceleration runs from 221 m/s² at ignition to 883 m/s² at burnout.",
+  },
+  {
+    id: "propNozzle",
+    name: "The nozzle",
+    title: "The nozzle",
+    lede: "Thrust is the momentum of the exhaust plus the pressure push on the bell. Drag sets how wide the bell is. The rocket climbs from the pad to 60 km on a clock, so the air thins under it.",
+    opener: "Isp and the pressure term. Expansion 16 gives 295 s at sea level and 326 s in vacuum.",
+    live: ["isp", "push"],
+    askable: ["isp", "push", "height", "thrust"],
+    chartTitle: "Isp and the pressure term",
+    visual: "The matched altitude, where exit pressure equals the air, is 4.2 km at expansion 16. A wide bell is negative at the pad. Once exit pressure drops below 0.4 of the air, the plume separates and this ideal term stops being the real thrust.",
+  },
+  {
+    id: "propStage",
+    name: "Two stages",
+    title: "Two stages",
+    lede: "The same propellant, split across two stages, drops the empty lower structure. The pale vehicle keeps that structure. Drag sets how much propellant rides in the first stage.",
+    opener: "Staged speed and the single-stage speed. The two traces match until the drop, then the upper stage pulls ahead.",
+    live: ["rate", "ideal"],
+    askable: ["rate", "ideal", "mass"],
+    chartTitle: "Staged speed and one stage",
+    visual: "Split 0.75 and structure 0.08: the burns are 2865 m/s and 2948 m/s, total 5814 m/s. One stage ends at 5211 m/s. Structure 0 makes both end at 6464 m/s.",
+  },
+  {
+    id: "propLoss",
+    name: "Gravity loss",
+    title: "Gravity loss",
+    lede: "Flying straight up, gravity takes the free-space speed down by g times the length of the burn. A lower throttle burns longer, so gravity takes more. The picture is a log of altitude, so the pad stays in the frame. The readout is the true height.",
+    opener: "Speed and the ideal free-space Δv. Full thrust finishes the burn at 2996 m/s. The clock runs 240 s, so the chart is the way through it.",
+    live: ["rate", "ideal"],
+    askable: ["rate", "ideal", "height", "mass", "thrust"],
+    chartTitle: "Speed and ideal Δv",
+    visual: "Full thrust, 80 kN, burns 110 s and loses 1082 m/s. Half thrust loses 2165 m/s and finishes at 1914 m/s. Quarter thrust is under the starting weight and is still on the pad at 240 s.",
+  },
 ];
 
 export function sceneById(id: SceneId) {
@@ -733,6 +826,7 @@ export function durationOf(id: SceneId): number {
   if (isTurnScene(id)) return turnDuration(id);
   if (isVehicleScene(id)) return vehicleDuration(id);
   if (isDescentScene(id)) return descentDuration(id);
+  if (isPropellantScene(id)) return propDuration(id);
   return 5;
 }
 
@@ -750,6 +844,10 @@ export function isVehicleScene(id: SceneId): id is VehicleId {
 
 export function isDescentScene(id: SceneId): id is DescentId {
   return id.startsWith("des");
+}
+
+export function isPropellantScene(id: SceneId): id is PropellantId {
+  return id.startsWith("prop");
 }
 
 export function clampKnob(id: SceneId, value: number): number {
@@ -783,6 +881,10 @@ export function clampKnob(id: SceneId, value: number): number {
   if (id === "desGusto") return clampNamed("region", value);
   if (id === "desReplan") return clampNamed("gust", value);
   if (id === "desMiss") return clampNamed("fuel", value);
+  if (id === "propEq") return clampNamed("ratio", value);
+  if (id === "propNozzle") return clampNamed("expand", value);
+  if (id === "propStage") return clampNamed("split", value);
+  if (id === "propLoss") return clampNamed("throttle", value);
   return value;
 }
 
@@ -830,6 +932,9 @@ function blank(t: number): Row {
     downrange: 0,
     estimate: 0,
     aim: 0,
+    ideal: 0,
+    isp: 0,
+    push: 0,
   };
 }
 
@@ -1088,8 +1193,21 @@ function fromDescentSample(row: DescentSample): Row {
   return next;
 }
 
+function fromPropSample(row: PropSample): Row {
+  const next = blank(row.t);
+  next.height = row.height;
+  next.rate = row.rate;
+  next.accel = row.accel;
+  next.mass = row.mass;
+  next.thrust = row.thrust;
+  next.ideal = row.ideal;
+  next.isp = row.isp;
+  next.push = row.push;
+  return next;
+}
+
 export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
-  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}|${knobs.schedule}|${knobs.twist}|${knobs.method}|${knobs.x0}|${knobs.v0}|${knobs.lead}|${knobs.cause}`;
+  const key = `${id}|${knobs.dt}|${knobs.thrust}|${knobs.tau}|${knobs.ask}|${knobs.kp}|${knobs.ki}|${knobs.kd}|${knobs.perturb}|${knobs.unstable}|${knobs.coupling}|${knobs.extraThrust}|${knobs.yaw}|${knobs.pitch}|${knobs.tumble}|${knobs.rate}|${knobs.inertia}|${knobs.gimbal}|${knobs.margin}|${knobs.slosh}|${knobs.lift}|${knobs.lean}|${knobs.wind}|${knobs.trust}|${knobs.kick}|${knobs.hold}|${knobs.care}|${knobs.spend}|${knobs.cone}|${knobs.floor}|${knobs.pass}|${knobs.region}|${knobs.gust}|${knobs.fuel}|${knobs.noise}|${knobs.schedule}|${knobs.twist}|${knobs.method}|${knobs.x0}|${knobs.v0}|${knobs.lead}|${knobs.cause}|${knobs.ratio}|${knobs.isp}|${knobs.expand}|${knobs.split}|${knobs.structure}|${knobs.throttle}`;
   if (rowCache && rowCache.key === key) return rowCache.rows;
 
   let rows: Row[];
@@ -1100,6 +1218,7 @@ export function rowsFor(id: SceneId, knobs: Knobs): Row[] {
   else if (isTurnScene(id)) rows = turnRows(id, knobs).map(fromTurnSample);
   else if (isVehicleScene(id)) rows = vehicleRows(id, knobs).map(fromVehicleSample);
   else if (isDescentScene(id)) rows = descentRows(id, knobs).map(fromDescentSample);
+  else if (isPropellantScene(id)) rows = propRows(id, knobs).map(fromPropSample);
   else rows = loopRowsFor(id, knobs).map(fromLoopRow);
 
   rowCache = { key, rows };
@@ -1193,6 +1312,26 @@ export function bodyAt(id: SceneId, t: number, knobs: Knobs): BodyDraw {
       estimate: sample.height,
     };
   }
+  if (isPropellantScene(id)) {
+    const sample = propAt(id, t, knobs);
+    // Staging is a speed picture: the frame is Δv, so the drop and the gap read.
+    // Gravity loss is a log of altitude, so a hundred-kilometre climb still leaves the pad.
+    const pictured = id === "propStage" ? sample.rate : id === "propLoss" ? Math.log10(1 + sample.height) : sample.height;
+    return {
+      height: pictured,
+      truth: id === "propStage" ? sample.ideal : sample.height,
+      flame: sample.flame,
+      yaw: 0,
+      tilt: 0,
+      gimbal: 0,
+      slosh: 0,
+      cp: sample.flare,
+      fill: sample.mass > 0 ? Math.min(1, sample.mass / 4000) : 1,
+      drift: sample.drift,
+      aim: 0,
+      estimate: id === "propStage" ? sample.drop : sample.height,
+    };
+  }
   const row = rowAt(rowsFor(id, knobs), t);
   if (id === "mass") {
     const burning = t < BURN && knobs.thrust > 0;
@@ -1213,7 +1352,7 @@ export type PlotSeries = {
   axis: 0 | 1;
 };
 
-export type ColumnUnit = "m" | "m/s" | "m/s2" | "kg" | "N" | "Nm" | "deg" | "deg/s" | "unitless";
+export type ColumnUnit = "m" | "m/s" | "m/s2" | "kg" | "N" | "Nm" | "deg" | "deg/s" | "s" | "unitless";
 
 export const COLUMNS: Record<Column, { name: string; label: string; unit: ColumnUnit; words: string[] }> = {
   height: { name: "Height", label: "Height (m)", unit: "m", words: ["height", "state", "position"] },
@@ -1253,6 +1392,9 @@ export const COLUMNS: Record<Column, { name: string; label: string; unit: Column
   downrange: { name: "Downrange", label: "Downrange (m)", unit: "m", words: ["downrange", "range", "sideways"] },
   estimate: { name: "Estimate", label: "Estimate (m)", unit: "m", words: ["estimate", "filter", "prediction"] },
   aim: { name: "Aim", label: "Aim (deg)", unit: "deg", words: ["aim", "command", "guidance", "kick"] },
+  ideal: { name: "Ideal", label: "Ideal (m/s)", unit: "m/s", words: ["ideal", "single", "stage"] },
+  isp: { name: "Isp", label: "Isp (s)", unit: "s", words: ["isp", "impulse", "specific"] },
+  push: { name: "Pressure", label: "Pressure (N)", unit: "N", words: ["pressure", "bell", "exit"] },
 };
 
 export function columnName(column: Column): string {
@@ -1332,6 +1474,11 @@ export function plotOf(id: SceneId, columns: Column[], knobs: Knobs, until: numb
     if (id === "turnGimbal" && column === "angle") name = "Gimbal δ₂ (°)";
     if (id === "loopError" && column === "closedHeight") name = "PID (m)";
     if (id === "loopError" && column === "iHeight") name = "I alone (m)";
+    if (id === "propEq" && column === "rate") name = "Speed (m/s)";
+    if (id === "propStage" && column === "rate") name = "Staged (m/s)";
+    if (id === "propStage" && column === "ideal") name = "One stage (m/s)";
+    if (id === "propLoss" && column === "rate") name = "Speed (m/s)";
+    if (id === "propLoss" && column === "ideal") name = "Ideal Δv (m/s)";
     return {
       name,
       column,
@@ -1490,6 +1637,42 @@ export function readout(id: SceneId, t: number, knobs: Knobs): ReadoutLine[] {
       { name: "Height", text: `${row.height.toFixed(1)} m`, column: "height" },
       { name: "Rate", text: `${row.rate.toFixed(1)} m/s`, column: "rate" },
       { name: "Status", text: `${status} · |v|≤${TOUCH_SPEED}` },
+    ];
+  }
+  if (id === "propEq") {
+    return [
+      { name: "Time", text: `${t.toFixed(2)} s` },
+      { name: "Speed", text: `${row.rate.toFixed(0)} m/s`, column: "rate" },
+      { name: "Accel", text: `${row.accel.toFixed(0)} m/s²`, column: "accel" },
+      { name: "Mass", text: `${row.mass.toFixed(0)} kg`, column: "mass" },
+    ];
+  }
+  if (id === "propNozzle") {
+    const flow = nozzleFlow(knobs.expand);
+    const separated = row.isp > 0 && propAt(id, t, knobs).separated > 0;
+    return [
+      { name: "Time", text: `${t.toFixed(2)} s` },
+      { name: "Altitude", text: `${(row.height / 1000).toFixed(1)} km`, column: "height" },
+      { name: "Isp", text: `${row.isp.toFixed(0)} s`, column: "isp" },
+      { name: "Pressure", text: `${(row.push / 1000).toFixed(1)} kN`, column: "push" },
+      { name: "Bell", text: separated ? "separates" : `match ${flow.matchKm.toFixed(1)} km` },
+    ];
+  }
+  if (id === "propStage") {
+    return [
+      { name: "Time", text: `${t.toFixed(2)} s` },
+      { name: "Staged", text: `${row.rate.toFixed(0)} m/s`, column: "rate" },
+      { name: "One stage", text: `${row.ideal.toFixed(0)} m/s`, column: "ideal" },
+    ];
+  }
+  if (id === "propLoss") {
+    const here = propAt(id, t, knobs);
+    const held = here.thrust > 0 && here.thrust <= here.mass * 9.81 + 1 && here.height < 1;
+    return [
+      { name: "Time", text: `${t.toFixed(0)} s` },
+      { name: "Speed", text: `${here.rate.toFixed(0)} m/s`, column: "rate" },
+      { name: "Ideal", text: `${here.ideal.toFixed(0)} m/s`, column: "ideal" },
+      { name: "Height", text: held ? "on the pad" : `${(here.height / 1000).toFixed(1)} km`, column: "height" },
     ];
   }
   if (isTurnScene(id) || isVehicleScene(id) || isDescentScene(id)) {
@@ -1807,12 +1990,89 @@ export function knobsOf(id: SceneId, knobs: Knobs): KnobControl[] {
         : [knob("fuel", "Fuel", knobs.fuel, LIMITS.fuel.min, LIMITS.fuel.max, 0.05, `${knobs.fuel.toFixed(2)} kg`)]),
     ];
   }
+  if (id === "propEq") {
+    const end = eqBurnout(knobs);
+    return [
+      knob(
+        "ratio",
+        "Ratio",
+        knobs.ratio,
+        LIMITS.ratio.min,
+        LIMITS.ratio.max,
+        0.1,
+        knobs.ratio.toFixed(2),
+        `mf ${end.mf.toFixed(0)} kg · Δv ${end.speed.toFixed(0)} m/s`,
+      ),
+      knob(
+        "isp",
+        "Isp",
+        knobs.isp,
+        LIMITS.isp.min,
+        LIMITS.isp.max,
+        5,
+        `${knobs.isp.toFixed(0)} s`,
+        `ve ${end.ve.toFixed(0)} m/s`,
+      ),
+    ];
+  }
+  if (id === "propNozzle") {
+    const flow = nozzleFlow(knobs.expand);
+    const where = flow.separatesAtSea
+      ? `separates at the pad · sea ${flow.seaIsp.toFixed(0)} s`
+        : flow.matchKm <= 0
+          ? `exit above the air · vac ${flow.vacIsp.toFixed(0)} s`
+          : `sea ${flow.seaIsp.toFixed(0)} s · vac ${flow.vacIsp.toFixed(0)} s · ${flow.matchKm.toFixed(1)} km`;
+    return [
+      knob("expand", "Expand", knobs.expand, LIMITS.expand.min, LIMITS.expand.max, 1, `ε ${knobs.expand.toFixed(0)}`, where),
+    ];
+  }
+  if (id === "propStage") {
+    const score = stageScore(knobs);
+    const splitAside = score.flat
+      ? `every split · ${score.staged.toFixed(0)} m/s`
+      : `staged ${score.staged.toFixed(0)} · one ${score.single.toFixed(0)} · best ${score.best.toFixed(2)}`;
+    return [
+      knob("split", "Split", knobs.split, LIMITS.split.min, LIMITS.split.max, 0.01, knobs.split.toFixed(2), splitAside),
+      knob(
+        "structure",
+        "Structure",
+        knobs.structure,
+        LIMITS.structure.min,
+        LIMITS.structure.max,
+        0.01,
+        knobs.structure.toFixed(2),
+        "kg dry per kg propellant",
+      ),
+    ];
+  }
+  if (id === "propLoss") {
+    const score = lossScore(knobs);
+    const aside = score.onPad
+      ? `on the pad through 240 s · liftoff ${score.liftoff.toFixed(0)} s`
+      : `burnout ${score.speed.toFixed(0)} m/s · loss ${score.loss.toFixed(0)} m/s · ${score.burnout.toFixed(0)} s`;
+    return [
+      knob(
+        "throttle",
+        "Throttle",
+        knobs.throttle,
+        LIMITS.throttle.min,
+        LIMITS.throttle.max,
+        0.05,
+        `${(knobs.throttle * 100).toFixed(0)}%`,
+        aside,
+      ),
+    ];
+  }
   return [];
 }
 
 export function dragHint(id: SceneId): string {
   if (id === "state") return "Drag to set height";
   if (id === "step") return "Drag the mass";
+  if (id === "propEq") return "Drag to set the mass ratio";
+  if (id === "propNozzle") return "Drag to set the expansion";
+  if (id === "propStage") return "Drag to set the split";
+  if (id === "propLoss") return "Drag to set the throttle";
   return "Drag the rocket";
 }
 
@@ -1832,6 +2092,16 @@ export function viewSpan(id: SceneId, knobs: Knobs): { min: number; max: number 
   }
   if (isTurnScene(id)) return { min: -1, max: 1 };
   const rows = rowsFor(id, knobs);
+  if (id === "propStage") {
+    let max = 1;
+    for (const row of rows) max = Math.max(max, row.rate, row.ideal);
+    return { min: 0, max };
+  }
+  if (id === "propLoss") {
+    let peak = 0;
+    for (const row of rows) peak = Math.max(peak, row.height);
+    return { min: 0, max: Math.max(1, Math.log10(1 + peak)) };
+  }
   let min = 0;
   let max = 0;
   for (const row of rows) {
@@ -1912,6 +2182,7 @@ export function chartMarkers(id: SceneId, knobs: Knobs): ChartMarker[] {
     }
     return markers;
   }
+  if (isPropellantScene(id)) return propMarkers(id, knobs);
   if (id === "loopSample") {
     const markers: ChartMarker[] = [{ t: 1, label: "target step" }];
     for (let t = knobs.dt; t < durationOf(id) - 1e-9; t += knobs.dt) {
@@ -1969,5 +2240,6 @@ export function chatBrief(id: SceneId, knobs: Knobs): string {
   if (isTurnScene(id)) return turnBrief(id, knobs);
   if (isVehicleScene(id)) return vehicleBrief(id, knobs);
   if (isDescentScene(id)) return `${descentBrief(id, knobs)} Allowed chart columns: ${allowedList(id)}.`;
+  if (isPropellantScene(id)) return `${propBrief(id, knobs)} Allowed chart columns: ${allowedList(id)}.`;
   return `${scene.title}. Allowed chart columns: ${allowedList(id)}.`;
 }

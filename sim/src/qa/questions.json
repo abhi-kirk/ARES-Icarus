@@ -323,5 +323,45 @@
     "eli5": {
       "beginner": "The landing spends fuel to kill the fall. What is left on the vehicle if the fuel runs out early?"
     }
+  },
+  "propEq": {
+    "log": {
+      "beginner": "Which two numbers set the final speed in this scene?",
+      "intermediate": "At mass ratio 4 and Isp 300 s, what is the final speed, and what are the accelerations at ignition and at burnout?",
+      "advanced": "The ratio moves from 2 to 4. How many metres per second does that add, and why is the addition $v_e \\ln 2$?"
+    },
+    "eli5": {
+      "beginner": "The tank gets lighter while the engine keeps pushing. What happens to the speed by the end of the 10 seconds?"
+    }
+  },
+  "propNozzle": {
+    "bell": {
+      "beginner": "What does the pressure term do when the exit pressure equals the air outside?",
+      "intermediate": "At expansion 16, how do the sea-level and vacuum specific impulses compare?",
+      "advanced": "At expansion 80 the ideal sea-level impulse is 197 s. Why is that trace past the point where a real plume would separate?"
+    },
+    "eli5": {
+      "beginner": "The rocket climbs and the air gets thinner. What happens to the specific impulse of one bell?"
+    }
+  },
+  "propStage": {
+    "split": {
+      "beginner": "At the default split, when do the staged trace and the single-stage trace separate?",
+      "intermediate": "At split 0.75 and structure 0.08, what are the two burn speeds and the single-stage speed?",
+      "advanced": "Set structure to 0. Why do both vehicles end at the same speed?"
+    },
+    "eli5": {
+      "beginner": "Two vehicles carry the same propellant. What does the staged one leave behind?"
+    }
+  },
+  "propLoss": {
+    "gap": {
+      "beginner": "What is the speed at burnout for full thrust, and what is the ideal free-space speed of this tank?",
+      "intermediate": "Half thrust finishes near 1914 m/s. Where does the extra loss, compared with full thrust, come from?",
+      "advanced": "Quarter thrust stays on the pad through 240 s. What is happening to the mass, and when would the vehicle lift?"
+    },
+    "eli5": {
+      "beginner": "Full thrust and half thrust burn the same tank. Which one hands more speed to gravity?"
+    }
   }
 }

@@ -24,6 +24,8 @@ const RECAP: Record<CatalogChapter["id"], string> = {
     "Ascent hands off to a vehicle that estimates, aims, and schedules gains as mass and air change.",
   descent:
     "A cost picks a gain, a cone and thrust bounds shape the path, successive and GuSTO steps iterate under a trust region, and replanning recovers only while the limits still have room. Fuel spent early is gone for the landing.",
+  propellant:
+    "Final speed is the exhaust speed times the log of the mass ratio. The bell adds a pressure term that is zero where the exit matches the air. Dropping the empty lower stage raises that speed. On a vertical climb, gravity takes g times the burn back.",
 };
 
 /** Closing card on the last ready scene of a chapter. */
@@ -48,7 +50,7 @@ export function chapterCloser(scene: SceneId): ChapterCloser | null {
 
   return {
     title: "Fly the landing",
-    body: `${RECAP.descent} The Simulator is the powered landing console: fuel, wind, gust, gain, thrust ring, tilt, glide, lag, gimbal, and inertia sit on the same 6-DOF flight the engine streams.`,
+    body: `${RECAP[chapter.id]} The Simulator is the powered landing console.`,
     href: "/simulator",
     linkLabel: "Open the Simulator",
   };

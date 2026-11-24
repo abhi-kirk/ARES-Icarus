@@ -32,6 +32,11 @@ const BY_CHAPTER: Record<ChapterId, string[]> = {
     "Why replan during descent?",
     "What makes a landing miss the pad?",
   ],
+  propellant: [
+    "What does the rocket equation say about final speed?",
+    "Why does a wide bell lose thrust at the pad?",
+    "Why do two stages finish faster than one?",
+  ],
 };
 
 export function startersForChapter(chapterId: ChapterId): string[] {

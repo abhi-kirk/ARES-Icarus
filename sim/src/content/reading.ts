@@ -1422,6 +1422,157 @@ $0.5\,\mathrm{m/s}$ is the soft limit in this scene.`,
       },
     ],
   },
+  propEq: {
+    threads: [
+      plain(
+        "Throw mass, keep the speed",
+        ["Final speed follows the exhaust speed and the mass ratio", "The tank gets lighter, so the same push accelerates more"],
+        [
+          "A rocket gets its speed by throwing mass out the back. The faster that mass leaves, and the larger the share of the rocket that is propellant, the more speed the rocket keeps. [The rocket equation](https://en.wikipedia.org/wiki/Tsiolkovsky_rocket_equation) is that trade, with gravity off and no air in this scene.",
+          "Drag the rocket to change the mass ratio. At 4, a 4000 kg rocket finishes at 1000 kg. The Isp knob is [how long one kilogram of propellant can produce one newton](https://en.wikipedia.org/wiki/Specific_impulse): 300 s here, which is an exhaust speed of 2942 m/s. The burn takes 10 s and the final speed is 4078 m/s.",
+        ],
+      ),
+      {
+        id: "log",
+        title: "Speed is a logarithm",
+        focus: ["Final speed is ve times ln of the mass ratio", "Acceleration rises as the mass falls", "Doubling the ratio adds ve ln 2"],
+        segments: [
+          {
+            kind: "look",
+            text: "Speed climbs as a curve, and acceleration climbs with it. The rocket is lightest at the end, so the last seconds are the hardest push.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`\Delta v = v_e \ln\frac{m_0}{m_f} \qquad v_e = I_{sp}\, g_0`,
+            stake: "The final speed is the exhaust speed times the natural log of the mass ratio. Specific impulse turns into an exhaust speed through standard gravity, 9.80665 m/s². In this scene that g0 only defines ve. The rocket is in free space.",
+            gloss: String.raw`$v_e$ is the exhaust speed.
+$I_{sp}$ is the specific impulse.
+$g_0 = 9.80665\,\mathrm{m/s^2}$.
+$m_0$ is 4000 kg. $m_f = m_0$ divided by the ratio.`,
+          },
+          {
+            kind: "relation",
+            tex: String.raw`a = \frac{v_e \dot m}{m}`,
+            stake: "Acceleration is the exhaust speed times the mass-flow rate, divided by the mass that is left. At ratio 4 and 300 s the burn starts at 221 m/s² and ends at 883 m/s². While gravity is off, the burn time drops out of the final speed: the same ratio and the same exhaust speed finish together.",
+            gloss: String.raw`$\dot m$ is how fast the tank empties.
+The default tank empties 3000 kg in 10 s, so $\dot m = 300\,\mathrm{kg/s}$.`,
+          },
+          {
+            kind: "trace",
+            text: "Doubling Isp doubles the final speed, because $v_e$ is proportional to $I_{sp}$. Raising the ratio from 2 to 4 adds $v_e \\ln 2 = 2040\\,\\mathrm{m/s}$, and the speed goes from 2039 m/s to 4078 m/s.",
+          },
+        ],
+      },
+    ],
+  },
+  propNozzle: {
+    threads: [
+      plain(
+        "The bell and the air",
+        ["Thrust is exhaust momentum plus a pressure push on the bell", "The best push is where the exit pressure matches the air"],
+        [
+          "The exhaust leaves through a bell. A wider bell lets the gas expand further, which raises the speed of the exhaust and lowers the pressure at the lip. [That lip pressure, set against the air outside, pushes on the bell](https://en.wikipedia.org/wiki/Rocket_engine_nozzle).",
+          "Drag sets the expansion, the exit area divided by the throat area. This rocket is on a clock from the pad to 60 km in 12 s, and the air thins as it climbs. At expansion 16 the sea-level specific impulse is 295 s and the vacuum value on the same engine is 326 s. The pressure push is zero at 4.2 km, where the exit pressure equals the air.",
+        ],
+      ),
+      {
+        id: "bell",
+        title: "Momentum plus pressure",
+        focus: ["Thrust has a momentum term and a pressure term", "Isp is thrust per unit of weight flow", "A separated plume leaves the ideal term behind"],
+        segments: [
+          {
+            kind: "look",
+            text: "Isp starts at the sea-level value and climbs toward the vacuum value as the air thins. The pressure term crosses zero at the matched mark.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`T = \dot m v_e + (p_e - p_a) A_e \qquad I_{sp} = \frac{T}{\dot m g_0}`,
+            stake: "The first term is the momentum leaving every second. The second term is the pressure difference across the exit area. When $p_e = p_a$ that term is zero and the bell is matched. A wide bell at the pad has $p_e < p_a$, so the pressure term is negative and the sea-level Isp sits below the vacuum Isp.",
+            gloss: String.raw`$\dot m = 25\,\mathrm{kg/s}$.
+$p_e$ is the pressure at the lip.
+$p_a = 101325\,\mathrm{e}^{-h/8500}$ pascals, with $h$ in metres.
+$A_e$ is the exit area.
+The chamber is 9.7 MPa and 3600 K, with $\gamma = 1.22$ and $R = 380\,\mathrm{J/(kg\cdot K)}$.
+The matched altitude at expansion 16 is 4.2 km.`,
+          },
+          {
+            kind: "trace",
+            text: "Open the bell and the vacuum Isp rises, while the sea-level number falls. At expansion 80 the ideal sea-level Isp is 197 s and the vacuum Isp is 350 s. The exit pressure there is already under 0.4 of the sea-level air, which is where a real plume separates. The curve stays on the ideal term past that point, and the aside says so.",
+          },
+        ],
+      },
+    ],
+  },
+  propStage: {
+    threads: [
+      plain(
+        "Drop the empty shell",
+        ["Two stages leave the lower structure behind", "The speeds match until the drop"],
+        [
+          "One tank has to carry its empty shell for the whole burn. Two stages burn, drop the lower shell, and the upper burn pushes a lighter vehicle. [That is staging](https://en.wikipedia.org/wiki/Multistage_rocket).",
+          "Both vehicles carry 1000 kg of payload and 8000 kg of propellant, and both throw the exhaust at 2942 m/s. Structure is 0.08 kg of dry mass for each kilogram of propellant in that stage. At a split of 0.75 the first burn is 2865 m/s and the second is 2948 m/s, 5814 m/s together. The pale vehicle keeps the shell and ends at 5211 m/s. Until the drop, both have burned the same propellant from the same mass, so the traces lie on each other.",
+        ],
+      ),
+      {
+        id: "split",
+        title: "Two logs, then add",
+        focus: ["Each burn is its own rocket equation", "Zero structure makes the split irrelevant", "The fastest split sits near 0.76"],
+        segments: [
+          {
+            kind: "look",
+            text: "The lower stage peels off at the marker and stays there. The upper stage keeps climbing. The pale vehicle is the one tank that never drops anything.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`\Delta v = v_e \ln\frac{m_0}{m_b} + v_e \ln\frac{m_b'}{m_f}`,
+            stake: "Each stage spends its own propellant, and the speeds add. $m_b$ is the stack at the end of the first burn, still holding the lower shell. $m_b'$ is the upper stage after that shell is gone. The single-stage vehicle uses one log from the full stack down to the payload plus every shell.",
+            gloss: String.raw`$v_e = 2942\,\mathrm{m/s}$.
+The split is the share of the 8000 kg that rides in the first stage.
+Structure $k$ is kilograms of dry mass per kilogram of propellant in that stage.`,
+          },
+          {
+            kind: "trace",
+            text: "Set structure to 0 and both vehicles end at 6464 m/s, which is $2942 \\ln 9$. There is nothing to drop, so the split stops mattering. At 0.08 the split that finishes fastest is 0.76.",
+          },
+        ],
+      },
+    ],
+  },
+  propLoss: {
+    threads: [
+      plain(
+        "Gravity takes a share",
+        ["The free-space speed is 4078 m/s", "A longer burn hands more of it to gravity"],
+        [
+          "The rocket equation's 4078 m/s is the speed this tank would have in free space. Point the same burn straight up and [gravity pulls for the whole time the engine is on](https://en.wikipedia.org/wiki/Gravity_drag). A longer burn gives gravity longer.",
+          "Full thrust is 80 kN. The 3000 kg of propellant is gone in 110 s, gravity has taken 1082 m/s, and the speed at burnout is 2996 m/s. Half thrust, 40 kN, takes 221 s and finishes at 1914 m/s. Quarter thrust, 20 kN, sits under the 39.2 kN starting weight. The vehicle stays on the pad, engine burning, through the 240 s clock. It lifts once the mass falls to 2039 kg, at 289 s. The picture is a log of altitude so the pad stays in frame, and the readout is the true height.",
+        ],
+      ),
+      {
+        id: "gap",
+        title: "The burn length, times g",
+        focus: ["The subtraction applies while the vehicle is flying", "The ideal line counts propellant burned on the pad", "After burnout the vehicle coasts"],
+        segments: [
+          {
+            kind: "look",
+            text: "The ideal line is the free-space speed of the propellant already burned. The speed line is what the vehicle actually has. The gap at the burnout marker is g times the burn.",
+          },
+          {
+            kind: "relation",
+            tex: String.raw`v = v_e \ln\frac{m_0}{m_f} - g\, t_b`,
+            stake: "This is the speed at burnout when the vehicle flew the whole burn. $g$ is 9.81 m/s² and $t_b$ is how long the engine was on in flight. Hold the vehicle on the pad while thrust is at or under its weight: the mass still falls, the speed stays zero, and the ideal line still climbs. The vehicle lifts when the mass drops below thrust divided by g.",
+            gloss: String.raw`$v_e \ln(m_0/m_f) = 4078\,\mathrm{m/s}$ for this tank.
+Full thrust burns for 110 s. Half thrust burns for 221 s.
+Quarter thrust reaches liftoff mass at 289 s.`,
+          },
+          {
+            kind: "trace",
+            text: "After the tank is empty the ideal line holds still and the vehicle coasts, so gravity keeps taking speed. The 2996 m/s and the 1914 m/s are the speeds at the burnout marker. The clock runs 240 s, and the chart is how you walk through a burn that long.",
+          },
+        ],
+      },
+    ],
+  },
 };
 
 export function readingFor(id: SceneId) {

@@ -124,6 +124,10 @@ function dragValue(dy: number, scene: SceneId): void {
   if (scene === "desGusto") setKnob("region", clampKnob(scene, knobs.region + dy * 0.05));
   if (scene === "desReplan") setKnob("gust", clampKnob(scene, knobs.gust + dy * 0.04));
   if (scene === "desMiss") setKnob("fuel", clampKnob(scene, knobs.fuel + dy * 0.003));
+  if (scene === "propEq") setKnob("ratio", clampKnob(scene, knobs.ratio + dy * 0.012));
+  if (scene === "propNozzle") setKnob("expand", clampKnob(scene, knobs.expand + dy * 0.12));
+  if (scene === "propStage") setKnob("split", clampKnob(scene, knobs.split + dy * 0.0016));
+  if (scene === "propLoss") setKnob("throttle", clampKnob(scene, knobs.throttle + dy * 0.002));
 }
 
 // Coil from the mount down to the mass. The ends pull in to the center line
@@ -287,6 +291,10 @@ function Picture({ orbit, onBodyDrag }: { orbit: RefObject<OrbitRig | null>; onB
         const reach = Math.max(span.max - span.min, 1);
         rocket.current.position.set((body.drift / reach) * 1.1, y + NOZZLE_LIFT, 0);
         rocket.current.rotation.set(0, 0, body.tilt);
+      } else if (scene === "propStage") {
+        const attached = body.drift < 0.02;
+        rocket.current.position.set(0, y + NOZZLE_LIFT + (attached ? 0.28 : 0), 0);
+        rocket.current.rotation.set(0, 0, 0);
       } else {
         rocket.current.position.set(0, y + NOZZLE_LIFT, 0);
         rocket.current.rotation.set(0, 0, 0);
@@ -295,14 +303,16 @@ function Picture({ orbit, onBodyDrag }: { orbit: RefObject<OrbitRig | null>; onB
     if (flame.current) {
       const burning = !showRig && body.flame > 0.02;
       flame.current.visible = burning;
-      const width = 0.55 + body.flame * 0.45;
+      const flare = scene === "propNozzle" ? Math.max(0.55, body.cp) : 1;
+      const width = (0.55 + body.flame * 0.45) * flare;
       const height = 0.45 + body.flame * 0.9;
       flame.current.scale.set(width, height, width);
       flameMat.uniforms.uTime.value = state.clock.elapsedTime;
       flameMat.uniforms.uPower.value = burning ? 0.45 + body.flame * 0.55 : 0;
     }
     if (ground.current) {
-      ground.current.visible = !showRig;
+      const freeSpace = scene === "propEq" || scene === "propStage";
+      ground.current.visible = !showRig && !freeSpace;
       ground.current.position.y = viewY(0, scene, knobs);
     }
   });
@@ -402,6 +412,7 @@ function Picture({ orbit, onBodyDrag }: { orbit: RefObject<OrbitRig | null>; onB
       <TurnWorldMarks />
       <VehicleWorldMarks />
       <DescentCone />
+      <PropellantMarks />
 
       <group ref={ground} visible={false}>
         <mesh rotation={[-Math.PI / 2, 0, 0]}>
@@ -516,6 +527,54 @@ function TurnBodyMarks() {
       <mesh ref={slug} visible={false}>
         <sphereGeometry args={[0.08, 16, 12]} />
         <meshBasicMaterial color={GOLD} />
+      </mesh>
+    </group>
+  );
+}
+
+function PropellantMarks() {
+  const booster = useRef<Mesh>(null);
+  const companion = useRef<Mesh>(null);
+  const bell = useRef<Mesh>(null);
+
+  useFrame(() => {
+    const id = getScene();
+    const stage = id === "propStage";
+    const nozzle = id === "propNozzle";
+    if (booster.current) booster.current.visible = stage;
+    if (companion.current) companion.current.visible = stage;
+    if (bell.current) bell.current.visible = nozzle;
+    if (!stage && !nozzle) return;
+    const knobs = getKnobs();
+    const pose = bodyAt(id, getTime(), knobs);
+    if (stage && booster.current && companion.current) {
+      const attached = pose.drift < 0.02;
+      const lift = attached ? 0.28 : 0;
+      const rocketY = viewY(pose.height, id, knobs) + NOZZLE_LIFT + lift;
+      if (attached) booster.current.position.set(0, rocketY - 0.36, 0);
+      else booster.current.position.set(0.15 + pose.drift * 0.45, viewY(pose.estimate, id, knobs) + NOZZLE_LIFT, 0);
+      companion.current.position.set(-0.72, viewY(pose.truth, id, knobs) + NOZZLE_LIFT, 0);
+    }
+    if (nozzle && bell.current) {
+      const width = 0.16 * Math.max(0.55, pose.cp);
+      bell.current.scale.set(width, width, width);
+      bell.current.position.set(0, viewY(pose.height, id, knobs) + NOZZLE_LIFT - 0.02, 0);
+    }
+  });
+
+  return (
+    <group>
+      <mesh ref={booster} visible={false}>
+        <cylinderGeometry args={[0.07, 0.09, 0.42, 16]} />
+        <meshStandardMaterial color={PALE} metalness={0.45} roughness={0.38} />
+      </mesh>
+      <mesh ref={companion} visible={false}>
+        <cylinderGeometry args={[0.045, 0.055, 0.72, 12]} />
+        <meshBasicMaterial color={PALE} wireframe />
+      </mesh>
+      <mesh ref={bell} visible={false}>
+        <coneGeometry args={[1, 0.7, 20, 1, true]} />
+        <meshStandardMaterial color="#8d8478" metalness={0.55} roughness={0.36} side={2} />
       </mesh>
     </group>
   );

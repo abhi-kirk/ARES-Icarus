@@ -1,7 +1,7 @@
 import type { SceneId } from "./scenes";
 
 /** Story order for Rocket Dynamics. URL segment is `slug`. */
-export type ChapterId = "state" | "loop" | "turn" | "vehicle" | "descent";
+export type ChapterId = "state" | "loop" | "turn" | "vehicle" | "descent" | "propellant";
 
 export type CatalogScene = {
   slug: string;
@@ -83,6 +83,17 @@ export const CHAPTERS: CatalogChapter[] = [
       { slug: "gusto", name: "GuSTO", sceneId: "desGusto", ready: true },
       { slug: "replanning", name: "Replanning", sceneId: "desReplan", ready: true },
       { slug: "missed", name: "Runs that do not land", sceneId: "desMiss", ready: true },
+    ],
+  },
+  {
+    id: "propellant",
+    slug: "propellant",
+    title: "The propellant",
+    scenes: [
+      { slug: "equation", name: "The rocket equation", sceneId: "propEq", ready: true },
+      { slug: "nozzle", name: "The nozzle", sceneId: "propNozzle", ready: true },
+      { slug: "stages", name: "Two stages", sceneId: "propStage", ready: true },
+      { slug: "gravity", name: "Gravity loss", sceneId: "propLoss", ready: true },
     ],
   },
 ];
