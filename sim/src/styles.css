@@ -952,7 +952,7 @@ body {
 .model-panel-body {
   margin: 0;
   font-size: 0.92rem;
-  line-height: 1.5;
+  line-height: 1.7;
   color: var(--ink);
 }
 
@@ -1135,8 +1135,16 @@ body {
 .katex { color: var(--ink); }
 
 .prose .katex,
-.choices .katex {
+.choices .katex,
+.markdown .katex {
   font-size: 1.05em;
+}
+
+/* KaTeX 0.19 splits a formula into min-content pieces that wrap mid-equation. */
+.prose .katex-html,
+.choices .katex-html,
+.markdown .katex-html {
+  white-space: nowrap;
 }
 
 .qa {

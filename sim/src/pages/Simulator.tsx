@@ -2,6 +2,7 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import { Info, Pause, Play } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactElement } from "react";
 import { ChartView } from "../ChartView";
+import { MathText } from "../Formula";
 import { FlightView } from "../FlightView";
 import {
   KNOBS,
@@ -188,7 +189,9 @@ function Tip({
       <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
       <Tooltip.Portal>
         <Tooltip.Content className="tip sim-tip" side={side} align="center" sideOffset={8} collisionPadding={12}>
-          <p>{text}</p>
+          <p className="prose">
+            <MathText text={text} />
+          </p>
           <Tooltip.Arrow className="tip-arrow" width={10} height={6} />
         </Tooltip.Content>
       </Tooltip.Portal>

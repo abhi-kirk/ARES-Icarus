@@ -171,26 +171,26 @@ export function vehicleBrief(id: VehicleId, knobs: Knobs): string {
   if (id === "vehAscent") {
     const weight = ascentWeight();
     const tw = ascentTw(knobs.lift);
-    return `Ascent. Mass ${MASS} kg, g = ${G} m/s², weight ${weight.toFixed(1)} N. Thrust ${knobs.lift.toFixed(0)} N (T/W = ${tw.toFixed(2)}). a = T/m − g. If T ≤ weight the vehicle stays on the pad. Allowed chart columns: height, rate, accel, thrust.`;
+    return String.raw`Ascent. Mass ${MASS} kg, $g = ${G}\,\mathrm{m/s^2}$, weight ${weight.toFixed(1)} N. Thrust ${knobs.lift.toFixed(0)} N ($T/W = ${tw.toFixed(2)}$). $a = T/m - g$. If $T$ is at or under the weight the vehicle stays on the pad. Allowed chart columns: height, rate, accel, thrust.`;
   }
   if (id === "vehNose") {
     const ay = noseClimbAccel(knobs.lean);
     const ax = noseSideAccel(knobs.lean);
     const breakEven = noseBreakEvenDeg();
-    return `Thrust along the nose. Thrust ${NOSE_THRUST} N on a ${MASS} kg vehicle, tilted ${knobs.lean.toFixed(0)}° from vertical. a_y = ${(NOSE_THRUST / MASS).toFixed(2)} cosθ − g = ${ay.toFixed(2)} m/s². a_x = ${(NOSE_THRUST / MASS).toFixed(2)} sinθ = ${ax.toFixed(2)} m/s². Break-even a_y=0 at θ* = ${breakEven.toFixed(1)}°. Gold arrow is thrust; pale arrows are the vertical and side shares. Allowed chart columns: height, downrange, rate, pitch.`;
+    return String.raw`Thrust along the nose. Thrust ${NOSE_THRUST} N on a ${MASS} kg vehicle, tilted ${knobs.lean.toFixed(0)}° from vertical. $a_y = ${(NOSE_THRUST / MASS).toFixed(2)} \cos\theta - g = ${ay.toFixed(2)}\,\mathrm{m/s^2}$. $a_x = ${(NOSE_THRUST / MASS).toFixed(2)} \sin\theta = ${ax.toFixed(2)}\,\mathrm{m/s^2}$. Break-even $a_y = 0$ at $\theta^* = ${breakEven.toFixed(1)}°$. Gold arrow is thrust; pale arrows are the vertical and side shares. Allowed chart columns: height, downrange, rate, pitch.`;
   }
   if (id === "vehWind") {
     const side = WIND_SIDE_PER_MS * knobs.wind;
-    return `Wind. Climb uses ${CLIMB_THRUST} N on ${MASS} kg (nose stays vertical). Wind W = ${knobs.wind.toFixed(0)} m/s. Attack α = arctan(W/v); at v = 0, α = 90° (no silent clamp). Side load a_x = ${WIND_SIDE_PER_MS}·W = ${side.toFixed(2)} m/s² is a teaching stand-in so drift appears (not full aero/weathercock). Allowed chart columns: rate, attack, height, downrange.`;
+    return String.raw`Wind. Climb uses ${CLIMB_THRUST} N on ${MASS} kg (nose stays vertical). Wind $W = ${knobs.wind.toFixed(0)}\,\mathrm{m/s}$. Attack $\alpha = \arctan(W/v)$; at $v = 0$, $\alpha = 90°$ (no silent clamp). Side load $a_x = ${WIND_SIDE_PER_MS} \cdot W = ${side.toFixed(2)}\,\mathrm{m/s^2}$ is a teaching stand-in so drift appears (not full aero/weathercock). Allowed chart columns: rate, attack, height, downrange.`;
   }
   if (id === "vehEstimate") {
     return `Sensors and an estimate. Fixed-gain filter (not Kalman). Truth is the ${CLIMB_THRUST} N climb. The sensor adds a ${knobs.noise.toFixed(1)} m wave. Gain ${knobs.trust.toFixed(1)}. Chart live series are errors from truth. Allowed chart columns: height, estimate, measured, rate.`;
   }
   if (id === "vehGuide") {
-    return `Guidance. Closed-loop: a filtered estimate of downrange and height aims the nose at a ground target ${knobs.kick.toFixed(0)} m downrange. The body follows that command with τ = 0.7 s. Allowed chart columns: downrange, height, aim, pitch, estimate.`;
+    return String.raw`Guidance. Closed-loop: a filtered estimate of downrange and height aims the nose at a ground target ${knobs.kick.toFixed(0)} m downrange. The body follows that command with $\tau = 0.7\,\mathrm{s}$. Allowed chart columns: downrange, height, aim, pitch, estimate.`;
   }
-  const mode = knobs.schedule >= 0.5 ? "scheduled K∝m" : "fixed K";
-  return `Autopilot. Command 12° after 0.4 s. Base gain ${knobs.hold.toFixed(1)} (${mode}). Mass 3→1.4 kg. Air stiffness κ = c v² (restoring). Allowed chart columns: pitch, estimate (K used), measured (κ), rate (v), mass, aim, height.`;
+  const mode = knobs.schedule >= 0.5 ? String.raw`scheduled $K \propto m$` : "fixed $K$";
+  return String.raw`Autopilot. Command 12° after 0.4 s. Base gain ${knobs.hold.toFixed(1)} (${mode}). Mass 3→1.4 kg. Air stiffness $\kappa = c v^2$ (restoring). Allowed chart columns: pitch, estimate ($K$ used), measured ($\kappa$), rate ($v$), mass, aim, height.`;
 }
 
 type Pose = {

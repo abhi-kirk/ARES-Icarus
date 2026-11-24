@@ -26,7 +26,9 @@ export function Essay({
     <div className="essay">
       <details className="model-panel">
         <summary>Model and parameters</summary>
-        <p className="prose model-panel-body">{model}</p>
+        <p className="prose model-panel-body">
+          <MathText text={model} />
+        </p>
       </details>
       {page.threads.map((thread) => (
         <section className="scene-thread" key={`${scene}-${thread.id}`}>
@@ -45,7 +47,9 @@ export function Essay({
       {closer ? (
         <section className="chapter-closer">
           <h2>{closer.title}</h2>
-          <p className="prose">{closer.body}</p>
+          <p className="prose">
+            <MathText text={closer.body} />
+          </p>
           <p className="chapter-closer-link">
             <a
               href={closer.href}

@@ -69,13 +69,13 @@ export function descentAt(id: DescentId, t: number, knobs: Knobs): DescentSample
 export function descentBrief(id: DescentId, knobs: Knobs): string {
   if (id === "desCost") {
     const gains = costGains(knobs.care, knobs.spend);
-    return `A cost that makes a gain. Height weight q = ${knobs.care.toFixed(2)}, control weight r = ${knobs.spend.toFixed(2)}, so kp = ${gains.kp.toFixed(2)} and kd = ${gains.kd.toFixed(2)}. Mass ${MASS} kg. Thrust floors at 0 N. The ground is not in the cost.`;
+    return String.raw`A cost that makes a gain. Height weight $q = ${knobs.care.toFixed(2)}$, control weight $r = ${knobs.spend.toFixed(2)}$, so $k_p = ${gains.kp.toFixed(2)}$ and $k_d = ${gains.kd.toFixed(2)}$. Mass ${MASS} kg. Thrust floors at 0 N. The ground is not in the cost.`;
   }
   if (id === "desPath") {
-    return `A path under constraints. Start at downrange ${PATH_X0} m, height ${PATH_Z0} m (inside an 8° cone). Glide cone θ = ${knobs.cone.toFixed(0)}° measured from vertical through the pad. Wall is |x| ≤ z tan θ. Thrust is a vector with magnitude between ${PATH_T_FLOOR} N and ${TMAX} N.`;
+    return String.raw`A path under constraints. Start at downrange ${PATH_X0} m, height ${PATH_Z0} m (inside an 8° cone). Glide cone $\theta = ${knobs.cone.toFixed(0)}°$ measured from vertical through the pad. Wall is $|x| \le z \tan\theta$. Thrust is a vector with magnitude between ${PATH_T_FLOOR} N and ${TMAX} N.`;
   }
   if (id === "desLoss") {
-    return `Lossless convexification. Thrust floor ${knobs.floor.toFixed(0)} N, ceiling ${TMAX} N. σ is stored in reference and equals |T| (minimum-fuel puts the thrust on the slack). Command is the uncapped ask.`;
+    return String.raw`Lossless convexification. Thrust floor ${knobs.floor.toFixed(0)} N, ceiling ${TMAX} N. $\sigma$ is stored in reference and equals $|T|$ (minimum-fuel puts the thrust on the slack). Command is the uncapped ask.`;
   }
   if (id === "desScvx") {
     const infos = scvxPassInfo();
@@ -89,7 +89,7 @@ export function descentBrief(id: DescentId, knobs: Knobs): string {
   if (id === "desGusto") {
     const info = gustoInfo();
     const detail = info
-      ? ` End height ${info.error.toFixed(2)} m after ${info.accepts} accept / ${info.rejects} reject, final Δ ${info.radius.toFixed(1)} N.`
+      ? ` End height ${info.error.toFixed(2)} m after ${info.accepts} accept / ${info.rejects} reject, final $\\Delta = ${info.radius.toFixed(1)}\\,\\mathrm{N}$.`
       : "";
     return `GuSTO. Start from a weak push with trust radius ${knobs.region.toFixed(1)} N. Each iteration linearizes about the flown path, takes a hard trust-limited step, and accepts or shrinks on a merit test (end-height error). No virtual control.${detail}`;
   }
@@ -98,9 +98,9 @@ export function descentBrief(id: DescentId, knobs: Knobs): string {
   }
   const outcome = missOutcome(knobs);
   if (knobs.cause >= 0.5) {
-    return `Runs that do not land (INFEASIBLE mode). Thrust ceiling ${MISS_HARD_CEILING} N on ${MASS} kg cannot meet soft landing (|rate| ≤ ${TOUCH_SPEED} m/s at the pad) from 45 m / −3 m/s. Status ${outcome.status}, impact ${outcome.impactRate.toFixed(2)} m/s.`;
+    return String.raw`Runs that do not land (INFEASIBLE mode). Thrust ceiling ${MISS_HARD_CEILING} N on ${MASS} kg cannot meet soft landing ($|\dot{z}| \le ${TOUCH_SPEED}\,\mathrm{m/s}$ at the pad) from 45 m / −3 m/s. Status ${outcome.status}, impact ${outcome.impactRate.toFixed(2)} m/s.`;
   }
-  return `Runs that do not land (fuel mode). Fuel budget ${knobs.fuel.toFixed(2)} kg, exhaust 280 m/s. Soft landing needs |rate| ≤ ${TOUCH_SPEED} m/s at the pad. Status ${outcome.status}, impact ${outcome.impactRate.toFixed(2)} m/s.`;
+  return String.raw`Runs that do not land (fuel mode). Fuel budget ${knobs.fuel.toFixed(2)} kg, exhaust 280 m/s. Soft landing needs $|\dot{z}| \le ${TOUCH_SPEED}\,\mathrm{m/s}$ at the pad. Status ${outcome.status}, impact ${outcome.impactRate.toFixed(2)} m/s.`;
 }
 
 function integrate(id: DescentId, knobs: Knobs): DescentSample[] {

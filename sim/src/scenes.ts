@@ -1930,11 +1930,11 @@ function allowedList(id: SceneId): string {
 export function chatBrief(id: SceneId, knobs: Knobs): string {
   const scene = sceneById(id);
   if (id === "state") {
-    return `${scene.title}. Undamped spring, mass ${SPRING_M} kg, stiffness ${SPRING_K} N/m. Start height x0 = ${knobs.x0.toFixed(2)} m, start rate v0 = ${knobs.v0.toFixed(2)} m/s. Height is x0 cos(t) + v0 sin(t). Rate is −x0 sin(t) + v0 cos(t). Acceleration is −height. Drag sets x0 (keeps the current rate as v0 and resets time). The live chart is a phase loop of rate against height. Allowed chart columns: ${allowedList(id)}.`;
+    return String.raw`${scene.title}. Undamped spring, mass ${SPRING_M} kg, stiffness ${SPRING_K} N/m. Start height $x_0 = ${knobs.x0.toFixed(2)}\,\mathrm{m}$, start rate $v_0 = ${knobs.v0.toFixed(2)}\,\mathrm{m/s}$. Height is $x_0 \cos t + v_0 \sin t$. Rate is $-x_0 \sin t + v_0 \cos t$. Acceleration is $-x$. Drag sets $x_0$ (keeps the current rate as $v_0$ and resets time). The live chart is a phase loop of rate against height. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "step") {
     const method = knobs.method >= 0.5 ? "semi-implicit Euler (rate then height)" : "explicit Euler (both updates from the old state)";
-    return `${scene.title}. True height is cos(t). Stepped height uses ${method} with dt = ${knobs.dt.toFixed(2)} s on a unit spring (m=k=1). Explicit Euler grows mechanical energy and the phase orbit spirals out; semi-implicit stays nearer the true ellipse. Allowed chart columns: ${allowedList(id)}.`;
+    return String.raw`${scene.title}. True height is $\cos t$. Stepped height uses ${method} with $\Delta t = ${knobs.dt.toFixed(2)}\,\mathrm{s}$ on a unit spring ($m = k = 1$). Explicit Euler grows mechanical energy and the phase orbit spirals out; semi-implicit stays nearer the true ellipse. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "mass") {
     return `${scene.title}. Thrust input is ${knobs.thrust.toFixed(0)} N until t = ${BURN} s, then zero. Dry mass ${DRY} kg, fuel ${FUEL} kg. Height and rate integrate acceleration. Allowed chart columns: ${allowedList(id)}.`;
@@ -1943,28 +1943,28 @@ export function chatBrief(id: SceneId, knobs: Knobs): string {
     const stepAt = engineStepAt(knobs.tau, knobs.lead);
     const leadNote =
       knobs.lead >= 0.5
-        ? `Lead is on: command steps at ${stepAt.toFixed(2)} s (one τ early) so actual thrust is farther along by the need mark at ${ASK_AT} s.`
+        ? `Lead is on: command steps at ${stepAt.toFixed(2)} s (one $\\tau$ early) so actual thrust is farther along by the need mark at ${ASK_AT} s.`
         : `Lead is off: command steps at the need time ${ASK_AT} s.`;
-    return `${scene.title}. Command steps to ${knobs.ask.toFixed(0)} N. ${leadNote} Lag τ = ${knobs.tau.toFixed(2)} s. Thrust is clamped to ${LIMIT} N on a 2.5 kg vehicle. Height and rate integrate actual thrust. Allowed chart columns: ${allowedList(id)}.`;
+    return String.raw`${scene.title}. Command steps to ${knobs.ask.toFixed(0)} N. ${leadNote} Lag $\tau = ${knobs.tau.toFixed(2)}\,\mathrm{s}$. Thrust is clamped to ${LIMIT} N on a 2.5 kg vehicle. Height and rate integrate actual thrust. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "loopOpen") {
     return `${scene.title}. Hover thrust is ${LOOP_T0.toFixed(1)} N on a ${LOOP_M} kg rocket. Extra thrust ${knobs.extraThrust.toFixed(0)} N after 1 s with no feedback. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "loopError") {
-    return `${scene.title}. Target steps to 2 m at 2 s. Gains Kp=${knobs.kp}, Ki=${knobs.ki}, Kd=${knobs.kd} for the three single-mode runs. Allowed chart columns: ${allowedList(id)}.`;
+    return String.raw`${scene.title}. Target steps to 2 m at 2 s. Gains $K_p = ${knobs.kp}$, $K_i = ${knobs.ki}$, $K_d = ${knobs.kd}$ for the three single-mode runs. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "loopEquil") {
     return `${scene.title}. Start offset ${knobs.perturb.toFixed(2)} m with closed-loop hover law. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "loopHover") {
     const mu2 = knobs.unstable * knobs.unstable;
-    return `${scene.title}. Open loop ẍ = μ² x with μ = ${knobs.unstable.toFixed(1)} (μ² = ${mu2.toFixed(2)}). Closed loop adds (Kp e − Kd ẋ)/m with Kp = ${LOOP_HOVER_KP}, Kd = ${LOOP_HOVER_KD}; needs Kp/m > μ² (${(LOOP_HOVER_KP / LOOP_M).toFixed(2)} > ${mu2.toFixed(2)}). Pad clamp at height 0. Allowed chart columns: ${allowedList(id)}.`;
+    return String.raw`${scene.title}. Open loop $\ddot{x} = \mu^2 x$ with $\mu = ${knobs.unstable.toFixed(1)}$ ($\mu^2 = ${mu2.toFixed(2)}$). Closed loop adds $(K_p e - K_d \dot{x})/m$ with $K_p = ${LOOP_HOVER_KP}$, $K_d = ${LOOP_HOVER_KD}$; needs $K_p/m > \mu^2$ (${(LOOP_HOVER_KP / LOOP_M).toFixed(2)} > ${mu2.toFixed(2)}). Pad clamp at height 0. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "loopMode") {
-    return `${scene.title}. Hidden mode q̈ = λ² q with λ = ${LOOP_HIDDEN_LAMBDA}, coupling ε = ${knobs.coupling.toFixed(2)} into height. Measured height can look calm while q grows. Allowed chart columns: ${allowedList(id)}.`;
+    return String.raw`${scene.title}. Hidden mode $\ddot{q} = \lambda^2 q$ with $\lambda = ${LOOP_HIDDEN_LAMBDA}$, coupling $\varepsilon = ${knobs.coupling.toFixed(2)}$ into height. Measured height can look calm while $q$ grows. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (id === "loopSample") {
-    return `${scene.title}. Sample time ${knobs.dt.toFixed(2)} s and measurement delay ${knobs.tau.toFixed(2)} s versus continuous PID (Kp 12, Ki 4, Kd 15). Delay near ${LOOP_SAMPLE_DELAY_MARK.toFixed(2)} s starts to pull discrete away from continuous. Allowed chart columns: ${allowedList(id)}.`;
+    return String.raw`${scene.title}. Sample time $\Delta t = ${knobs.dt.toFixed(2)}\,\mathrm{s}$ and measurement delay $\tau = ${knobs.tau.toFixed(2)}\,\mathrm{s}$ versus continuous PID ($K_p = 12$, $K_i = 4$, $K_d = 15$). Delay near ${LOOP_SAMPLE_DELAY_MARK.toFixed(2)} s starts to pull discrete away from continuous. Allowed chart columns: ${allowedList(id)}.`;
   }
   if (isTurnScene(id)) return turnBrief(id, knobs);
   if (isVehicleScene(id)) return vehicleBrief(id, knobs);

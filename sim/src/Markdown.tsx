@@ -1,13 +1,18 @@
 import type { ReactNode } from "react";
+import { MathText } from "./Formula";
 
-// Paragraphs, **bold**, and a list whose lines start with "- ".
+// Paragraphs, **bold**, $...$ math, and a list whose lines start with "- ".
 
 function inline(text: string): ReactNode[] {
   const pieces = text.split(/(\*\*[^*]+\*\*)/g);
   return pieces.map((piece, index) => {
     const bold = piece.startsWith("**") && piece.endsWith("**") && piece.length > 4;
-    if (!bold) return piece;
-    return <strong key={index}>{piece.slice(2, -2)}</strong>;
+    if (!bold) return <MathText key={index} text={piece} />;
+    return (
+      <strong key={index}>
+        <MathText text={piece.slice(2, -2)} />
+      </strong>
+    );
   });
 }
 
