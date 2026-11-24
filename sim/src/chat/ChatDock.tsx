@@ -274,7 +274,7 @@ export function ChatDock({
           {empty ? (
             <div className="chat-empty">
               <RocketMark />
-              <p className="chat-empty-lede">Ask about rocket fundamentals or this scene. I can see the picture and chart on the page.</p>
+              <p className="chat-empty-lede">Ask about rocket fundamentals or this scene, and I can see the picture and the chart on the page.</p>
               <ul className="chat-starters">
                 {starters.map((line) => (
                   <li key={line}>

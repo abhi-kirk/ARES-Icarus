@@ -56,7 +56,7 @@ export function localTurn(text: string, time: number, scene: SceneId, knobs: Kno
 
   if (/\b(who are you|what are you|your name|what is icarus|what is this page|what is this site)\b/.test(lower)) {
     return {
-      text: "I am Icarus. Rocket Dynamics is where you learn rocket dynamics fundamentals. Simulator is the vertical landing console. Ask me about the scene you are on, or the ideas behind it.",
+      text: "I am Icarus, on this site for rocket fundamentals and for the scene in front of you. Rocket Dynamics is where those fundamentals are learned through the scenes, and the Simulator is the vertical landing console.",
     };
   }
 

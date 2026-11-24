@@ -15,19 +15,19 @@ export type ChapterCloser = {
 
 const RECAP: Record<CatalogChapter["id"], string> = {
   state:
-    "Height, rate, mass, and thrust are the numbers the rest of the course will steer. The engine taught that a command and the force the vehicle feels can differ.",
+    "Height, rate, mass, and thrust are the numbers the rest of the course steers, and the engine scene is where a command and the thrust the vehicle feels come apart.",
   loop:
-    "Open loop drifts. Feedback answers an error from the gap, the lingering gap, and the rate. Sample time and delay decide how fresh that answer is.",
+    "Open loop holds a thrust chosen ahead of time, so a leftover push becomes a growing height error, while feedback answers that error from the gap, the lingering gap, and the rate, and sample time and delay decide how fresh the answer is.",
   frequency:
-    "Phase margin is spare lag before the hover rings. Gain margin is how far the proportional gain sits above the gain that just holds. A delay spends phase equal to frequency times the delay, and a sample-and-hold spends about half as much. A bend is a peak at one frequency, and a notch tuned to it takes the peak out.",
+    "Phase margin is how many degrees of extra lag the hover can take at the gain crossover before it rings, and gain margin is how far the proportional gain sits above the gain that just holds. A delay spends phase equal to frequency times the delay, a sample-and-hold spends about half as much, and a notch tuned to a bend takes that peak out.",
   turn:
-    "Attitude lives in frames. Quaternions keep a pitch past vertical. Allocation turns force and moment commands into limited gimbal angles.",
+    "A direction on the rocket is one arrow whose world numbers change with yaw, a quaternion keeps a pitch past vertical as two ordinary numbers, and allocation turns a side force and a moment into gimbal angles that stop at ±15°.",
   vehicle:
-    "Ascent hands off to a vehicle that estimates, aims, and schedules gains as mass and air change.",
+    "Ascent is thrust against weight, and the vehicle that follows estimates its height, aims the nose from that estimate, and schedules the gain as mass falls and air stiffness grows with speed squared.",
   descent:
-    "A cost picks a gain, a cone and thrust bounds shape the path, successive and GuSTO steps iterate under a trust region, and replanning recovers only while the limits still have room. Fuel spent early is gone for the landing.",
+    "A cost on height picks the gain, a cone and a thrust floor and ceiling shape the path, successive passes and GuSTO iterates stay inside a trust region, and a replan recovers a gust only while those limits still have room, because fuel spent early is gone for the landing.",
   propellant:
-    "Final speed is the exhaust speed times the log of the mass ratio. The bell adds a pressure term that is zero where the exit matches the air. Dropping the empty lower stage raises that speed. On a vertical climb, gravity takes g times the burn back.",
+    "Final speed is the exhaust speed times the log of the mass ratio, the bell adds a pressure term that is zero where the exit matches the air, dropping the empty lower stage raises that speed, and on a vertical climb gravity takes g times the burn back.",
 };
 
 /** Closing card on the last ready scene of a chapter. */

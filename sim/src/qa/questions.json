@@ -231,7 +231,7 @@
       "advanced": "This scene uses a fixed gain $K$, not a Kalman gain from variances. What does Gain 0 leave the estimate doing, relative to the thrust model and the sensor?"
     },
     "eli5": {
-      "beginner": "The sensor wiggles and the prediction uses the thrust. What does the estimate do with those two, and what does a harder gain do?"
+      "beginner": "The sensor is noisy and the prediction uses the thrust. What does the estimate do with those two, and what does a higher gain do?"
     }
   },
   "vehGuide": {
@@ -371,7 +371,7 @@
       "advanced": "$K_d$ is 0. Where does the phase sit, and what does the height do?"
     },
     "eli5": {
-      "beginner": "The chart has two curves. What does the phase curve say, and what happens to the hover when that spare lateness is used up?"
+      "beginner": "What does the phase curve measure, and what happens to the hover when that phase margin is used up?"
     }
   },
   "freqDelay": {

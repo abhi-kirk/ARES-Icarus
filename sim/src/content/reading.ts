@@ -22,7 +22,7 @@ export const READING: ReadingMap = {
         ["The spring pulls back toward the hanging point", "Height and rate together tell the next moment"],
         [
           "A spring pulls a mass back toward the place it hangs at rest, and [the pull is stronger the farther the mass sits from that place](https://en.wikipedia.org/wiki/Hooke%27s_law). Let go from above, and the mass falls through the rest point and keeps going, because it still has speed at the moment the pull passes through zero.",
-          "Height says where the mass is. Rate says how fast that height is changing. [Those two numbers are enough to know what the mass does next](https://www.fbswiki.org/wiki/index.php/System_Modeling): the same height with an upward rate climbs, and the same height with a downward rate falls. Drag the mass to set the start height. The Rate knob ($v_0$) sets the start rate, so you can hold one height and leave two ways.",
+          "Height is where the mass is and rate is how fast that height is changing, and [those two numbers are enough to know what the mass does next](https://www.fbswiki.org/wiki/index.php/System_Modeling): the same height with an upward rate climbs, and the same height with a downward rate falls. Drag the mass to set the start height, and the Rate knob ($v_0$) sets the start rate, so you can hold one height and leave two ways.",
         ],
       ),
       {
@@ -32,11 +32,11 @@ export const READING: ReadingMap = {
         segments: [
           {
             kind: "look",
-            text: "Start above the rest point. The mass is high, and the acceleration points back down.",
+            text: "Start above the rest point and the mass is high, so the acceleration points back down, because the spring pulls toward the place it hangs.",
           },
           {
             kind: "look",
-            text: "Position is one number. A rocket, a spring, or any moving body also carries a direction of change and a force.",
+            text: "Position is one number, and a rocket or a spring also carries a direction of change and a force, which is why the next moment needs more than the height.",
           },
           {
             kind: "relation",
@@ -50,15 +50,11 @@ A damper would add a force against rate; this scene leaves that term out.`,
           {
             kind: "contrast",
             tex: String.raw`\ddot{x} = -x`,
-            stake: "In this scene the mass and the stiffness are both one, so acceleration equals the height with the sign flipped. Positive height gives negative acceleration. Negative height gives positive acceleration.",
+            stake: "In this scene the mass and the stiffness are both one, so acceleration equals the height with the sign flipped, a positive height gives a negative acceleration, and a negative height gives a positive one.",
           },
           {
             kind: "trace",
-            text: "Height and rate [trade roles through the cycle](https://en.wikipedia.org/wiki/Simple_harmonic_motion). One is largest near the moments when the other crosses zero.",
-          },
-          {
-            kind: "trace",
-            text: "Together those two numbers say what the next moment does.",
+            text: "Height and rate [trade roles through the cycle](https://en.wikipedia.org/wiki/Simple_harmonic_motion), so one is largest near the moments when the other crosses zero, and the pair is what the next moment does.",
           },
         ],
       },
@@ -114,7 +110,7 @@ $t$ is the slider time.`,
         segments: [
           {
             kind: "look",
-            text: "The gold mass is the numerical orbit. The wire box follows the true spring. On the chart, pale is the closed ellipse and gold is the stepped orbit.",
+            text: "The gold mass is the numerical orbit and the wire box follows the true spring, so on the chart the pale curve is the closed ellipse and the gold curve is the stepped orbit.",
           },
           {
             kind: "look",
@@ -162,16 +158,12 @@ $v$ is rate.`,
       ),
       {
         id: "tank",
-        title: "The same thrust changes its mind",
+        title: "The same thrust, a lighter mass",
         focus: ["Mass changes during the burn", "Thrust over mass sets acceleration"],
         segments: [
           {
             kind: "look",
-            text: "The flame can stay steady while the rocket underneath it changes. A lighter rocket reacts more strongly to the same push.",
-          },
-          {
-            kind: "look",
-            text: "This is one of the first places where a rocket stops feeling like a block in a physics problem. The vehicle is spending part of itself while it moves.",
+            text: "The flame can stay steady while the rocket underneath it gets lighter, and a lighter rocket accelerates more under the same thrust because the fuel it is pushing with is leaving.",
           },
           {
             kind: "relation",
@@ -183,17 +175,13 @@ The fuel term reaches zero at $4\,\mathrm{s}$.`,
           {
             kind: "relation",
             tex: String.raw`a = F/m - g`,
-            stake: "Thrust is the input. Acceleration is what the vehicle feels. The same $F$ produces less acceleration when $m$ is large.",
+            stake: "Thrust is the input and acceleration is what the vehicle feels, so the same $F$ produces less acceleration when $m$ is large.",
             gloss: String.raw`$F$ is thrust in newtons.
 $g$ is $9.81\,\mathrm{m/s^2}$.`,
           },
           {
             kind: "trace",
-            text: "The live chart shows acceleration and rate. Acceleration tells the hidden story of the burn: mass is falling, gravity is constant, and thrust eventually ends.",
-          },
-          {
-            kind: "trace",
-            text: "Rate follows that bend. Height is the slowest part of the story to change, so by the time the path looks different, acceleration and rate have already moved.",
+            text: "Acceleration bends first, because the mass is falling while gravity stays put and the thrust ends at four seconds, and the rate follows that bend while the height is still catching up to a change that already happened.",
           },
         ],
       },
@@ -204,11 +192,7 @@ $g$ is $9.81\,\mathrm{m/s^2}$.`,
         segments: [
           {
             kind: "look",
-            text: "Height arrives through acceleration, rate, and time.",
-          },
-          {
-            kind: "look",
-            text: "A controller can ask for thrust now. Height feels that thrust after it has passed through acceleration and rate.",
+            text: "A controller can ask for thrust now, and the height only feels that thrust after it has passed through acceleration and then through rate.",
           },
           {
             kind: "relation",
@@ -250,7 +234,7 @@ $v$ is vertical rate.`,
           },
           {
             kind: "look",
-            text: "That gap is easy to ignore in drawings and hard to ignore in flight. [Any real actuator turns a decision into force through its own timing and limits](https://en.wikipedia.org/wiki/Actuator).",
+            text: "[Any real actuator turns a decision into force through its own timing and limits](https://en.wikipedia.org/wiki/Actuator), so the gap between the command and the thrust is what the vehicle actually flies.",
           },
           {
             kind: "relation",
@@ -263,7 +247,7 @@ $\tau$ is the lag time.`,
           {
             kind: "contrast",
             tex: String.raw`0 \le F \le 50`,
-            stake: "The command can ask for more than the engine can supply. The vehicle feels the clamped value. The Command aside marks the ceiling.",
+            stake: "The command can ask for more than the engine can supply, the vehicle feels the clamped value, and the Command aside marks the ceiling.",
           },
           {
             kind: "trace",
@@ -348,7 +332,7 @@ $m$ is mass, $g$ is gravity.`,
           },
           {
             kind: "trace",
-            text: "The reference stays flat while the height walks away. That gap is the open-loop plan.",
+            text: "The reference stays flat while the height walks away, and that growing gap is what a thrust held on the plan produces.",
           },
           {
             kind: "trace",
@@ -375,11 +359,7 @@ $m$ is mass, $g$ is gravity.`,
         segments: [
           {
             kind: "look",
-            text: "P, D, and PID share the left axis. I alone is on the right because it can run far from the target. Raise Kp and watch the P and PID traces react.",
-          },
-          {
-            kind: "look",
-            text: "Each alone-term listens to a different part of the error. PID uses all three gains at once.",
+            text: "P, D, and PID share the left axis, I alone sits on the right because it can run far from the target, and raising Kp moves the P and PID traces because each term listens to a different part of the error while PID uses all three gains at once.",
           },
           {
             kind: "relation",
@@ -392,18 +372,14 @@ $x$ is the measured height.`,
           {
             kind: "contrast",
             tex: String.raw`F_0 + K_p e \qquad F_0 + K_i\!\int e\,dt \qquad F_0 - K_d v`,
-            stake: "Proportional reacts to the gap now. Integral reacts to error that has lingered. Derivative pushes against motion before height alone tells the whole story.",
+            stake: "Proportional reacts to the gap now, integral reacts to error that has lingered, and derivative pushes against the rate so the thrust can ease off while the height is still on the way.",
             gloss: String.raw`$F_0$ is hover thrust, $mg$.
 $K_p$, $K_i$, $K_d$ are the three gains.
 $v$ is vertical rate.`,
           },
           {
             kind: "trace",
-            text: "Overshoot, delay, and sluggishness are the fingerprints of what each term chooses to notice.",
-          },
-          {
-            kind: "trace",
-            text: "When a trace races past the target, ask what signal kept pushing. When it stays short of the target, ask what signal was too weak.",
+            text: "When a trace races past the target, the term that kept pushing is the one to look at, and when it stays short of the target, the term that was too weak is the one to look at.",
           },
         ],
       },
@@ -449,11 +425,7 @@ $g$ is gravity.`,
           },
           {
             kind: "trace",
-            text: "When the two traces lie on top of each other, the approximation is earning trust. When they separate, the full model is speaking again.",
-          },
-          {
-            kind: "trace",
-            text: "The offset knob tests how far the local story can be stretched.",
+            text: "When the two traces lie on top of each other, the straight law still matches the full thrust law, and when they separate, the offset has left the neighborhood where that slope was taken.",
           },
         ],
       },
@@ -462,11 +434,11 @@ $g$ is gravity.`,
   loopHover: {
     threads: [
       plain(
-        "Balanced, and still restless",
-        ["A hover can accelerate away from itself", "Feedback can hold a restless plant onto a landing"],
+        "Balanced, and still unstable",
+        ["A hover can accelerate away from itself", "Feedback can hold that plant onto a landing"],
         [
           "A hover can be perfectly balanced and still be unsafe. Balance means the forces cancel at that one height. [Stability means a small mistake brings the vehicle back](https://en.wikipedia.org/wiki/Stability_theory). Here a small rise makes the acceleration point farther up, so waiting makes the miss larger.",
-          "[Feedback watches the gap to a reference and pushes back](https://en.wikipedia.org/wiki/Feedback). The reference can walk down toward the pad while that push keeps collecting the vehicle. The $\\mu$ knob sets the open-loop growth rate: how hard the restless plant runs away on its own.",
+          "[Feedback watches the gap to a reference and pushes back](https://en.wikipedia.org/wiki/Feedback), so the reference can walk down toward the pad while that push keeps collecting the vehicle. The $\\mu$ knob sets the open-loop growth rate, which is how hard the plant runs away on its own.",
         ],
       ),
       {
@@ -549,11 +521,7 @@ $F$ is thrust.`,
           },
           {
             kind: "trace",
-            text: "The hidden-mode trace draws that internal motion beside the measured height.",
-          },
-          {
-            kind: "trace",
-            text: "Once the hidden motion pushes on measured height, the height trace bends with it.",
+            text: "The hidden-mode trace draws that internal motion beside the measured height, and once the hidden motion pushes on the height the height trace bends with it.",
           },
         ],
       },
@@ -562,7 +530,7 @@ $F$ is thrust.`,
   loopSample: {
     threads: [
       plain(
-        "Look, decide, hold",
+        "A sample, then a hold",
         ["A digital controller holds its thrust between samples", "A delayed sample decides about a vehicle that has moved"],
         [
           "A controller that updates all the time changes the thrust as the error changes. A digital one [looks, decides, and holds that decision until the next look](https://en.wikipedia.org/wiki/Zero-order_hold). Between looks the vehicle keeps moving under a thrust that has stopped listening.",
@@ -613,7 +581,7 @@ $x_{\mathrm{ref}}$ is the target height.`,
   turnFrames: {
     threads: [
       plain(
-        "One arrow, two descriptions",
+        "A body arrow and its world numbers",
         ["A body direction is fixed on the rocket", "Yaw changes the world numbers that describe it"],
         [
           "A direction painted on the rocket is one arrow, and it turns when the rocket yaws because it is part of the rocket. [The world describes that same arrow with two numbers, how much of it points to the side and how much of it points forward](https://en.wikipedia.org/wiki/Rotation_matrix).",
@@ -625,8 +593,7 @@ $x_{\mathrm{ref}}$ is the target height.`,
         title: "Yaw changes the world numbers",
         focus: ["A body axis is fixed on the rocket", "Its world components change with yaw"],
         segments: [
-          { kind: "look", text: "The gold arrow is painted on the rocket. Yaw turns the rocket, and that arrow turns with it." },
-          { kind: "look", text: "The pale arrow is the world's side axis. It stays put while the rocket yaws." },
+          { kind: "look", text: "The gold arrow is painted on the rocket, so it turns when the rocket yaws, and the pale arrow is the world's side axis, which stays put while the rocket yaws." },
           {
             kind: "relation",
             tex: String.raw`\mathbf{r}_{\mathrm{world}} = R(\psi)\,\mathbf{r}_{\mathrm{body}}`,
@@ -646,7 +613,7 @@ $x_{\mathrm{ref}}$ is the target height.`,
         "Two hinges become one",
         ["Pitch lifts the nose toward straight up", "At straight up, roll and yaw are the same turn"],
         [
-          "[Pitch, yaw, and roll are three hinges](https://en.wikipedia.org/wiki/Euler_angles). Pitch lifts the nose up from the horizon toward straight up. Yaw spins the vehicle about the vertical. Roll spins it about the nose.",
+          "[Pitch, yaw, and roll are three hinges](https://en.wikipedia.org/wiki/Euler_angles): pitch lifts the nose up from the horizon toward straight up, yaw spins the vehicle about the vertical, and roll spins it about the nose.",
           "While the nose is out on the horizon, those last two hinges point different ways, and a roll is a different turn from a yaw. When the nose reaches straight up, the nose and the vertical are the same line, so a roll and a yaw have become [the same command](https://en.wikipedia.org/wiki/Gimbal_lock). The pitch knob carries the nose along that rise.",
         ],
       ),
@@ -655,7 +622,7 @@ $x_{\mathrm{ref}}$ is the target height.`,
         title: "Two axes become one",
         focus: ["Pitch carries the nose up from the horizon", "At 90 degrees roll and yaw share an axis"],
         segments: [
-          { kind: "look", text: "The pale arrow is vertical. That is yaw. The gold arrow is the nose. That is roll." },
+          { kind: "look", text: "The pale arrow is vertical, which is the yaw axis, and the gold arrow is the nose, which is the roll axis." },
           { kind: "look", text: "Pitch is the angle that lifts the nose off the horizon toward the vertical arrow." },
           {
             kind: "relation",
@@ -689,7 +656,7 @@ $x_{\mathrm{ref}}$ is the target height.`,
           {
             kind: "relation",
             tex: String.raw`q = \cos(\theta/2) + \sin(\theta/2)\,\mathbf{k}`,
-            stake: "One pitch about a fixed axis is two numbers. They are the cosine and sine of half the pitch.",
+            stake: "One pitch about a fixed axis is two numbers, the cosine and the sine of half the pitch.",
           },
           {
             kind: "contrast",
@@ -719,7 +686,7 @@ $x_{\mathrm{ref}}$ is the target height.`,
         title: "A rate that stays put",
         focus: ["No torque leaves the spin rate constant", "Angle is rate times time"],
         segments: [
-          { kind: "look", text: "The stripe walks around the body at one pace. The spin stays at that pace." },
+          { kind: "look", text: "The stripe walks around the body at one pace, and the spin stays at that pace because the torque is zero." },
           {
             kind: "relation",
             tex: String.raw`\theta = \omega t`,
@@ -727,7 +694,7 @@ $x_{\mathrm{ref}}$ is the target height.`,
           },
           {
             kind: "trace",
-            text: "Drag the rocket and the ramp gets steeper. The spin trace stays flat, at a new height.",
+            text: "Drag the rocket and the angle ramp gets steeper, while the spin trace stays flat at a new height because the rate itself is unchanged.",
           },
         ],
       },
@@ -739,7 +706,7 @@ $x_{\mathrm{ref}}$ is the target height.`,
         "The same twist, a heavier reluctance",
         ["Torque changes the spin", "Inertia is how hard that change is"],
         [
-          "[Torque is a twist](https://en.wikipedia.org/wiki/Torque). It changes how fast the rocket is spinning. [Inertia is the rocket's reluctance to that change](https://en.wikipedia.org/wiki/Moment_of_inertia): the same twist produces a smaller change in spin when the inertia is larger.",
+          "[Torque is a twist](https://en.wikipedia.org/wiki/Torque) that changes how fast the rocket is spinning, and [inertia is the rocket's reluctance to that change](https://en.wikipedia.org/wiki/Moment_of_inertia), so the same twist produces a smaller change in spin when the inertia is larger.",
           "Here the twist stays at a steady 2 newton-meters, so the spin climbs in a straight line and the slope of that line is the twist divided by the inertia. A larger inertia reaches the same angle later. The inertia knob is that reluctance.",
         ],
       ),
@@ -769,7 +736,7 @@ $x_{\mathrm{ref}}$ is the target height.`,
         ["Commands are side force and moment", "An allocation matrix picks two signed gimbal angles"],
         [
           "A flight computer asks for a sideways shove and a twist. [Two nozzles share that ask](https://en.wikipedia.org/wiki/Control_allocation): each can tilt left or right, and each stops at an actuator limit.",
-          "The solve maps the two commands onto δ₁ and δ₂. Common tilt builds side force. Differential tilt builds moment. When a command needs more tilt than ±15°, that gimbal clips and the delivered force or moment falls short.",
+          "The solve maps the two commands onto δ₁ and δ₂, so a common tilt builds side force and a differential tilt builds moment, and when a command needs more tilt than ±15° that gimbal clips and the delivered force or moment falls short.",
         ],
       ),
       {
@@ -777,7 +744,7 @@ $x_{\mathrm{ref}}$ is the target height.`,
         title: "Allocate, then clip",
         focus: ["Fy and M are the commands", "δ₁ and δ₂ come from an allocation matrix", "Each actuator stops at ±15°"],
         segments: [
-          { kind: "look", text: "Side force and moment on the chart are what the clipped gimbals deliver. Pitch is δ₁ and angle is δ₂. Drag Side Fy; set Moment M on the second slider." },
+          { kind: "look", text: "Side force and moment on the chart are what the clipped gimbals deliver, pitch is δ₁ and angle is δ₂, and dragging Side Fy or setting Moment M on the second slider is how the two commands move." },
           {
             kind: "relation",
             tex: String.raw`\begin{bmatrix} F_y \\ M \end{bmatrix} = \begin{bmatrix} T & T \\ T\ell & -T\ell \end{bmatrix}\begin{bmatrix} \delta_1 \\ \delta_2 \end{bmatrix}`,
@@ -794,7 +761,7 @@ $\delta_1$ and $\delta_2$ are the gimbal angles.`,
           },
           {
             kind: "trace",
-            text: "A pure side command drives δ₁ ≈ δ₂. A pure moment command drives δ₁ ≈ −δ₂. Mix both and watch one angle hit the wall first while the other still has room.",
+            text: "A pure side command drives δ₁ ≈ δ₂ and a pure moment command drives δ₁ ≈ −δ₂, so mixing both makes one angle hit ±15° first while the other still has room.",
           },
         ],
       },
@@ -815,7 +782,7 @@ $\delta_1$ and $\delta_2$ are the gimbal angles.`,
         title: "The moment and the margin",
         focus: ["Aerodynamic force acts at the center of pressure", "The moment restores when that point is behind the mass"],
         segments: [
-          { kind: "look", text: "The gold mark is the center of mass. The pale blue mark is the center of pressure. The rocket's lean is the angle of attack." },
+          { kind: "look", text: "The gold mark is the center of mass, the pale blue mark is the center of pressure, and the rocket's lean is the angle of attack." },
           {
             kind: "relation",
             tex: String.raw`M = -q S d\, C_{N\alpha}\, \alpha\, \sigma`,
@@ -851,7 +818,7 @@ Positive $\sigma$ puts the center of pressure behind the center of mass.`,
         title: "Fuel that is still free to move",
         focus: ["The tank drains from the bottom", "The fuel that remains can swing and shift the center of mass"],
         segments: [
-          { kind: "look", text: "The gold slug is the fuel still in the tank. It swings, and it rides higher as the tank empties." },
+          { kind: "look", text: "The gold slug is the fuel still in the tank, so it swings, and it rides higher as the tank empties from the bottom." },
           {
             kind: "relation",
             tex: String.raw`x_{\mathrm{cm}} = \frac{m_{\mathrm{fuel}}}{m}\, x_{\mathrm{slug}}`,
@@ -880,11 +847,11 @@ Positive $\sigma$ puts the center of pressure behind the center of mass.`,
         title: "Off the pad",
         focus: ["Thrust per mass minus gravity is the acceleration", "T/W = 1 is the break-even"],
         segments: [
-          { kind: "look", text: "The flame stays on. Mass is 2 kg, so the thrust knob alone sets acceleration. The Thrust aside shows T/W and the 19.6 N weight." },
+          { kind: "look", text: "The flame stays on and the mass is 2 kg, so the thrust knob alone sets the acceleration, and the Thrust aside shows T/W against the 19.6 N weight." },
           {
             kind: "relation",
             tex: String.raw`a = T/m - g`,
-            stake: "$T/m$ is the push per kilogram. Subtracting $g$ takes the weight off that push. Upward is positive. When $T \\le mg$, $a \\le 0$ and the pad hold keeps height and rate at zero.",
+            stake: "$T/m$ is the push per kilogram and subtracting $g$ takes the weight off that push, with upward positive, so when $T \\le mg$ the acceleration is at or below zero and the pad hold keeps height and rate at zero.",
             gloss: String.raw`$T$ is thrust.
 $m$ is $2\,\mathrm{kg}$.
 $g$ is $9.81\,\mathrm{m/s^2}$.
@@ -901,7 +868,7 @@ $t$ is the clock.`,
           {
             kind: "relation",
             tex: String.raw`T/W = T/(mg)`,
-            stake: "Thrust-to-weight above 1 climbs. Equal to 1 holds. Below 1 never leaves the pad from rest.",
+            stake: "Thrust-to-weight above 1 climbs, equal to 1 holds, and below 1 never leaves the pad from rest.",
             gloss: String.raw`$W$ is weight $mg$.
 $T/W$ is the live readout.`,
           },
@@ -928,11 +895,11 @@ $T/W$ is the live readout.`,
         title: "Cosine lifts, sine goes downrange",
         focus: ["Thrust is along the body axis", "Break-even when a_y = 0"],
         segments: [
-          { kind: "look", text: "The rocket leans, and the flame leans with it. Thrust is 50 N on 2 kg (T/m = 25 m/s²). The Tilt aside shows a_y, a_x, and θ*." },
+          { kind: "look", text: "The rocket leans and the flame leans with it, thrust is 50 N on 2 kg so T/m is 25 m/s², and the Tilt aside shows a_y, a_x, and θ*." },
           {
             kind: "relation",
             tex: String.raw`a_y = (T/m)\cos\theta - g`,
-            stake: "Tilt $\\theta$ is from vertical. Cosine is the share of the nose that still points up. When $(T/m)\\cos\\theta = g$, climb accel is zero.",
+            stake: "Tilt $\\theta$ is from vertical and cosine is the share of the nose that still points up, so climb acceleration is zero when $(T/m)\\cos\\theta = g$.",
             gloss: String.raw`$T$ is $50\,\mathrm{N}$.
 $m$ is $2\,\mathrm{kg}$.
 $\theta$ is the tilt from vertical.
@@ -973,11 +940,11 @@ $mg/T$ is weight over thrust.`,
         title: "Air across the nose",
         focus: ["α = arctan(W/v) with no silent speed floor", "Drift grows with wind"],
         segments: [
-          { kind: "look", text: "The pale arrow is the wind. The nose stays vertical. At t = 0 the attack readout is 90° whenever W > 0." },
+          { kind: "look", text: "The pale arrow is the wind and the nose stays vertical, so at t = 0 the attack readout is 90° whenever W > 0." },
           {
             kind: "relation",
             tex: String.raw`\alpha = \arctan(W / v)`,
-            stake: "Implemented as $\\mathrm{atan2}(W,v)$. When $v=0$ and $W>0$, $\\alpha=90^\\circ$. A larger $W$ raises the whole attack curve. A larger $v$ lowers $\\alpha$.",
+            stake: "The angle is $\\mathrm{atan2}(W,v)$, so when $v=0$ and $W>0$ the attack is $90^\\circ$, a larger $W$ raises the whole curve, and a larger $v$ lowers it.",
             gloss: String.raw`$W$ is the wind.
 $v$ is the climb rate.
 $\alpha$ is the angle of attack.`,
@@ -1004,7 +971,7 @@ $W$ is wind in m/s.`,
         ["This is a fixed-gain filter, not a Kalman filter", "The chart shows errors from truth so the wave is visible"],
         [
           "A sensor reports a height with a wave on it. You can also predict the next height from the thrust, using the speed you already believe and the acceleration that thrust should produce.",
-          "The estimate starts from that prediction, then moves partway toward the sensor. [The gain is how hard that pull is: a fixed number you set, not a Kalman gain from variances](https://en.wikipedia.org/wiki/State_observer). High gain follows the wave. Low gain (or zero) trusts the model. The pale mark is the estimate; the rocket is truth.",
+          "The estimate starts from that prediction and then moves partway toward the sensor, and [the gain is how hard that pull is: a fixed number you set, not a Kalman gain from variances](https://en.wikipedia.org/wiki/State_observer), so a high gain follows the wave and a low gain, or zero, stays with the prediction. The pale mark is the estimate and the rocket is the true height.",
         ],
       ),
       {
@@ -1058,7 +1025,7 @@ $\Delta t$ is the step.`,
         title: "Closed-loop aim",
         focus: ["The command comes from the estimate and the target", "The body lags the command", "Downrange and height show the flown path"],
         segments: [
-          { kind: "look", text: "The chart is downrange and height. The pale arrow is the live pitch command. Drag Target to move the ground aim point." },
+          { kind: "look", text: "Downrange and height are the flown path, the pale arrow is the live pitch command, and dragging Target moves the ground aim point." },
           {
             kind: "relation",
             tex: String.raw`\theta_{\mathrm{cmd}} = \mathrm{atan2}(x_t - \hat{x},\, \hat{z})`,
@@ -1095,7 +1062,7 @@ $\tau$ is the follow time.`,
         ["Fixed K stays put while mass and air change", "Scheduled K scales with mass so the twist matches inertia"],
         [
           "The autopilot twists the nose toward a 12° command that arrives at 0.4 s. While that happens the vehicle burns fuel and speeds up, so inertia falls and [air loads grow with speed squared](https://en.wikipedia.org/wiki/Dynamic_pressure).",
-          "[Gain scheduling changes K as the vehicle changes](https://en.wikipedia.org/wiki/Gain_scheduling). Here Schedule sets K ∝ m, so K/I stays nearer a constant. Fixed holds one K for the whole burn. The air term is written κ and is restoring in this scene (a teaching choice); many real rockets are aerodynamically unstable.",
+          "[Gain scheduling changes K as the vehicle changes](https://en.wikipedia.org/wiki/Gain_scheduling), and here Schedule sets K proportional to mass so K/I stays nearer a constant, while Fixed holds one K for the whole burn. The air term is written κ and restores in this scene, a teaching choice, since many real rockets are aerodynamically unstable.",
         ],
       ),
       {
@@ -1103,7 +1070,7 @@ $\tau$ is the follow time.`,
         title: "Fixed K or K(m)",
         focus: ["K twists the nose toward the command", "κ = c v² is air stiffness", "Schedule scales K with mass"],
         segments: [
-          { kind: "look", text: "Pitch is the nose. Gain used is the live K (right axis). Switch Schedule between fixed and K∝m. Ask for speed v or air stiffness κ on the chart." },
+          { kind: "look", text: "Pitch is the nose angle and gain used is the live K on the right axis, so switching Schedule between fixed and K proportional to mass changes that gain, and speed v or air stiffness κ can be asked for on the chart." },
           {
             kind: "relation",
             tex: String.raw`m = 3 - 1.6\,t/8`,
@@ -1115,7 +1082,7 @@ $I$ is inertia.`,
           {
             kind: "contrast",
             tex: String.raw`I\dot\omega = K(\theta_{\mathrm{cmd}} - \theta) - b\omega - \kappa\theta`,
-            stake: "K times the miss twists toward the command. b damps pitch rate. κθ is the air stiffness term, restoring here (positive κ pulls toward straight up). The sign is a teaching choice.",
+            stake: "K times the miss twists the nose toward the command, b damps the pitch rate, and κθ is the air stiffness, which restores here because a positive κ pulls toward straight up, and that sign is a teaching choice.",
             gloss: String.raw`$K$ is the gain used.
 $\omega$ is pitch rate.
 $b$ damps that rate.
@@ -1124,7 +1091,7 @@ $\kappa$ is air stiffness.`,
           {
             kind: "relation",
             tex: String.raw`\kappa = c\,v^{2}`,
-            stake: "Air stiffness grows with speed squared. Early on, K sets the pitch. Later, with the vehicle fast, κ eases the nose back from the command.",
+            stake: "Air stiffness grows with speed squared, so early on K sets the pitch, and later, with the vehicle fast, κ eases the nose back from the command.",
             gloss: String.raw`$v$ is speed.
 $c$ is the coefficient on that speed squared.`,
           },
@@ -1137,7 +1104,7 @@ $m_0$ is the start mass, 3 kg.`,
           },
           {
             kind: "trace",
-            text: "With Schedule on, Gain used falls with mass. Pitch still rises toward 12°, then sags a little as κ grows. Fixed K keeps the right-axis gain flat.",
+            text: "With Schedule on, the gain used falls with mass while the pitch still rises toward 12° and then sags a little as κ grows, and with Schedule off the right-axis gain stays flat.",
           },
         ],
       },
@@ -1146,10 +1113,10 @@ $m_0$ is the start mass, 3 kg.`,
   desCost: {
     threads: [
       plain(
-        "A score that chooses the pull",
+        "A cost that sets the gain",
         ["The weight on height sets the gain", "The cost does not contain the ground"],
         [
-          "A landing can be scored. One part of the score is how far the height sits from the pad, and another is how much thrust you spend getting there. [Those weights choose the gain that pulls the vehicle home](https://en.wikipedia.org/wiki/Linear-quadratic_regulator).",
+          "A landing can be scored by how far the height sits from the pad and by how much thrust you spend getting there, and [those weights choose the gain that pulls the vehicle home](https://en.wikipedia.org/wiki/Linear-quadratic_regulator).",
           "A heavier weight on height makes a stronger gain, so the fall is checked sooner and the thrust peaks later and higher. Thrust cannot go below zero, so a strong early pull that would want negative thrust just sits on that floor. The score has no ground in it, so a hard pull can pass through the pad and come back.",
         ],
       ),
@@ -1193,7 +1160,7 @@ $r$ is the weight on thrust.`,
         "Walls on the way down",
         ["Thrust has a floor and a ceiling", "The cone keeps the path over the pad"],
         [
-          "The way down has walls. Thrust can only be so small and so large, and the vehicle has to stay inside [a cone that opens upward from the pad](http://www.larsblackmore.com/iee_tcst13.pdf). Outside that cone the pad is no longer under the vehicle in the way the landing allows.",
+          "Thrust can only be so small and so large, and the vehicle has to stay inside [a cone that opens upward from the pad](http://www.larsblackmore.com/iee_tcst13.pdf), because outside that cone the pad is no longer under the vehicle in the way the landing allows.",
           "A tight cone meets the vehicle early and pushes the path onto the wall. A wide cone leaves room to come in on the guidance, and the wall stays pale and unused.",
         ],
       ),
@@ -1209,7 +1176,7 @@ $r$ is the weight on thrust.`,
           {
             kind: "relation",
             tex: String.raw`|x| \le z \tan\theta`,
-            stake: "x is downrange and z is height. θ is the cone angle from vertical. At a given height the vehicle may sit no farther from the pad than the height times the tangent of that angle. Past the wall, a sideways acceleration pushes it back in, and the chart marks outside cone.",
+            stake: "x is downrange, z is height, and θ is the cone angle from vertical, so at a given height the vehicle may sit no farther from the pad than the height times the tangent of that angle, and past the wall a sideways acceleration pushes it back in while the chart marks outside cone.",
             gloss: String.raw`$\theta$ is the cone angle.
 $x$ is downrange.
 $z$ is height.`,
@@ -1217,12 +1184,12 @@ $z$ is height.`,
           {
             kind: "relation",
             tex: String.raw`6 \le \|T\| \le 55`,
-            stake: "T is the thrust vector in newtons. The floor keeps a push on the engine, and the ceiling is as hard as this engine pushes. The cone is the knob. The thrust bounds stay put (see the Cone aside).",
+            stake: "T is the thrust vector in newtons, the floor keeps a push on the engine, and the ceiling is as hard as this engine pushes, so the cone is the knob and the thrust bounds stay put.",
             gloss: String.raw`$\|T\|$ is the size of the thrust.`,
           },
           {
             kind: "trace",
-            text: "A 10° cone pulls the vehicle toward the wall early. A 35° cone leaves more room, so downrange stays well inside the pale wall. Opening past about 35° does not change the path further.",
+            text: "A 10° cone pulls the vehicle toward the wall early, a 35° cone leaves more room so downrange stays well inside the pale wall, and opening past about 35° does not change the path further.",
           },
         ],
       },
@@ -1231,7 +1198,7 @@ $z$ is height.`,
   desLoss: {
     threads: [
       plain(
-        "A hole the answer does not use",
+        "A ring of allowed thrust",
         ["Allowed thrust is a ring", "The slack stays equal to the thrust you fly"],
         [
           "The thrusts you may use form a ring. The hole in the middle is every push smaller than the floor, and the outside of the ring is every push larger than the engine. [A relaxed problem fills that hole and still charges you for a slack at least as large as the floor](http://www.larsblackmore.com/iee_tcst13.pdf).",
@@ -1245,7 +1212,7 @@ $z$ is height.`,
         segments: [
           {
             kind: "look",
-            text: "Command is the push the guidance asked for. Thrust is the push after the floor and the ceiling. They share a line while the floor sits under the whole burn.",
+            text: "Command is the push the guidance asked for and thrust is the push after the floor and the ceiling, so they share a line while the floor sits under the whole burn.",
           },
           {
             kind: "relation",
@@ -1271,7 +1238,7 @@ $T_{\max}$ is the ceiling.`,
   desScvx: {
     threads: [
       plain(
-        "Fly it, solve, step, fly again",
+        "Each pass steps toward the pad",
         ["Each pass builds a new thrust near the last one", "A trust region limits how far that step may go"],
         [
           "The first thrust is only a weak upward push, smaller than the weight, so the rocket falls through the pad. [Successive convexification flies that profile, solves a pad-aiming subproblem (stand-in for the convex program), and steps toward it](https://arxiv.org/abs/1608.05133).",
@@ -1285,12 +1252,12 @@ $T_{\max}$ is the ceiling.`,
         segments: [
           {
             kind: "look",
-            text: "The solid height is the pass you are on. The dashed height is the pass before it. On the first pass the two lines are the same weak push.",
+            text: "The solid height is the pass you are on and the dashed height is the pass before it, and on the first pass the two lines are the same weak push.",
           },
           {
             kind: "relation",
             tex: String.raw`\|T_{k+1} - T_k\| \le \Delta_k`,
-            stake: "$T_k$ is the thrust profile on this pass. The solved pad-aiming thrust is pulled back so the step stays inside a trust radius $\\Delta_k$. An accepted trial grows $\\Delta$. A rejected trial shrinks it.",
+            stake: "$T_k$ is the thrust profile on this pass, the solved pad-aiming thrust is pulled back so the step stays inside a trust radius $\\Delta_k$, and an accepted trial grows $\\Delta$ while a rejected trial shrinks it.",
             gloss: String.raw`$k$ is the pass.
 $\Delta_k$ is the trust radius.`,
           },
@@ -1313,7 +1280,7 @@ $v$ is the speed.`,
   desGusto: {
     threads: [
       plain(
-        "Hard trust, merit accept",
+        "A hard trust region",
         ["Each iterate stays inside a hard trust region", "A bad trial shrinks Δ; a good one can grow it"],
         [
           "GuSTO starts from a weak first push and iterates. Each step linearizes about the path just flown, takes a hard trust-limited correction, and keeps the step only when a merit test (end-height error) improves. [There is no virtual control; feasibility is enforced by the trust region and the accept/reject rule](https://arxiv.org/abs/1903.00155).",
@@ -1327,7 +1294,7 @@ $v$ is the speed.`,
         segments: [
           {
             kind: "look",
-            text: "The first push is 14 N straight up, under the weight of the 2 kg vehicle. Drag the trust knob. The solid height is after a few GuSTO iterates. The dashed height is that first push.",
+            text: "The first push is 14 N straight up, under the weight of the 2 kg vehicle, the solid height is after a few GuSTO iterates, and the dashed height is that first push, so drag the trust knob to change how large a step the local model is allowed.",
           },
           {
             kind: "relation",
@@ -1362,7 +1329,7 @@ $T_{\mathrm{new}}$ is the trial thrust.`,
         segments: [
           {
             kind: "look",
-            text: "Downrange is the live plan after the gust. The dashed line is the old plan. Markers call out the gust, an outside-cone moment, and a miss when the end is off the pad.",
+            text: "Downrange is the live plan after the gust and the dashed line is the plan that never felt it, with markers for the gust, an outside-cone moment, and a miss when the end is off the pad.",
           },
           {
             kind: "relation",
@@ -1374,7 +1341,7 @@ $t_f$ is the time left.`,
           },
           {
             kind: "trace",
-            text: "A gust of 6 m/s recovers under the limits. A gust of 14 m/s drives the vehicle outside the cone, saturates thrust, and ends off the pad. Replanning helps only while the limits still have room.",
+            text: "A gust of 6 m/s recovers under the limits, and a gust of 14 m/s drives the vehicle outside the cone, saturates thrust, and ends off the pad, because a replan helps only while the limits still have room.",
           },
         ],
       },
@@ -1386,7 +1353,7 @@ $t_f$ is the time left.`,
         "When no soft landing exists",
         ["Soft landing needs |rate| ≤ 0.5 m/s at the pad", "Fuel-out and a hard ceiling are two ways to miss"],
         [
-          "A soft landing here means the vehicle reaches the pad with $|\\dot z| \\le 0.5\\,\\mathrm{m/s}$. Faster than that is a miss. Fuel is one way to fail: [each newton of thrust spends budget](https://en.wikipedia.org/wiki/Tsiolkovsky_rocket_equation), and when the tank is empty thrust is gone.",
+          "A soft landing here means the vehicle reaches the pad with $|\\dot z| \\le 0.5\\,\\mathrm{m/s}$, and anything faster is a miss. Fuel is one way to fail, because [each newton of thrust spends budget](https://en.wikipedia.org/wiki/Tsiolkovsky_rocket_equation) and when the tank is empty the thrust is gone.",
           "The other way is [infeasibility](https://en.wikipedia.org/wiki/Feasible_region): the Cause knob sets a ceiling of 18 N that cannot kill this fall from 45 m / −3 m/s. Status reads INFEASIBLE because no thrust history under that bound meets the soft-landing speed.",
         ],
       ),
@@ -1397,7 +1364,7 @@ $t_f$ is the time left.`,
         segments: [
           {
             kind: "look",
-            text: "Start 45 m up at −3 m/s. Cause = fuel uses the Fuel knob. Cause = ceiling locks T ≤ 18 N with ample fuel.",
+            text: "The fall starts 45 m up at −3 m/s, Cause set to fuel uses the Fuel knob, and Cause set to ceiling locks thrust at or under 18 N with ample fuel.",
           },
           {
             kind: "relation",
@@ -1416,7 +1383,7 @@ $0.5\,\mathrm{m/s}$ is the soft limit in this scene.`,
           },
           {
             kind: "trace",
-            text: "Fuel 0.4 kg → miss. Fuel near 0.7 kg → soft. Flip Cause to ceiling → INFEASIBLE with impact still fast.",
+            text: "Fuel of 0.4 kg misses, fuel near 0.7 kg is soft, and flipping Cause to ceiling is INFEASIBLE with the impact still fast.",
           },
         ],
       },
@@ -1425,10 +1392,10 @@ $0.5\,\mathrm{m/s}$ is the soft limit in this scene.`,
   propEq: {
     threads: [
       plain(
-        "Throw mass, keep the speed",
+        "Exhaust speed and the mass ratio",
         ["Final speed follows the exhaust speed and the mass ratio", "The tank gets lighter, so the same push accelerates more"],
         [
-          "A rocket gets its speed by throwing mass out the back. The faster that mass leaves, and the larger the share of the rocket that is propellant, the more speed the rocket keeps. [The rocket equation](https://en.wikipedia.org/wiki/Tsiolkovsky_rocket_equation) is that trade, with gravity off and no air in this scene.",
+          "A rocket gets its speed by throwing mass out the back, so the faster that mass leaves, and the larger the share of the rocket that is propellant, the more speed the rocket keeps. [The rocket equation](https://en.wikipedia.org/wiki/Tsiolkovsky_rocket_equation) is that trade, with gravity off and no air in this scene.",
           "Drag the rocket to change the mass ratio. At 4, a 4000 kg rocket finishes at 1000 kg. The Isp knob is [how long one kilogram of propellant can produce one newton](https://en.wikipedia.org/wiki/Specific_impulse): 300 s here, which is an exhaust speed of 2942 m/s. The burn takes 10 s and the final speed is 4078 m/s.",
         ],
       ),
@@ -1444,7 +1411,7 @@ $0.5\,\mathrm{m/s}$ is the soft limit in this scene.`,
           {
             kind: "relation",
             tex: String.raw`\Delta v = v_e \ln\frac{m_0}{m_f} \qquad v_e = I_{sp}\, g_0`,
-            stake: "The final speed is the exhaust speed times the natural log of the mass ratio. Specific impulse turns into an exhaust speed through standard gravity, 9.80665 m/s². In this scene that g0 only defines ve. The rocket is in free space.",
+            stake: "The final speed is the exhaust speed times the natural log of the mass ratio, specific impulse turns into an exhaust speed through standard gravity, 9.80665 m/s², and in this scene that g0 only defines ve because the rocket is in free space.",
             gloss: String.raw`$v_e$ is the exhaust speed.
 $I_{sp}$ is the specific impulse.
 $g_0 = 9.80665\,\mathrm{m/s^2}$.
@@ -1509,7 +1476,7 @@ The matched altitude at expansion 16 is 4.2 km.`,
         "Drop the empty shell",
         ["Two stages leave the lower structure behind", "The speeds match until the drop"],
         [
-          "One tank has to carry its empty shell for the whole burn. Two stages burn, drop the lower shell, and the upper burn pushes a lighter vehicle. [That is staging](https://en.wikipedia.org/wiki/Multistage_rocket).",
+          "One tank has to carry its empty shell for the whole burn, while two stages burn, drop the lower shell, and let the upper burn push a lighter vehicle, which is [staging](https://en.wikipedia.org/wiki/Multistage_rocket).",
           "Both vehicles carry 1000 kg of payload and 8000 kg of propellant, and both throw the exhaust at 2942 m/s. Structure is 0.08 kg of dry mass for each kilogram of propellant in that stage. At a split of 0.75 the first burn is 2865 m/s and the second is 2948 m/s, 5814 m/s together. The pale vehicle keeps the shell and ends at 5211 m/s. Until the drop, both have burned the same propellant from the same mass, so the traces lie on each other.",
         ],
       ),
@@ -1520,7 +1487,7 @@ The matched altitude at expansion 16 is 4.2 km.`,
         segments: [
           {
             kind: "look",
-            text: "The lower stage peels off at the marker and stays there. The upper stage keeps climbing. The pale vehicle is the one tank that never drops anything.",
+            text: "The lower stage peels off at the marker and stays there while the upper stage keeps climbing, and the pale vehicle is the one tank that never drops anything.",
           },
           {
             kind: "relation",
@@ -1532,7 +1499,7 @@ Structure $k$ is kilograms of dry mass per kilogram of propellant in that stage.
           },
           {
             kind: "trace",
-            text: "Set structure to 0 and both vehicles end at 6464 m/s, which is $2942 \\ln 9$. There is nothing to drop, so the split stops mattering. At 0.08 the split that finishes fastest is 0.76.",
+            text: "Set structure to 0 and both vehicles end at 6464 m/s, which is $2942 \\ln 9$, because there is nothing to drop and the split stops mattering, while at 0.08 the split that finishes fastest is 0.76.",
           },
         ],
       },
@@ -1544,8 +1511,8 @@ Structure $k$ is kilograms of dry mass per kilogram of propellant in that stage.
         "Gravity takes a share",
         ["The free-space speed is 4078 m/s", "A longer burn hands more of it to gravity"],
         [
-          "The rocket equation's 4078 m/s is the speed this tank would have in free space. Point the same burn straight up and [gravity pulls for the whole time the engine is on](https://en.wikipedia.org/wiki/Gravity_drag). A longer burn gives gravity longer.",
-          "Full thrust is 80 kN. The 3000 kg of propellant is gone in 110 s, gravity has taken 1082 m/s, and the speed at burnout is 2996 m/s. Half thrust, 40 kN, takes 221 s and finishes at 1914 m/s. Quarter thrust, 20 kN, sits under the 39.2 kN starting weight. The vehicle stays on the pad, engine burning, through the 240 s clock. It lifts once the mass falls to 2039 kg, at 289 s. The picture is a log of altitude so the pad stays in frame, and the readout is the true height.",
+          "The rocket equation's 4078 m/s is the speed this tank would have in free space, and pointing the same burn straight up means [gravity pulls for the whole time the engine is on](https://en.wikipedia.org/wiki/Gravity_drag), so a longer burn gives gravity longer.",
+          "Full thrust is 80 kN, so the 3000 kg of propellant is gone in 110 s, gravity has taken 1082 m/s, and the speed at burnout is 2996 m/s. Half thrust, 40 kN, takes 221 s and finishes at 1914 m/s. Quarter thrust, 20 kN, sits under the 39.2 kN starting weight, so the vehicle stays on the pad, engine burning, through the 240 s clock, and it lifts once the mass falls to 2039 kg, at 289 s. The picture is a log of altitude so the pad stays in frame, and the readout is the true height.",
         ],
       ),
       {
@@ -1555,7 +1522,7 @@ Structure $k$ is kilograms of dry mass per kilogram of propellant in that stage.
         segments: [
           {
             kind: "look",
-            text: "The ideal line is the free-space speed of the propellant already burned. The speed line is what the vehicle actually has. The gap at the burnout marker is g times the burn.",
+            text: "The ideal line is the free-space speed of the propellant already burned and the speed line is what the vehicle actually has, so the gap at the burnout marker is g times the burn.",
           },
           {
             kind: "relation",
@@ -1576,32 +1543,32 @@ Quarter thrust reaches liftoff mass at 289 s.`,
   freqMargin: {
     threads: [
       plain(
-        "Spare lag, spare gain",
-        ["The chart is how strongly the loop answers, and how late", "45° of spare lateness and 6 dB of spare gain"],
+        "Phase margin and gain margin",
+        ["Phase margin is extra lag at the gain crossover", "Gain margin is how far Kp sits above the gain that just holds"],
         [
-          "The chart shows this hover at every speed of wiggle. One curve is how strongly the rocket answers. The other is how late that answer is. [That pair is a Bode plot](https://en.wikipedia.org/wiki/Bode_plot). Drag the rocket to add delay. The hover and the chart move together.",
-          "The usual aim is about 45° of spare lateness and 6 dB of spare gain. Spare gain here is room above the gain that just holds this hover. Lower that gain through the floor and the rocket runs away. Spend the spare lateness, with the delay or by taking Kd down to 0, and the rocket rings.",
+          "The gain crossover is the frequency where the open-loop magnitude crosses 0 dB, and the phase margin is counted there. Gain margin on this plant is a lower margin, because the hover is unstable, so lowering $K_p$ through the floor lets it run away and raising $K_p$ adds margin. [A Bode plot](https://en.wikipedia.org/wiki/Bode_plot) draws both at once, magnitude in decibels and phase in degrees, and dragging the rocket to add delay moves the hover and the plot together.",
+          "Take the phase margin away, with the delay or by setting $K_d$ to 0, and the hover rings. Lower $K_p$ through the floor and the height runs away without that ring.",
         ],
       ),
       {
         id: "margins",
         title: "Where the loop crosses 0 dB",
-        focus: ["Phase margin is spare lag at the gain crossover", "Gain margin is room above the hold", "Kd at 0 rings, and Kp under the floor runs away"],
+        focus: ["Phase margin is extra lag at the gain crossover", "Gain margin is how far Kp sits above mμ²", "Kd at 0 rings, and Kp under the floor runs away"],
         segments: [
           {
             kind: "look",
-            text: "The gold line is magnitude in decibels. The teal line is phase in degrees. The mark is the gain crossover, where the magnitude crosses 0 dB. The clock plays the hover. A click on the chart does not move that clock.",
+            text: "The gold curve is magnitude in decibels and the teal curve is phase in degrees, with a mark at the gain crossover, and the clock keeps playing the hover because a click on this plot does not set the time.",
           },
           {
             kind: "relation",
             tex: String.raw`L(s)=\frac{K_p+K_d s}{m(s^2-\mu^2)}`,
             stake: "This is the open-loop gain of the same hover as The loop. $m$ is 2.5 kg and $\\mu$ is 1.5 per second, so $m\\mu^2$ is 5.625 N/m. The controller is $K_p$ plus $K_d$ times $s$. At the default, $K_p$ is 11.2 and $K_d$ is 5.5.",
             gloss: String.raw`Phase margin is $\arctan(\omega_c K_d/K_p)$, in degrees, then minus the delay $\omega_c\tau$.
-Gain margin is $20\log_{10}(K_p/(m\mu^2))$. It is how far $K_p$ sits above the floor. Raising $K_p$ adds margin. Lowering it through 5.625 lets the hover run away.`,
+Gain margin is $20\log_{10}(K_p/(m\mu^2))$, which is how far $K_p$ sits above 5.625 N/m. Raising $K_p$ adds margin, and lowering it through 5.625 lets the hover run away.`,
           },
           {
             kind: "trace",
-            text: "At these gains the crossover is 2.01 rad/s, the phase margin is 45°, and the gain margin is 6.0 dB. A delay of 0.39 s spends that phase margin. Kd at 0 leaves the phase on −180° and the hover rings without settling. Kp at 4 sits 3.0 dB under the floor, there is no crossover, and the height runs away without ringing. The hover scene in The loop uses Kp 22 and Kd 15 on this same rocket, which is 11.8 dB and about 76°.",
+            text: "At $K_p$ 11.2 and $K_d$ 5.5 the crossover is 2.01 rad/s, so the phase margin is 45° and the gain margin is 6.0 dB. A delay of 0.39 s spends that phase margin, and $K_d$ at 0 leaves the phase on −180°, so the hover rings without settling. $K_p$ at 4 sits 3.0 dB under the floor, there is no crossover, and the height runs away. The hover scene in The loop uses $K_p$ 22 and $K_d$ 15 on this same rocket, which is 11.8 dB and about 76°.",
           },
         ],
       },
@@ -1610,11 +1577,11 @@ Gain margin is $20\log_{10}(K_p/(m\mu^2))$. It is how far $K_p$ sits above the f
   freqDelay: {
     threads: [
       plain(
-        "Late on purpose",
-        ["A delay costs phase equal to frequency times the wait", "A sample-and-hold costs about half of that"],
+        "Delay and the sample-and-hold",
+        ["A delay subtracts phase equal to frequency times the delay", "A sample-and-hold subtracts about half of that"],
         [
-          "A height reading that arrives late is answering a rocket that has already moved. [That lateness is a phase lag of frequency times the delay](https://en.wikipedia.org/wiki/Time_delay). It spends the spare lateness from the margins scene.",
-          "A sample-and-hold is a second, smaller lag. The loop waits for the next sample and then holds the thrust. [That hold costs about half the phase of a pure delay of the same length](https://en.wikipedia.org/wiki/Zero-order_hold). Drag the rocket to change the sample time. The delay knob is the other lag.",
+          "A height reading that arrives $\\tau$ seconds late is answering a rocket that has already moved, so [the phase lag is $\\omega\\tau$](https://en.wikipedia.org/wiki/Time_delay), and at the gain crossover that subtraction comes straight off the phase margin.",
+          "A sample-and-hold is the other lag, because the loop waits for the next sample and then holds the thrust, and [that hold costs about half the phase of a pure delay of the same length](https://en.wikipedia.org/wiki/Zero-order_hold) while also trimming the magnitude. Drag the rocket to change the sample time, and the delay knob is the pure lag.",
         ],
       ),
       {
@@ -1624,19 +1591,19 @@ Gain margin is $20\log_{10}(K_p/(m\mu^2))$. It is how far $K_p$ sits above the f
         segments: [
           {
             kind: "look",
-            text: "The gains stay the ones from The margins. The delay knob moves only the phase. The sample knob moves the phase a smaller amount and also trims the magnitude.",
+            text: "The gains stay the ones from The margins, so the delay knob moves only the phase, while the sample knob moves the phase by about half as much and also trims the magnitude.",
           },
           {
             kind: "relation",
             tex: String.raw`e^{-s\tau},\qquad \frac{1-e^{-sT}}{sT}`,
-            stake: "The first factor is a pure delay of $\\tau$ seconds. Its magnitude is 1, and its phase is $-\\omega\\tau$ radians. The second is a zero-order hold of $T$ seconds. Its phase is about $-\\omega T/2$, and its magnitude is $\\mathrm{sinc}(\\omega T/2)$.",
+            stake: "The first factor is a pure delay of $\\tau$ seconds, so its magnitude stays 1 and its phase is $-\\omega\\tau$ radians. The second is a zero-order hold of $T$ seconds, so its phase is about $-\\omega T/2$ and its magnitude is $\\mathrm{sinc}(\\omega T/2)$.",
             gloss: String.raw`$\omega$ is the frequency in rad/s.
 At the gain crossover those two phases come straight off the phase margin.
-Equal times do not cost equal phase: the hold is about half the delay.`,
+Equal times do not cost equal phase, because the hold is about half the delay.`,
           },
           {
             kind: "trace",
-            text: "Set the delay and the sample time both to 0.2 s. At the crossover near 2.0 rad/s the delay takes 23° and the hold takes 11°, and the phase margin falls to 10°. Raise the delay toward 0.39 s, with the sample time small, and the margin reaches 0°. The hover starts to grow.",
+            text: "Set the delay and the sample time both to 0.2 s and, at the crossover near 2.0 rad/s, the delay takes 23° while the hold takes 11°, so the phase margin falls to 10°. Raise the delay toward 0.39 s with the sample time kept small and the margin reaches 0°, which is where the hover starts to grow.",
           },
         ],
       },
@@ -1645,26 +1612,26 @@ Equal times do not cost equal phase: the hold is about half the delay.`,
   freqNotch: {
     threads: [
       plain(
-        "One frequency, then take it out",
-        ["A bend rings at one frequency", "A notch tuned to that frequency removes the peak"],
+        "A bend, and the notch that removes it",
+        ["A bend rings at one frequency and shows up as a peak", "A notch tuned to that frequency removes the peak"],
         [
-          "A bend in the airframe rings at one frequency. On the Bode plot that ring is a peak. The hidden mode in The loop was a different thing: it grew on its own, with no frequency to point at.",
-          "[A notch is a filter tuned to one frequency](https://en.wikipedia.org/wiki/Band-stop_filter). Turn it on and the peak at 8 rad/s leaves, and the ring that was growing in the height settles. Drag the rocket to move the bend off that frequency and the peak comes back.",
+          "A bend in the airframe rings at one frequency, so on the Bode plot that ring is a peak, and the hidden mode in The loop grew on its own with no frequency to point at.",
+          "[A notch is a filter tuned to one frequency](https://en.wikipedia.org/wiki/Band-stop_filter). Turn it on and the peak at 8 rad/s leaves, so the ring that was growing in the height settles, and dragging the bend off that frequency brings the peak back.",
         ],
       ),
       {
         id: "peak",
-        title: "The peak, then the notch",
+        title: "The peak and the notch",
         focus: ["The bend is a light resonance on the thrust", "The notch cancels that resonance only at 8 rad/s", "Off the notch, the peak and the runaway come back"],
         segments: [
           {
             kind: "look",
-            text: "Notch off, the gold line has a spike and the rocket's height grows. Notch on, with the bend at 8 rad/s, the spike is gone and the hover settles. Drag the bend away from 8 and the spike returns.",
+            text: "With the notch off the gold curve has a spike and the height grows, and with the notch on at a bend of 8 rad/s the spike is gone and the hover settles, until the bend is dragged off 8 and the spike returns.",
           },
           {
             kind: "relation",
             tex: String.raw`\frac{\omega_b^2}{s^2+2\zeta\omega_b s+\omega_b^2}`,
-            stake: "The bend multiplies the hover plant. $\\omega_b$ is the bend frequency and $\\zeta$ is 0.045, light enough that the spike is tall. The notch is tuned to 8 rad/s. It cancels that spike and leaves a wider, calmer pair of poles. It does not cancel a bend that has moved off 8.",
+            stake: "The bend multiplies the hover plant, where $\\omega_b$ is the bend frequency and $\\zeta$ is 0.045, light enough that the spike is tall. The notch is tuned to 8 rad/s, so it cancels that spike and leaves a wider pair of poles, and it does not cancel a bend that has moved off 8.",
             gloss: String.raw`The notch zeros use the same light damping, at 8 rad/s.
 Its poles use damping 0.55, so the spike is replaced by a low hump.
 This is not $\ddot q=\lambda^2 q$ from The loop. That mode grew on its own, with no frequency to point at. This one rings at one frequency.`,
