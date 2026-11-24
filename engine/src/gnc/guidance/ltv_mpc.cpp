@@ -247,8 +247,27 @@ MpcSolveResult LtvMpc::solve(
     const double pad_radius = 5.0;
     const int n_glide = (glide_cone_deg_ < 89.9) ? N * 4 : 0;
     // Tighter cones get a heavier slack penalty so the corridor binds for real.
-    const double w_glide_slack =
-        (glide_cone_deg_ < 50.0) ? 1.0e4 : 2.0e3;
+    // If the reference itself sits outside the corridor, the ceiling cannot
+    // pay for both the stop and the corridor. A heavy penalty then spends the
+    // stop on the corridor. Drop it so the solver follows the reference. The
+    // position cost still pulls toward that path.
+    double ref_outside = 0.0;
+    if (n_glide > 0) {
+        for (int k = 0; k < N; ++k) {
+            const double px = Xref(k * nx + 0);
+            const double py = Xref(k * nx + 1);
+            const double pz = Xref(k * nx + 2);
+            const double allow = tan_glide * std::max(0.0, pz) + pad_radius;
+            const double out_x = std::abs(px) - allow;
+            const double out_y = std::abs(py) - allow;
+            if (out_x > ref_outside) ref_outside = out_x;
+            if (out_y > ref_outside) ref_outside = out_y;
+        }
+    }
+    double w_glide_slack = (glide_cone_deg_ < 50.0) ? 1.0e4 : 2.0e3;
+    if (ref_outside > 1.0) {
+        w_glide_slack = 1.0;
+    }
 
     // Decision vector z = [U; s]. Pointing stays hard on U only.
     const int n_var = nU + n_glide;

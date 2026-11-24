@@ -98,6 +98,14 @@ void SoftLandReference::build(
         }
     }
 
+    // The short lateral time is a sprint at the pad. It fits when the ceiling
+    // can stop and sprint together. When it cannot, flying the sprint spends
+    // the thrust the stop needed and the ship arrives fast. Keep the stop,
+    // and spend only the leftover thrust on the divert.
+    const double thrust_accel = thrust_max / m;
+    const double asked = std::hypot(a_z + gravity, std::hypot(a_x, a_y));
+    const bool spread = asked > thrust_accel && range_xy > 1.0;
+
     const double point_rad = pointing_cone_deg * (3.14159265358979323846 / 180.0);
     const double tan_point =
         (pointing_cone_deg >= 89.9) ? 1.0e6 : std::tan(point_rad);
@@ -150,13 +158,96 @@ void SoftLandReference::build(
     a_y = F0.y() / m;
     a_z = F0.z() / m - gravity;
 
-    duration_ = tf;
-    const int steps = std::max(2, static_cast<int>(std::ceil(tf / dt_)));
-    const double step = tf / steps;
-
     // Hover ask used once the profile reaches the pad. Keeping the initial
     // deceleration force F0 on the grounded knots makes the MPC bounce.
     const Eigen::Vector3d F_hover(0.0, 0.0, m * gravity);
+
+    if (spread) {
+        // Vertical accel that reaches -1 m/s at the ground, and no more.
+        // Anything above that is thrust the divert can use. The profile is
+        // rebuilt every MPC tick, so the mass drop shows up as a new stop.
+        const double v_touch = -1.0;
+        const double a_ceil = std::max(0.0, a_max);
+        double a_stop0 = 0.0;
+        if (vz_now < v_touch && z_now > 0.5) {
+            a_stop0 = (vz_now * vz_now - v_touch * v_touch) / (2.0 * z_now);
+        }
+        if (a_stop0 > a_ceil) a_stop0 = a_ceil;
+
+        double T = tf_z;
+        if (vz_now < v_touch - 0.2 && a_stop0 > 0.05) {
+            T = (v_touch - vz_now) / a_stop0;
+        }
+        T = std::clamp(T, 5.0, 70.0);
+
+        duration_ = T;
+        const int steps = std::max(2, static_cast<int>(std::ceil(T / dt_)));
+        const double step = T / steps;
+        double x = x0;
+        double y = y0;
+        double z = z_now;
+        double vx = vx0;
+        double vy = vy0;
+        double vz = vz_now;
+        for (int k = 0; k <= steps; ++k) {
+            const double tau = k * step;
+            ReferenceKnot knot;
+            knot.t = t0_ + tau;
+            knot.pos = Eigen::Vector3d(x + pad_x, y + pad_y, std::max(0.0, z));
+            knot.vel = Eigen::Vector3d(vx, vy, vz);
+
+            const double time_left = std::max(step, T - tau);
+            const double half = std::max(step, 0.5 * time_left);
+            double a_stop = 0.0;
+            if (z > 0.5 && vz < v_touch) {
+                a_stop = (vz * vz - v_touch * v_touch) / (2.0 * z);
+            }
+            if (a_stop < 0.0) a_stop = 0.0;
+            if (a_stop > a_ceil) a_stop = a_ceil;
+
+            // One accel for half the time left, and the opposite accel for
+            // the other half, ends at the pad with zero speed when
+            // a = -(p + 1.5 v h) / h^2. If the speed already covers the
+            // distance, brake it instead of adding more.
+            auto axis_accel = [&](double p, double v) {
+                const bool heading_in = (p * v < 0.0);
+                if (std::abs(p) < 1.0 && std::abs(v) < 0.4) return 0.0;
+                if (heading_in && std::abs(v) * time_left > std::abs(p)) {
+                    return -v / half;
+                }
+                return -(p + 1.5 * v * half) / (half * half);
+            };
+
+            const Eigen::Vector3d force = force_from_accel(
+                axis_accel(x, vx), axis_accel(y, vy), a_stop
+            );
+            knot.force = force;
+            // Stay on the path the thrust can fly. Snapping this knot to the
+            // pad makes the last seconds of the horizon a divert the stop
+            // cannot afford.
+            if (z <= 1e-6) {
+                knot.pos.z() = 0.0;
+                knot.force = F_hover;
+            }
+            knots_.push_back(knot);
+
+            const double ax_fly = force.x() / m;
+            const double ay_fly = force.y() / m;
+            const double az_fly = force.z() / m - gravity;
+            x += vx * step + 0.5 * ax_fly * step * step;
+            y += vy * step + 0.5 * ay_fly * step * step;
+            z += vz * step + 0.5 * az_fly * step * step;
+            vx += ax_fly * step;
+            vy += ay_fly * step;
+            vz += az_fly * step;
+            if (z < 0.0) z = 0.0;
+        }
+        return;
+    }
+
+    duration_ = tf;
+    const int steps = std::max(2, static_cast<int>(std::ceil(tf / dt_)));
+    const double step = tf / steps;
 
     for (int k = 0; k <= steps; ++k) {
         const double tau = k * step;
