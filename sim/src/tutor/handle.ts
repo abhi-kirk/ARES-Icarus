@@ -2,6 +2,7 @@ import { chatDisplayFromPartial, parseChatReply } from "./chatParse";
 import { grokStreamDeltas, grokText, missingKey, readJson } from "./grok";
 import { levelById } from "./levels";
 import { renderLessonContext } from "../lessonContext";
+import { gradeByNumber } from "./numberGrade";
 import { buildChatInstructions, buildChatUserMessage, GRADE_INSTRUCTIONS, QUESTION_INSTRUCTIONS } from "./prompts";
 import type { ChatRequest, GradeResponse, QuestionResponse, TutorRequest } from "./types";
 
@@ -47,8 +48,12 @@ function clip(text: string, max: number): string {
 }
 
 export async function handleTutor(request: Request, key: string | undefined): Promise<Response> {
-  if (!key) return missingKey();
   const body = (await request.json()) as TutorRequest;
+  if (body.op === "grade" && body.question && body.answer?.trim()) {
+    const numeric = gradeByNumber(body.question, body.answer);
+    if (numeric) return Response.json(numeric);
+  }
+  if (!key) return missingKey();
   const level = levelById(body.level);
   if (!level || !body.context) return Response.json({ error: "Missing level or scene" }, { status: 400 });
 
