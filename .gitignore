@@ -64,6 +64,9 @@ sim/.dev.vars
 sim/.dev.vars.*
 !sim/.dev.vars.example
 
+# Local flight-loop diagram, kept off the repo for now
+engine/docs/control-loops.html
+
 CLAUDE.md
 .claude/*
 .cursor/
