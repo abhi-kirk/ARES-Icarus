@@ -5,7 +5,7 @@
 
 namespace icarus {
 
-// 6-DOF rigid-body landing with Euler angles and gimbal TVC.
+// 6-DOF rigid-body landing. Attitude is a quaternion. Gimbal TVC.
 // Control: [T, delta_x, delta_y, tau_x, tau_y]
 //   T          thrust (N)
 //   delta_x/y  gimbal angles (rad)

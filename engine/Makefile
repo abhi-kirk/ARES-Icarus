@@ -1,7 +1,7 @@
 BUILD_DIR := build
 CMAKE := cmake
 
-.PHONY: all configure build clean rebuild run regress mc
+.PHONY: all configure build clean rebuild run regress mc test
 
 all: build
 
@@ -24,3 +24,6 @@ regress: build
 
 mc: build
 	node scripts/monte_carlo.mjs
+
+test: build
+	./$(BUILD_DIR)/AttitudeTest

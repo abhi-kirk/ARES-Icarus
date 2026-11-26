@@ -1,4 +1,5 @@
 #include "dynamics/rocket_6dof.h"
+#include "dynamics/attitude.h"
 #include "dynamics/constants.h"
 #include "dynamics/state_indices.h"
 
@@ -17,39 +18,6 @@ void thrust_body(double T, double dx, double dy, double& Fx_b, double& Fy_b, dou
     Fx_b = T * sdy;
     Fy_b = T * (-sdx);
     Fz_b = T * cdx * cdy;
-}
-
-void body_to_inertial(
-    double roll,
-    double pitch,
-    double yaw,
-    double bx,
-    double by,
-    double bz,
-    double& ix,
-    double& iy,
-    double& iz
-) {
-    const double cr = std::cos(roll);
-    const double sr = std::sin(roll);
-    const double cp = std::cos(pitch);
-    const double sp = std::sin(pitch);
-    const double cy = std::cos(yaw);
-    const double sy = std::sin(yaw);
-
-    const double r00 = cy * cp;
-    const double r01 = cy * sp * sr - sy * cr;
-    const double r02 = cy * sp * cr + sy * sr;
-    const double r10 = sy * cp;
-    const double r11 = sy * sp * sr + cy * cr;
-    const double r12 = sy * sp * cr - cy * sr;
-    const double r20 = -sp;
-    const double r21 = cp * sr;
-    const double r22 = cp * cr;
-
-    ix = r00 * bx + r01 * by + r02 * bz;
-    iy = r10 * bx + r11 * by + r12 * bz;
-    iz = r20 * bx + r21 * by + r22 * bz;
 }
 
 }  // namespace
@@ -92,9 +60,7 @@ State rocket_dynamics_6dof(
     const double tau_y = -L * Fx_b + tau_rcs_y;
     const double tau_z = 0.0;
 
-    const double roll  = state[ROLL];
-    const double pitch = state[PITCH];
-    const double yaw   = state[YAW];
+    const Quat q = quat_normalize(quat_from_state(state));
     const double wx = state[WX];
     const double wy = state[WY];
     const double wz = state[WZ];
@@ -102,7 +68,7 @@ State rocket_dynamics_6dof(
     double Fx_i = 0.0;
     double Fy_i = 0.0;
     double Fz_i = 0.0;
-    body_to_inertial(roll, pitch, yaw, Fx_b, Fy_b, Fz_b, Fx_i, Fy_i, Fz_i);
+    rotate_body_to_inertial(q, Fx_b, Fy_b, Fz_b, Fx_i, Fy_i, Fz_i);
 
     const double m = MASS_DRY + std::max(0.0, fuel);
 
@@ -129,30 +95,23 @@ State rocket_dynamics_6dof(
     const double wy_dot = (tau_y - (Ixx - Izz) * wz * wx) / Iyy;
     const double wz_dot = (tau_z - (Iyy - Ixx) * wx * wy) / Izz;
 
-    const double cos_pitch = std::cos(pitch);
-    const double tan_pitch = std::tan(pitch);
-    const double sin_roll = std::sin(roll);
-    const double cos_roll = std::cos(roll);
+    const Quat q_dot = quat_derivative(q, wx, wy, wz);
 
-    double roll_dot = 0.0;
-    double pitch_dot = 0.0;
-    double yaw_dot = 0.0;
-    if (std::abs(cos_pitch) < 1e-3) {
-        roll_dot = wx;
-        pitch_dot = wy * cos_roll - wz * sin_roll;
-        yaw_dot = 0.0;
-    } else {
-        roll_dot  = wx + (wy * sin_roll + wz * cos_roll) * tan_pitch;
-        pitch_dot = wy * cos_roll - wz * sin_roll;
-        yaw_dot   = (wy * sin_roll + wz * cos_roll) / cos_pitch;
-    }
-
-    State state_dot(STATE_SIZE);
-    state_dot << state[VEL_X], state[VEL_Y], state[VEL_Z],
-                 accel_x, accel_y, accel_z,
-                 roll_dot, pitch_dot, yaw_dot,
-                 wx_dot, wy_dot, wz_dot,
-                 m_dot;
+    State state_dot = State::Zero(STATE_SIZE);
+    state_dot[POS_X] = state[VEL_X];
+    state_dot[POS_Y] = state[VEL_Y];
+    state_dot[POS_Z] = state[VEL_Z];
+    state_dot[VEL_X] = accel_x;
+    state_dot[VEL_Y] = accel_y;
+    state_dot[VEL_Z] = accel_z;
+    state_dot[QW] = q_dot.w;
+    state_dot[QX] = q_dot.x;
+    state_dot[QY] = q_dot.y;
+    state_dot[QZ] = q_dot.z;
+    state_dot[WX] = wx_dot;
+    state_dot[WY] = wy_dot;
+    state_dot[WZ] = wz_dot;
+    state_dot[FUEL] = m_dot;
     return state_dot;
 }
 

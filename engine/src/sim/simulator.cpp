@@ -2,6 +2,7 @@
 #ifndef ICARUS_NO_RERUN
 #include "sim/logger.h"
 #endif
+#include "dynamics/attitude.h"
 #include "dynamics/constants.h"
 #include "dynamics/rocket_6dof.h"
 #include "dynamics/state_indices.h"
@@ -46,9 +47,13 @@ FlightSample sample_from(
     sample.fz = fz;
     sample.pad_x = pad_x;
     sample.pad_y = pad_y;
-    sample.roll = state[ROLL];
-    sample.pitch = state[PITCH];
-    sample.yaw = state[YAW];
+    double roll = 0.0;
+    double pitch = 0.0;
+    double yaw = 0.0;
+    euler_from_quat(quat_from_state(state), roll, pitch, yaw);
+    sample.roll = roll;
+    sample.pitch = pitch;
+    sample.yaw = yaw;
     sample.gimbal_x = gimbal_x;
     sample.gimbal_y = gimbal_y;
     if (plan != nullptr && !plan->plan_pos.empty()) {
@@ -82,19 +87,19 @@ void interpolate_touchdown(State& state, const State& prev_state, double& t, dou
     if (denom > 0.0) alpha = std::clamp(y0 / denom, 0.0, 1.0);
 
     t = prev_t + alpha * dt;
+    same_quaternion_hemisphere(prev_state, state);
     for (int i = 0; i < STATE_SIZE; ++i) {
         state[i] = prev_state[i] + alpha * (state[i] - prev_state[i]);
     }
     state[POS_Z] = 0.0;
+    normalize_state_quaternion(state);
 }
 
 void delivered_inertial_force(
     double T,
     double dx,
     double dy,
-    double roll,
-    double pitch,
-    double yaw,
+    const State& at,
     double& Fx,
     double& Fy,
     double& Fz
@@ -102,17 +107,7 @@ void delivered_inertial_force(
     const double Fx_b = T * std::sin(dy);
     const double Fy_b = T * (-std::sin(dx));
     const double Fz_b = T * std::cos(dx) * std::cos(dy);
-
-    const double cr = std::cos(roll);
-    const double sr = std::sin(roll);
-    const double cp = std::cos(pitch);
-    const double sp = std::sin(pitch);
-    const double cy = std::cos(yaw);
-    const double sy = std::sin(yaw);
-
-    Fx = (cy * cp) * Fx_b + (cy * sp * sr - sy * cr) * Fy_b + (cy * sp * cr + sy * sr) * Fz_b;
-    Fy = (sy * cp) * Fx_b + (sy * sp * sr + cy * cr) * Fy_b + (sy * sp * cr - cy * sr) * Fz_b;
-    Fz = (-sp) * Fx_b + (cp * sr) * Fy_b + (cp * cr) * Fz_b;
+    rotate_body_to_inertial(quat_from_state(at), Fx_b, Fy_b, Fz_b, Fx, Fy, Fz);
 }
 
 }  // namespace
@@ -404,8 +399,15 @@ void Simulator::run(
             const double Fy_b = T * (-std::sin(gimbal_x));
             double tau_x = 0.0;
             double tau_y = 0.0;
+            // The command is still upright. Roll and pitch are read off the
+            // quaternion so this PD matches the old Euler law on these flights.
+            double roll = 0.0;
+            double pitch = 0.0;
+            double yaw_now = 0.0;
+            euler_from_quat(quat_from_state(state), roll, pitch, yaw_now);
+            (void)yaw_now;
             attitude_rcs(
-                state[ROLL], state[PITCH], state[WX], state[WY],
+                roll, pitch, state[WX], state[WY],
                 tau_kp, tau_kd, tau_x, tau_y
             );
             tau_x += -cfg.gimbal_lever * Fy_b;
@@ -422,10 +424,11 @@ void Simulator::run(
                 );
             };
             state = Integrator::rk4_step(bound, t, state, dt_inner_v);
+            normalize_state_quaternion(state);
 
             delivered_inertial_force(
                 T, gimbal_x, gimbal_y,
-                prev_state[ROLL], prev_state[PITCH], prev_state[YAW],
+                prev_state,
                 Fx_log, Fy_log, Fz_log
             );
             (void)dynamics;

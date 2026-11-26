@@ -75,8 +75,9 @@ struct SimConfig {
     // band has to be scaled with it or the floor sits above lunar weight.
     double gravity = 9.81;
 
-    // 6-DOF plant. When use_6dof is true the stream integrates Euler
-    // attitude with gimbal TVC; the force PID still sets the ask.
+    // 6-DOF plant. When use_6dof is true the stream integrates a quaternion
+    // attitude with gimbal TVC; the force PID still sets the ask. Samples
+    // still report roll, pitch, and yaw derived from that quaternion.
     bool use_6dof = true;
     double Ixx = 2000.0;
     double Iyy = 2000.0;

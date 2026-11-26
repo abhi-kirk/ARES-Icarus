@@ -82,6 +82,7 @@ int main() {
     if (!load_config_text(text.str(), config)) return 1;
 
     State state = State::Zero(STATE_SIZE);
+    state[QW] = 1.0;
     state[POS_X] = config.simulation.initial_px;
     state[POS_Y] = config.simulation.initial_py;
     state[POS_Z] = config.simulation.initial_pz;

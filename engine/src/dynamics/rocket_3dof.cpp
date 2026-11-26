@@ -59,11 +59,12 @@ State rocket_dynamics_3dof(
     const double accel_y = net_force_y / m;
     const double accel_z = net_force_z / m;
 
-    // Attitude and rate slots stay at zero: this plant has no rotation.
+    // Quaternion and rate derivatives stay zero: this plant has no rotation.
+    // The caller initializes the quaternion to identity.
     State state_dot(STATE_SIZE);
     state_dot << state[VEL_X], state[VEL_Y], state[VEL_Z],
                  accel_x, accel_y, accel_z,
-                 0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0, 0.0,
                  0.0, 0.0, 0.0,
                  m_dot;
     return state_dot;

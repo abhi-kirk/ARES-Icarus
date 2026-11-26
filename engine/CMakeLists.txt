@@ -102,3 +102,7 @@ endif()
 add_executable(IcarusStream src/stream_main.cpp)
 target_link_libraries(IcarusStream PRIVATE icarus_sim icarus_config)
 target_include_directories(IcarusStream PRIVATE src)
+
+add_executable(AttitudeTest src/dynamics/attitude_test.cpp)
+target_link_libraries(AttitudeTest PRIVATE icarus_dynamics)
+target_include_directories(AttitudeTest PRIVATE src)
