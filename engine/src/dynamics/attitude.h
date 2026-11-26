@@ -3,6 +3,7 @@
 #include "dynamics/state_indices.h"
 #include "integrator.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace icarus {
@@ -141,6 +142,61 @@ inline void euler_from_quat(Quat q, double& roll, double& pitch, double& yaw) {
     pitch = std::atan2(-r20, pitch_cos);
     roll = std::atan2(r21, r22);
     yaw = std::atan2(r10, r00);
+}
+
+// Inverse of rotate_body_to_inertial. q takes body vectors into inertial axes.
+inline void rotate_inertial_to_body(
+    Quat q,
+    double ix,
+    double iy,
+    double iz,
+    double& bx,
+    double& by,
+    double& bz
+) {
+    q = quat_normalize(q);
+    Quat inv;
+    inv.w = q.w;
+    inv.x = -q.x;
+    inv.y = -q.y;
+    inv.z = -q.z;
+    rotate_body_to_inertial(inv, ix, iy, iz, bx, by, bz);
+}
+
+// Smallest rotation that lays body +z on the inertial unit vector (ux, uy, uz).
+// The twist about that axis stays whatever the body already has.
+inline Quat quat_align_body_z(double ux, double uy, double uz, Quat current) {
+    current = quat_normalize(current);
+    double zx = 0.0;
+    double zy = 0.0;
+    double zz = 0.0;
+    rotate_body_to_inertial(current, 0.0, 0.0, 1.0, zx, zy, zz);
+
+    const double cos_angle = std::clamp(zx * ux + zy * uy + zz * uz, -1.0, 1.0);
+    const double ax = zy * uz - zz * uy;
+    const double ay = zz * ux - zx * uz;
+    const double az = zx * uy - zy * ux;
+    const double sin_angle = std::sqrt(ax * ax + ay * ay + az * az);
+
+    if (sin_angle < 1e-12) {
+        if (cos_angle > 0.0) return current;
+        Quat flip;
+        flip.w = 0.0;
+        flip.x = 1.0;
+        flip.y = 0.0;
+        flip.z = 0.0;
+        return quat_normalize(quat_mul(current, flip));
+    }
+
+    const double angle = std::atan2(sin_angle, cos_angle);
+    const double half = 0.5 * angle;
+    const double scale = std::sin(half) / sin_angle;
+    Quat delta;
+    delta.w = std::cos(half);
+    delta.x = ax * scale;
+    delta.y = ay * scale;
+    delta.z = az * scale;
+    return quat_normalize(quat_mul(delta, current));
 }
 
 // q_dot = 1/2 q ⊗ ω, with ω expressed in the body frame.

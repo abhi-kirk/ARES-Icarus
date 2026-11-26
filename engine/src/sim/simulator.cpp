@@ -160,9 +160,9 @@ void Simulator::run(
     const double tau_kd = cfg.attitude_kd * cfg.Ixx;
     const double tau_kp_z = cfg.attitude_kp * cfg.Izz;
     const double tau_kd_z = cfg.attitude_kd * cfg.Izz;
-    // Today's flights command upright, yaw included. The pointing split
-    // replaces this identity once the force direction is the command.
-    const Quat attitude_cmd = quat_identity();
+    // Holds the last pointing command. With the engine off this stays put
+    // and the jets track it. With the engine on it becomes the force direction.
+    Quat attitude_cmd = quat_identity();
 
     const bool use_mpc = (cfg.controller == "mpc");
     const bool use_scvx = (cfg.controller == "scvx");
@@ -395,12 +395,28 @@ void Simulator::run(
         double Fz_log = Fz_act;
 
         if (cfg.use_6dof) {
-            double T = 0.0;
-            allocate_gimbal(Fx_act, Fy_act, Fz_act, gimbal_max_rad, T, gimbal_x, gimbal_y);
+            const Quat q_now = quat_normalize(quat_from_state(state));
+            const double force_len = std::sqrt(Fx_act * Fx_act + Fy_act * Fy_act + Fz_act * Fz_act);
+            // A newton is enough to define a direction. Below that the jets
+            // keep the command they already have, which starts upright.
+            if (force_len > 1.0) {
+                attitude_cmd = quat_align_body_z(
+                    Fx_act / force_len,
+                    Fy_act / force_len,
+                    Fz_act / force_len,
+                    q_now
+                );
+            }
 
-            // Gimbal side-force also makes a torque about the CG. Cancel that
-            // in the RCS command so the stack can stay upright while the
-            // gimbal still pushes sideways; the PD only fights leftover lean.
+            double Fx_b_des = 0.0;
+            double Fy_b_des = 0.0;
+            double Fz_b_des = 0.0;
+            rotate_inertial_to_body(q_now, Fx_act, Fy_act, Fz_act, Fx_b_des, Fy_b_des, Fz_b_des);
+            double T = 0.0;
+            allocate_gimbal(Fx_b_des, Fy_b_des, Fz_b_des, gimbal_max_rad, T, gimbal_x, gimbal_y);
+
+            // The gimbal still makes a moment about the CG. Cancel it here so
+            // the jet PD tracks only the pointing error.
             const double Fx_b = T * std::sin(gimbal_y);
             const double Fy_b = T * (-std::sin(gimbal_x));
             double ex = 0.0;

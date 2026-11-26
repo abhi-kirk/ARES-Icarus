@@ -4,6 +4,7 @@
 #include "dynamics/attitude.h"
 #include "dynamics/constants.h"
 #include "dynamics/rocket_6dof.h"
+#include "gnc/control/gimbal_alloc.h"
 
 #include <cmath>
 #include <iostream>
@@ -280,6 +281,51 @@ int main() {
         expect(std::abs(yaw) < 1.0 * deg, "upright command brings a 10 deg yaw home");
         expect(std::abs(state[WY]) < 0.05, "pitch rate is quiet after the upright command");
         expect(std::abs(state[WZ]) < 0.05, "yaw rate is quiet after the upright command");
+    }
+
+    {
+        double zx = 0.0;
+        double zy = 0.0;
+        double zz = 0.0;
+        const Quat up = quat_align_body_z(0.0, 0.0, 1.0, quat_identity());
+        rotate_body_to_inertial(up, 0.0, 0.0, 1.0, zx, zy, zz);
+        expect(close_vec(zx, zy, zz, 0.0, 0.0, 1.0, 1e-9), "an upward force keeps body z upright");
+
+        const double tilt = 10.0 * deg;
+        const double ux = std::sin(tilt);
+        const double uz = std::cos(tilt);
+        const Quat leaned = quat_align_body_z(ux, 0.0, uz, quat_identity());
+        rotate_body_to_inertial(leaned, 0.0, 0.0, 1.0, zx, zy, zz);
+        expect(close_vec(zx, zy, zz, ux, 0.0, uz, 1e-9), "body z lies on a 10 deg force");
+        double roll = 0.0;
+        double pitch = 0.0;
+        double yaw = 0.0;
+        euler_from_quat(leaned, roll, pitch, yaw);
+        expect_near(pitch, tilt, 1e-9, "a 10 deg force is a 10 deg pitch");
+        expect_near(yaw, 0.0, 1e-9, "the pointing split does not add yaw");
+
+        const Quat yawed = quat_from_euler(0.0, 0.0, 30.0 * deg);
+        const Quat yawed_lean = quat_align_body_z(ux, 0.0, uz, yawed);
+        rotate_body_to_inertial(yawed_lean, 0.0, 0.0, 1.0, zx, zy, zz);
+        expect(close_vec(zx, zy, zz, ux, 0.0, uz, 1e-9), "a yawed body still lays z on the force");
+
+        double bx = 0.0;
+        double by = 0.0;
+        double bz = 0.0;
+        const double force = 10000.0;
+        rotate_inertial_to_body(quat_identity(), force * ux, 0.0, force * uz, bx, by, bz);
+        double thrust = 0.0;
+        double dx = 0.0;
+        double dy = 0.0;
+        allocate_gimbal(bx, by, bz, 15.0 * deg, thrust, dx, dy);
+        expect_near(thrust, force, 1e-6, "residual split keeps the thrust length");
+        expect_near(std::abs(dy), tilt, 1e-6, "an upright body gimbals the whole 10 deg");
+        expect_near(dx, 0.0, 1e-6, "the 10 deg tilt is one gimbal axis");
+
+        rotate_inertial_to_body(leaned, force * ux, 0.0, force * uz, bx, by, bz);
+        allocate_gimbal(bx, by, bz, 15.0 * deg, thrust, dx, dy);
+        expect_near(dx, 0.0, 1e-6, "once the body has the tilt, gimbal x is zero");
+        expect_near(dy, 0.0, 1e-6, "once the body has the tilt, gimbal y is zero");
     }
 
     if (g_failed > 0) {

@@ -5,9 +5,9 @@
 
 namespace icarus {
 
-// Turn a desired inertial force into thrust and gimbal, assuming the stack
-// is near upright (body ≈ inertial). Side force comes from gimbal tilt.
-// Attitude hold is a separate RCS torque, not mixed into the gimbal here.
+// Turn a desired body-frame force into thrust and gimbal. The body is
+// already being pointed along the inertial force, so what remains here is
+// the angle it has not reached yet. The jet torque is applied separately.
 inline void allocate_gimbal(
     double Fx_des,
     double Fy_des,
