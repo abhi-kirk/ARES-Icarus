@@ -158,6 +158,41 @@ inline Quat quat_derivative(Quat q, double wx, double wy, double wz) {
     return dq;
 }
 
+// Short rotation, in the body frame, that carries the body onto the
+// command. Radians. For a small pure roll φ the x component is −φ, so
+// a torque kp * error matches the old law τ = −kp φ.
+inline void attitude_error_body(Quat q_body, Quat q_cmd, double& ex, double& ey, double& ez) {
+    q_body = quat_normalize(q_body);
+    q_cmd = quat_normalize(q_cmd);
+
+    Quat body_inv;
+    body_inv.w = q_body.w;
+    body_inv.x = -q_body.x;
+    body_inv.y = -q_body.y;
+    body_inv.z = -q_body.z;
+
+    Quat err = quat_mul(body_inv, q_cmd);
+    if (err.w < 0.0) {
+        err.w = -err.w;
+        err.x = -err.x;
+        err.y = -err.y;
+        err.z = -err.z;
+    }
+
+    const double sine = std::sqrt(err.x * err.x + err.y * err.y + err.z * err.z);
+    if (sine < 1e-12) {
+        ex = 0.0;
+        ey = 0.0;
+        ez = 0.0;
+        return;
+    }
+    const double angle = 2.0 * std::atan2(sine, err.w);
+    const double scale = angle / sine;
+    ex = scale * err.x;
+    ey = scale * err.y;
+    ez = scale * err.z;
+}
+
 inline void normalize_state_quaternion(State& state) {
     quat_write(state, quat_normalize(quat_from_state(state)));
 }

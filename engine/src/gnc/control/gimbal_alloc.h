@@ -33,19 +33,4 @@ inline void allocate_gimbal(
     delta_y = std::clamp(dy, -max_a, max_a);
 }
 
-// Body-torque PD that holds roll and pitch near zero.
-inline void attitude_rcs(
-    double roll,
-    double pitch,
-    double wx,
-    double wy,
-    double attitude_kp,
-    double attitude_kd,
-    double& tau_x,
-    double& tau_y
-) {
-    tau_x = -attitude_kp * roll  - attitude_kd * wx;
-    tau_y = -attitude_kp * pitch - attitude_kd * wy;
-}
-
 }  // namespace icarus

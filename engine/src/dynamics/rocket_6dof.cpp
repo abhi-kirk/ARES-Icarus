@@ -45,6 +45,7 @@ State rocket_dynamics_6dof(
     const double dy = control.size() > 2 ? control[2] : 0.0;
     const double tau_rcs_x = control.size() > 3 ? control[3] : 0.0;
     const double tau_rcs_y = control.size() > 4 ? control[4] : 0.0;
+    const double tau_rcs_z = control.size() > 5 ? control[5] : 0.0;
 
     const double fuel = state[FUEL];
     // An empty tank produces no thrust and no gimbal torque. RCS still acts.
@@ -58,7 +59,7 @@ State rocket_dynamics_6dof(
     const double L = gimbal_lever_m;
     const double tau_x = L * Fy_b + tau_rcs_x;
     const double tau_y = -L * Fx_b + tau_rcs_y;
-    const double tau_z = 0.0;
+    const double tau_z = tau_rcs_z;
 
     const Quat q = quat_normalize(quat_from_state(state));
     const double wx = state[WX];

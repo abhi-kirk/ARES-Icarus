@@ -155,8 +155,14 @@ void Simulator::run(
 
     // Attitude PD gains are in N·m per rad / (rad/s). Scale with inertia so
     // a case that changes Ixx still gets a similar natural frequency.
+    // Roll and pitch share the transverse inertia. Yaw uses Izz.
     const double tau_kp = cfg.attitude_kp * cfg.Ixx;
     const double tau_kd = cfg.attitude_kd * cfg.Ixx;
+    const double tau_kp_z = cfg.attitude_kp * cfg.Izz;
+    const double tau_kd_z = cfg.attitude_kd * cfg.Izz;
+    // Today's flights command upright, yaw included. The pointing split
+    // replaces this identity once the force direction is the command.
+    const Quat attitude_cmd = quat_identity();
 
     const bool use_mpc = (cfg.controller == "mpc");
     const bool use_scvx = (cfg.controller == "scvx");
@@ -397,24 +403,18 @@ void Simulator::run(
             // gimbal still pushes sideways; the PD only fights leftover lean.
             const double Fx_b = T * std::sin(gimbal_y);
             const double Fy_b = T * (-std::sin(gimbal_x));
-            double tau_x = 0.0;
-            double tau_y = 0.0;
-            // The command is still upright. Roll and pitch are read off the
-            // quaternion so this PD matches the old Euler law on these flights.
-            double roll = 0.0;
-            double pitch = 0.0;
-            double yaw_now = 0.0;
-            euler_from_quat(quat_from_state(state), roll, pitch, yaw_now);
-            (void)yaw_now;
-            attitude_rcs(
-                roll, pitch, state[WX], state[WY],
-                tau_kp, tau_kd, tau_x, tau_y
-            );
+            double ex = 0.0;
+            double ey = 0.0;
+            double ez = 0.0;
+            attitude_error_body(quat_from_state(state), attitude_cmd, ex, ey, ez);
+            double tau_x = tau_kp * ex - tau_kd * state[WX];
+            double tau_y = tau_kp * ey - tau_kd * state[WY];
+            double tau_z = tau_kp_z * ez - tau_kd_z * state[WZ];
             tau_x += -cfg.gimbal_lever * Fy_b;
             tau_y += cfg.gimbal_lever * Fx_b;
 
-            ControlInput control(5);
-            control << T, gimbal_x, gimbal_y, tau_x, tau_y;
+            ControlInput control(6);
+            control << T, gimbal_x, gimbal_y, tau_x, tau_y, tau_z;
 
             SystemDynamics bound = [&](double time, const State& s) {
                 return rocket_dynamics_6dof(

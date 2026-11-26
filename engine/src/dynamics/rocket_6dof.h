@@ -6,10 +6,10 @@
 namespace icarus {
 
 // 6-DOF rigid-body landing. Attitude is a quaternion. Gimbal TVC.
-// Control: [T, delta_x, delta_y, tau_x, tau_y]
+// Control: [T, delta_x, delta_y, tau_x, tau_y, tau_z]
 //   T          thrust (N)
 //   delta_x/y  gimbal angles (rad)
-//   tau_x/y    extra body torque (N·m), e.g. attitude PD / RCS
+//   tau_x/y/z  extra body torque (N·m), the attitude PD / jets
 State rocket_dynamics_6dof(
     double t,
     const State& state,

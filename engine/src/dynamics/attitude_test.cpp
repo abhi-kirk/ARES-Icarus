@@ -214,6 +214,74 @@ int main() {
         expect_near(n, 1.0, 1e-8, "quaternion stays a unit through the old lock");
     }
 
+    {
+        const double roll = 8.0 * deg;
+        const double pitch = -12.0 * deg;
+        const double yaw = 6.0 * deg;
+        double ex = 0.0;
+        double ey = 0.0;
+        double ez = 0.0;
+        attitude_error_body(quat_from_euler(roll, 0.0, 0.0), quat_identity(), ex, ey, ez);
+        expect_near(ex, -roll, 1e-9, "roll error is minus the angle");
+        expect_near(ey, 0.0, 1e-9, "a pure roll has no pitch error");
+        expect_near(ez, 0.0, 1e-9, "a pure roll has no yaw error");
+        attitude_error_body(quat_from_euler(0.0, pitch, 0.0), quat_identity(), ex, ey, ez);
+        expect_near(ey, -pitch, 1e-9, "pitch error is minus the angle");
+        attitude_error_body(quat_from_euler(0.0, 0.0, yaw), quat_identity(), ex, ey, ez);
+        expect_near(ez, -yaw, 1e-9, "yaw error is minus the angle");
+
+        const double kp = 1.5 * IXX_DEFAULT;
+        const double kd = 0.8 * IXX_DEFAULT;
+        const double wx = 0.05;
+        attitude_error_body(quat_from_euler(roll, 0.0, 0.0), quat_identity(), ex, ey, ez);
+        const double tau_x = kp * ex - kd * wx;
+        const double old_tau = -kp * roll - kd * wx;
+        expect_near(tau_x, old_tau, 1e-6, "roll torque matches the old upright law");
+    }
+
+    {
+        State state = State::Zero(STATE_SIZE);
+        quat_write(state, quat_from_euler(0.0, 15.0 * deg, 10.0 * deg));
+        state[POS_Z] = 100.0;
+        state[FUEL] = 100.0;
+        const double kp_xy = 1.5 * IXX_DEFAULT;
+        const double kd_xy = 0.8 * IXX_DEFAULT;
+        const double kp_z = 1.5 * IZZ_DEFAULT;
+        const double kd_z = 0.8 * IZZ_DEFAULT;
+        const Quat cmd = quat_identity();
+        ControlInput control = ControlInput::Zero(6);
+        Disturbance wind = Disturbance::Zero(3);
+        const double dt = 0.01;
+        double t = 0.0;
+        for (int i = 0; i < 1200; ++i) {
+            double ex = 0.0;
+            double ey = 0.0;
+            double ez = 0.0;
+            attitude_error_body(quat_from_state(state), cmd, ex, ey, ez);
+            control[3] = kp_xy * ex - kd_xy * state[WX];
+            control[4] = kp_xy * ey - kd_xy * state[WY];
+            control[5] = kp_z * ez - kd_z * state[WZ];
+            SystemDynamics f = [&](double time, const State& s) {
+                return rocket_dynamics_6dof(
+                    time, s, control, wind,
+                    IXX_DEFAULT, IYY_DEFAULT, IZZ_DEFAULT, GIMBAL_LEVER_DEFAULT,
+                    0.0, GRAVITY
+                );
+            };
+            state = Integrator::rk4_step(f, t, state, dt);
+            normalize_state_quaternion(state);
+            t += dt;
+        }
+        double roll = 0.0;
+        double pitch = 0.0;
+        double yaw = 0.0;
+        euler_from_quat(quat_from_state(state), roll, pitch, yaw);
+        expect(std::abs(pitch) < 1.0 * deg, "upright command brings a 15 deg pitch home");
+        expect(std::abs(yaw) < 1.0 * deg, "upright command brings a 10 deg yaw home");
+        expect(std::abs(state[WY]) < 0.05, "pitch rate is quiet after the upright command");
+        expect(std::abs(state[WZ]) < 0.05, "yaw rate is quiet after the upright command");
+    }
+
     if (g_failed > 0) {
         std::cerr << g_failed << " failed\n";
         return 1;
