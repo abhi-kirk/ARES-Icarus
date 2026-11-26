@@ -1,4 +1,5 @@
 #include "dynamics/rocket_3dof.h"
+#include "dynamics/air.h"
 #include "dynamics/constants.h"
 #include "dynamics/state_indices.h"
 
@@ -45,7 +46,8 @@ State rocket_dynamics_3dof(
     }
 
     double speed = std::sqrt(vx*vx + vy*vy + vz*vz);
-    const double drag_coeff = 0.5 * std::max(0.0, drag_scale);
+    const double density = air_density_ratio(state[POS_Z], gravity);
+    const double drag_coeff = 0.5 * std::max(0.0, drag_scale) * density;
 
     const double drag_x = -drag_coeff * vx * speed;
     const double drag_y = -drag_coeff * vy * speed;

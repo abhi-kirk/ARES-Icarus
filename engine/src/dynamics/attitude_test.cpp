@@ -1,6 +1,7 @@
 // Quaternion attitude. The oracle for the rotation is the old ZYX matrix,
 // written here so the plant and the check do not share one implementation.
 
+#include "dynamics/air.h"
 #include "dynamics/attitude.h"
 #include "dynamics/constants.h"
 #include "dynamics/rocket_6dof.h"
@@ -326,6 +327,59 @@ int main() {
         allocate_gimbal(bx, by, bz, 15.0 * deg, thrust, dx, dy);
         expect_near(dx, 0.0, 1e-6, "once the body has the tilt, gimbal x is zero");
         expect_near(dy, 0.0, 1e-6, "once the body has the tilt, gimbal y is zero");
+    }
+
+    {
+        const double pad = air_density_ratio(0.0, GRAVITY_EARTH);
+        expect_near(pad, 1.0, 1e-12, "earth drag ratio is 1 on the pad");
+
+        const double one_scale = air_density_ratio(AIR_SCALE_HEIGHT_M, GRAVITY_EARTH);
+        expect_near(one_scale, std::exp(-1.0), 1e-12, "earth drag ratio is 1/e at 8.5 km");
+
+        const double hop = air_density_ratio(300.0, GRAVITY_EARTH);
+        expect_near(hop, std::exp(-300.0 / AIR_SCALE_HEIGHT_M), 1e-12, "a 300 m hop is slightly thinner air");
+
+        const double below = air_density_ratio(-2.0, GRAVITY_EARTH);
+        expect_near(below, 1.0, 1e-12, "below the pad the ratio stays at sea level");
+
+        const double moon_pad = air_density_ratio(0.0, GRAVITY_MOON);
+        const double moon_high = air_density_ratio(100000.0, GRAVITY_MOON);
+        expect_near(moon_pad, 0.0, 0.0, "the moon has no air on the pad");
+        expect_near(moon_high, 0.0, 0.0, "the moon has no air at 100 km");
+    }
+
+    {
+        // 10 m/s of sideways speed, engine off, so the horizontal acceleration is drag.
+        State state = State::Zero(STATE_SIZE);
+        state[QW] = 1.0;
+        state[VEL_X] = 10.0;
+        ControlInput control = ControlInput::Zero(6);
+        Disturbance wind = Disturbance::Zero(3);
+
+        State sea = rocket_dynamics_6dof(
+            0.0, state, control, wind,
+            IXX_DEFAULT, IYY_DEFAULT, IZZ_DEFAULT, GIMBAL_LEVER_DEFAULT,
+            1.0, GRAVITY_EARTH
+        );
+        // drag = -0.5 * 1 * 10 * 10 = -50 N, mass = 1000 kg.
+        expect_near(sea[VEL_X], -0.05, 1e-12, "sea-level drag matches the old law");
+
+        state[POS_Z] = AIR_SCALE_HEIGHT_M;
+        State high = rocket_dynamics_6dof(
+            0.0, state, control, wind,
+            IXX_DEFAULT, IYY_DEFAULT, IZZ_DEFAULT, GIMBAL_LEVER_DEFAULT,
+            1.0, GRAVITY_EARTH
+        );
+        expect_near(high[VEL_X], -0.05 / std::exp(1.0), 1e-12, "drag at one scale height is 1/e of sea level");
+
+        state[POS_Z] = 0.0;
+        State vacuum = rocket_dynamics_6dof(
+            0.0, state, control, wind,
+            IXX_DEFAULT, IYY_DEFAULT, IZZ_DEFAULT, GIMBAL_LEVER_DEFAULT,
+            1.0, GRAVITY_MOON
+        );
+        expect_near(vacuum[VEL_X], 0.0, 1e-12, "lunar gravity zeros drag even with drag_scale 1");
+        expect_near(vacuum[VEL_Z], -GRAVITY_MOON, 1e-12, "the moon still accelerates at 1.62");
     }
 
     if (g_failed > 0) {

@@ -1,4 +1,5 @@
 #include "dynamics/rocket_6dof.h"
+#include "dynamics/air.h"
 #include "dynamics/attitude.h"
 #include "dynamics/constants.h"
 #include "dynamics/state_indices.h"
@@ -82,8 +83,10 @@ State rocket_dynamics_6dof(
     const double vy_rel = state[VEL_Y] - wind_y;
     const double vz_rel = state[VEL_Z] - wind_z;
     const double speed = std::sqrt(vx_rel * vx_rel + vy_rel * vy_rel + vz_rel * vz_rel);
-    // drag_scale = 1 keeps the historical law. 0 is vacuum.
-    const double drag_coeff = 0.5 * std::max(0.0, drag_scale);
+    // drag_scale = 1 keeps the historical sea-level law. 0 is vacuum.
+    // The ratio is 1 on the pad and thins with altitude. The Moon is 0.
+    const double density = air_density_ratio(state[POS_Z], gravity);
+    const double drag_coeff = 0.5 * std::max(0.0, drag_scale) * density;
     const double drag_x = -drag_coeff * vx_rel * speed;
     const double drag_y = -drag_coeff * vy_rel * speed;
     const double drag_z = -drag_coeff * vz_rel * speed;

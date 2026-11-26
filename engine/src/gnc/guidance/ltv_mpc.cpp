@@ -1,5 +1,7 @@
 #include "gnc/guidance/ltv_mpc.h"
 
+#include "dynamics/air.h"
+
 #include "dynamics/constants.h"
 
 #include <algorithm>
@@ -127,15 +129,17 @@ MpcSolveResult LtvMpc::solve(
     const int nU = N * nu;
     const int nX = N * nx;
 
-    // Match the plant drag law drag = -0.5 * drag_scale * v_rel * |v_rel|
+    // Match the plant drag law drag = -0.5 * drag_scale * density * v_rel * |v_rel|
     // with a local linear damping held over the horizon: a_drag ≈ -b (v - w).
+    // Density is the value at the current altitude, same as the speed linearization.
     const Eigen::Vector3d v_rel(
         state_vel.x() - wind_x,
         state_vel.y() - wind_y,
         state_vel.z()
     );
     const double speed_rel = v_rel.norm();
-    const double b_drag = (0.5 * drag_scale_ * speed_rel) / m;
+    const double density = air_density_ratio(state_pos.z(), gravity_);
+    const double b_drag = (0.5 * drag_scale_ * density * speed_rel) / m;
     const double damp = std::max(0.0, 1.0 - b_drag * dt_);
 
     // Discrete translation model with drag and constant wind:

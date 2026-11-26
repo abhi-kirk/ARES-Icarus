@@ -1,5 +1,6 @@
 #include "gnc/guidance/scvx_guidance.h"
 
+#include "dynamics/air.h"
 #include "dynamics/constants.h"
 
 #include <algorithm>
@@ -106,13 +107,16 @@ Eigen::Vector3d drag_accel(
     double wind_x,
     double wind_y,
     double mass,
-    double drag_scale
+    double drag_scale,
+    double altitude_m,
+    double gravity
 ) {
     const double vx = vel.x() - wind_x;
     const double vy = vel.y() - wind_y;
     const double vz = vel.z();
     const double speed = std::sqrt(vx * vx + vy * vy + vz * vz);
-    const double coeff = 0.5 * std::max(0.0, drag_scale);
+    const double density = air_density_ratio(altitude_m, gravity);
+    const double coeff = 0.5 * std::max(0.0, drag_scale) * density;
     const double m = std::max(mass, 1.0);
     return Eigen::Vector3d(
         -coeff * vx * speed / m,
@@ -191,7 +195,7 @@ Rollout rollout_forces(
         }
         const Eigen::Vector3d a = u / mass
             + Eigen::Vector3d(0.0, 0.0, -gravity)
-            + drag_accel(vel, wind_x, wind_y, mass, drag_scale);
+            + drag_accel(vel, wind_x, wind_y, mass, drag_scale, pos.z(), gravity);
         pos += dt * vel + 0.5 * dt * dt * a;
         vel += dt * a;
         const double used = (u.norm() * dt) / kVe;
@@ -317,8 +321,11 @@ QpStep solve_qp(
 
         Eigen::Vector3d offset(0.0, 0.0, -gravity);
         if (drag_scale > 0.0) {
+            // aff(2) is the altitude at the start of this step.
+            const double altitude = aff(2);
             offset += drag_accel(
-                v_ref[static_cast<size_t>(k)], wind_x, wind_y, m, drag_scale
+                v_ref[static_cast<size_t>(k)], wind_x, wind_y, m, drag_scale,
+                altitude, gravity
             );
         }
         Eigen::VectorXd c(6);
@@ -614,7 +621,7 @@ std::vector<Eigen::Vector3d> append_sink(
 
         const Eigen::Vector3d a = u / std::max(mass, 1.0)
             + Eigen::Vector3d(0.0, 0.0, -gravity)
-            + drag_accel(vel, wind_x, wind_y, mass, drag_scale);
+            + drag_accel(vel, wind_x, wind_y, mass, drag_scale, pos.z(), gravity);
         pos += kDt * vel + 0.5 * kDt * kDt * a;
         vel += kDt * a;
         mass = std::max(MASS_DRY, mass - u.norm() * kDt / kVe);
