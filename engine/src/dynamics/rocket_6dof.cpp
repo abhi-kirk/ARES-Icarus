@@ -1,8 +1,10 @@
 #include "dynamics/rocket_6dof.h"
-#include "dynamics/air.h"
+#include "dynamics/aero.h"
 #include "dynamics/attitude.h"
 #include "dynamics/constants.h"
+#include "dynamics/propulsion.h"
 #include "dynamics/state_indices.h"
+#include "environment/gravity.h"
 
 #include <algorithm>
 #include <cmath>
@@ -33,7 +35,8 @@ State rocket_dynamics_6dof(
     double Izz,
     double gimbal_lever_m,
     double drag_scale,
-    double gravity
+    double gravity,
+    double exhaust_speed
 ) {
     (void)t;
 
@@ -76,24 +79,27 @@ State rocket_dynamics_6dof(
 
     double m_dot = 0.0;
     if (fuel > 0.0 && T_use > 0.0) {
-        m_dot = -(T_use / MAX_THRUST) * MAX_FLOW_RATE;
+        m_dot = -fuel_flow_kg_s(T_use, exhaust_speed);
     }
 
-    const double vx_rel = state[VEL_X] - wind_x;
-    const double vy_rel = state[VEL_Y] - wind_y;
-    const double vz_rel = state[VEL_Z] - wind_z;
-    const double speed = std::sqrt(vx_rel * vx_rel + vy_rel * vy_rel + vz_rel * vz_rel);
-    // drag_scale = 1 keeps the historical sea-level law. 0 is vacuum.
-    // The ratio is 1 on the pad and thins with altitude. The Moon is 0.
-    const double density = air_density_ratio(state[POS_Z], gravity);
-    const double drag_coeff = 0.5 * std::max(0.0, drag_scale) * density;
-    const double drag_x = -drag_coeff * vx_rel * speed;
-    const double drag_y = -drag_coeff * vy_rel * speed;
-    const double drag_z = -drag_coeff * vz_rel * speed;
+    double drag_x = 0.0;
+    double drag_y = 0.0;
+    double drag_z = 0.0;
+    aero_force(
+        state[VEL_X], state[VEL_Y], state[VEL_Z],
+        wind_x, wind_y, wind_z,
+        state[POS_Z], drag_scale, gravity,
+        drag_x, drag_y, drag_z
+    );
 
-    const double accel_x = (Fx_i + drag_x) / m;
-    const double accel_y = (Fy_i + drag_y) / m;
-    const double accel_z = (Fz_i - m * gravity + drag_z) / m;
+    double grav_x = 0.0;
+    double grav_y = 0.0;
+    double grav_z = 0.0;
+    gravity_accel(gravity, grav_x, grav_y, grav_z);
+
+    const double accel_x = (Fx_i + drag_x) / m + grav_x;
+    const double accel_y = (Fy_i + drag_y) / m + grav_y;
+    const double accel_z = (Fz_i + drag_z) / m + grav_z;
 
     const double wx_dot = (tau_x - (Izz - Iyy) * wy * wz) / Ixx;
     const double wy_dot = (tau_y - (Ixx - Izz) * wz * wx) / Iyy;
@@ -128,7 +134,7 @@ State rocket_dynamics_6dof(
     return rocket_dynamics_6dof(
         t, state, control, disturbance,
         IXX_DEFAULT, IYY_DEFAULT, IZZ_DEFAULT, GIMBAL_LEVER_DEFAULT,
-        1.0, GRAVITY
+        1.0, GRAVITY, EXHAUST_SPEED
     );
 }
 

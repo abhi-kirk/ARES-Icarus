@@ -1,7 +1,8 @@
 #pragma once
 
-#include "dynamics/air.h"
+#include "dynamics/aero.h"
 #include "dynamics/constants.h"
+#include "dynamics/propulsion.h"
 
 #include <algorithm>
 #include <cmath>
@@ -78,15 +79,19 @@ inline void entry_brake_direction(
 // Attitude does not change drag. burn points the whole thrust ceiling
 // along entry_brake_direction.
 inline void entry_step(EntryPoint& point, const EntryPlant& plant, double dt, bool burn) {
-    const double speed = std::sqrt(
-        point.vx * point.vx + point.vy * point.vy + point.vz * point.vz
+    double drag_x = 0.0;
+    double drag_y = 0.0;
+    double drag_z = 0.0;
+    aero_force(
+        point.vx, point.vy, point.vz,
+        0.0, 0.0, 0.0,
+        point.z, plant.drag_scale, plant.gravity,
+        drag_x, drag_y, drag_z
     );
-    const double density = air_density_ratio(point.z, plant.gravity);
-    const double drag = 0.5 * std::max(0.0, plant.drag_scale) * density * speed
-        / std::max(point.mass, 1.0);
-    double ax = -drag * point.vx;
-    double ay = -drag * point.vy;
-    double az = -drag * point.vz - plant.gravity;
+    const double inv_mass = 1.0 / std::max(point.mass, 1.0);
+    double ax = drag_x * inv_mass;
+    double ay = drag_y * inv_mass;
+    double az = drag_z * inv_mass - plant.gravity;
 
     if (burn && point.mass > MASS_DRY + 0.5 && plant.thrust_max > 1.0) {
         double ux = 0.0;
@@ -97,7 +102,7 @@ inline void entry_step(EntryPoint& point, const EntryPlant& plant, double dt, bo
         ax += accel * ux;
         ay += accel * uy;
         az += accel * uz;
-        const double flow = (plant.thrust_max / MAX_THRUST) * MAX_FLOW_RATE;
+        const double flow = fuel_flow_kg_s(plant.thrust_max, EXHAUST_SPEED);
         point.mass = std::max(MASS_DRY, point.mass - flow * dt);
     }
 

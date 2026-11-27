@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "dynamics/constants.h"
+
 namespace icarus {
 
 struct PIDConfig {
@@ -66,6 +68,10 @@ struct SimConfig {
     // rate limit in N/s; 0 means no extra slew cap beyond the lag.
     double thrust_tau = 0.0;
     double thrust_slew = 0.0;
+
+    // Exhaust speed, m/s. Fuel flow is thrust / exhaust_speed.
+    // 5000 m/s keeps the hopper at 5 kg/s when thrust is 25,000 N.
+    double exhaust_speed = EXHAUST_SPEED;
 
     // Multiplier on the quadratic drag law. 1 is the historical plant.
     // 0 is vacuum. Wind is a separate field.
