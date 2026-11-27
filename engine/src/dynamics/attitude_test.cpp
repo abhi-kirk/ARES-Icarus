@@ -5,10 +5,14 @@
 #include "dynamics/attitude.h"
 #include "dynamics/constants.h"
 #include "dynamics/rocket_6dof.h"
+#include "dynamics/state_indices.h"
+#include "environment/frames.h"
+#include "environment/gravity.h"
 #include "gnc/control/gimbal_alloc.h"
 #include "gnc/control/thrust_limits.h"
 #include "gnc/guidance/entry_coast.h"
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 
@@ -437,7 +441,7 @@ int main() {
         expect(!entry_should_flip(coast, plant), "at 150 s the coast can still wait");
 
         double lit = -1.0;
-        while (t < 165.0 && coast.z > 1000.0 && lit < 0.0) {
+        while (t < 220.0 && coast.z > 1000.0 && lit < 0.0) {
             if (entry_should_flip(coast, plant)) lit = t;
             for (int step = 0; step < 10; ++step) {
                 entry_step(coast, plant, 0.05, false);
@@ -494,6 +498,80 @@ int main() {
         prefer_vertical_thrust(fx, fy, fz, 25000.0, 90.0);
         expect_near(fx, 7400.0 * std::tan(tilt_rad), 1.0, "a low up-force cannot take a full side command");
         expect_near(fz, 7400.0, 1e-6, "the up-force is not raised to fund the divert");
+    }
+
+    {
+        double ax = 0.0;
+        double ay = 0.0;
+        double az = 0.0;
+        gravity_accel(GRAVITY_EARTH, 0.0, 0.0, 0.0, false, ax, ay, az);
+        expect_near(az, -GRAVITY_EARTH, 1e-12, "pad gravity is 9.81 on the surface");
+        expect_near(ax, 0.0, 1e-12, "pad gravity has no east component");
+
+        gravity_accel(GRAVITY_EARTH, 0.0, 0.0, 300.0, false, ax, ay, az);
+        const double g300 = gravity_at_radius(GRAVITY_EARTH, EARTH_RADIUS_M + 300.0);
+        expect_near(az, -g300, 1e-9, "pad gravity is weaker at 300 m");
+        expect((GRAVITY_EARTH - g300) / GRAVITY_EARTH < 0.001, "300 m is under a tenth of a percent");
+
+        gravity_accel(GRAVITY_MOON, 0.0, 0.0, 300.0, false, ax, ay, az);
+        expect_near(az, -GRAVITY_MOON, 1e-12, "the moon stays 1.62 m/s2");
+
+        const double radius = EARTH_RADIUS_M + 200000.0;
+        gravity_accel(GRAVITY_EARTH, 0.0, 0.0, radius, true, ax, ay, az);
+        const double g200 = gravity_at_radius(GRAVITY_EARTH, radius);
+        expect_near(ax, 0.0, 1e-9, "over the pad, planet gravity has no east component");
+        expect_near(az, -g200, 1e-6, "over the pad, planet gravity points down");
+
+        const PadState pad = local_state(120.0, -40.0, radius, 3.0, -1.0, -20.0);
+        expect_near(pad.x, 120.0, 1e-9, "the pad frame keeps east");
+        expect_near(pad.y, -40.0, 1e-9, "the pad frame keeps north");
+        expect_near(pad.z, 200000.0, 1e-6, "altitude is height above the surface");
+        expect_near(pad.vz, -20.0, 1e-9, "the pad frame keeps the vertical speed");
+    }
+
+    {
+        // Engines off, no air. A circular speed at 200 km should stay on
+        // that circle for one revolution. Position is from Earth's center,
+        // and the pad is on the +z axis.
+        const double radius = EARTH_RADIUS_M + 200000.0;
+        const double g = gravity_at_radius(GRAVITY_EARTH, radius);
+        const double speed = std::sqrt(g * radius);
+        State state = State::Zero(STATE_SIZE);
+        state[POS_Z] = radius;
+        state[VEL_X] = speed;
+        state[QW] = 1.0;
+        ControlInput control = ControlInput::Zero(6);
+        Disturbance wind = Disturbance::Zero(3);
+        const double period = 2.0 * 3.14159265358979323846 * radius / speed;
+        const double dt = 1.0;
+        const int steps = static_cast<int>(std::lround(period / dt));
+        double worst = 0.0;
+        double t = 0.0;
+        for (int i = 0; i < steps; ++i) {
+            SystemDynamics step = [&](double time, const State& s) {
+                return rocket_dynamics_6dof(
+                    time, s, control, wind,
+                    IXX_DEFAULT, IYY_DEFAULT, IZZ_DEFAULT, GIMBAL_LEVER_DEFAULT,
+                    0.0, GRAVITY_EARTH, EXHAUST_SPEED, true
+                );
+            };
+            state = Integrator::rk4_step(step, t, state, dt);
+            t += dt;
+            const double r_now = std::sqrt(
+                state[POS_X] * state[POS_X]
+                + state[POS_Y] * state[POS_Y]
+                + state[POS_Z] * state[POS_Z]
+            );
+            worst = std::max(worst, std::abs(r_now - radius));
+        }
+        const double closed = std::sqrt(
+            (state[POS_X] - 0.0) * (state[POS_X] - 0.0)
+            + state[POS_Y] * state[POS_Y]
+            + (state[POS_Z] - radius) * (state[POS_Z] - radius)
+        );
+        expect_near(speed, 7784.0, 5.0, "circular speed at 200 km is about 7.8 km/s");
+        expect_near(worst, 0.0, 1.0, "a 200 km coast stays on that circle for one revolution");
+        expect_near(closed, 0.0, 3000.0, "one revolution returns to the start within a few km");
     }
 
     if (g_failed > 0) {

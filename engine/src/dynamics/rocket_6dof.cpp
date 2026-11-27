@@ -36,7 +36,8 @@ State rocket_dynamics_6dof(
     double gimbal_lever_m,
     double drag_scale,
     double gravity,
-    double exhaust_speed
+    double exhaust_speed,
+    bool planet_centered
 ) {
     (void)t;
 
@@ -85,17 +86,25 @@ State rocket_dynamics_6dof(
     double drag_x = 0.0;
     double drag_y = 0.0;
     double drag_z = 0.0;
+    const double height = altitude_m(
+        state[POS_X], state[POS_Y], state[POS_Z], planet_centered
+    );
     aero_force(
         state[VEL_X], state[VEL_Y], state[VEL_Z],
         wind_x, wind_y, wind_z,
-        state[POS_Z], drag_scale, gravity,
+        height, drag_scale, gravity,
         drag_x, drag_y, drag_z
     );
 
     double grav_x = 0.0;
     double grav_y = 0.0;
     double grav_z = 0.0;
-    gravity_accel(gravity, grav_x, grav_y, grav_z);
+    gravity_accel(
+        gravity,
+        state[POS_X], state[POS_Y], state[POS_Z],
+        planet_centered,
+        grav_x, grav_y, grav_z
+    );
 
     const double accel_x = (Fx_i + drag_x) / m + grav_x;
     const double accel_y = (Fy_i + drag_y) / m + grav_y;
@@ -134,7 +143,7 @@ State rocket_dynamics_6dof(
     return rocket_dynamics_6dof(
         t, state, control, disturbance,
         IXX_DEFAULT, IYY_DEFAULT, IZZ_DEFAULT, GIMBAL_LEVER_DEFAULT,
-        1.0, GRAVITY, EXHAUST_SPEED
+        1.0, GRAVITY, EXHAUST_SPEED, false
     );
 }
 

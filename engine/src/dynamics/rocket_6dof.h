@@ -21,7 +21,8 @@ State rocket_dynamics_6dof(
     double gimbal_lever_m,
     double drag_scale,
     double gravity = GRAVITY,
-    double exhaust_speed = EXHAUST_SPEED
+    double exhaust_speed = EXHAUST_SPEED,
+    bool planet_centered = false
 );
 
 // Defaults for inertia and lever when the caller has no case overrides.

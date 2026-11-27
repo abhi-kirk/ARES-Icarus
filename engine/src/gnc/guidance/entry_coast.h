@@ -3,6 +3,7 @@
 #include "dynamics/aero.h"
 #include "dynamics/constants.h"
 #include "dynamics/propulsion.h"
+#include "environment/gravity.h"
 
 #include <algorithm>
 #include <cmath>
@@ -89,9 +90,17 @@ inline void entry_step(EntryPoint& point, const EntryPlant& plant, double dt, bo
         drag_x, drag_y, drag_z
     );
     const double inv_mass = 1.0 / std::max(point.mass, 1.0);
-    double ax = drag_x * inv_mass;
-    double ay = drag_y * inv_mass;
-    double az = drag_z * inv_mass - plant.gravity;
+    double grav_x = 0.0;
+    double grav_y = 0.0;
+    double grav_z = 0.0;
+    // The coast gate flies in the pad frame, same as the hopper plant.
+    gravity_accel(
+        plant.gravity, point.x, point.y, point.z, false,
+        grav_x, grav_y, grav_z
+    );
+    double ax = drag_x * inv_mass + grav_x;
+    double ay = drag_y * inv_mass + grav_y;
+    double az = drag_z * inv_mass + grav_z;
 
     if (burn && point.mass > MASS_DRY + 0.5 && plant.thrust_max > 1.0) {
         double ux = 0.0;

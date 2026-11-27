@@ -79,7 +79,12 @@ struct SimConfig {
 
     // Surface gravity, m/s^2. 9.81 is Earth. 1.62 is the Moon. The thrust
     // band has to be scaled with it or the floor sits above lunar weight.
+    // On Earth the plant weakens this with height. The Moon stays constant.
     double gravity = 9.81;
+
+    // False: east, north, up at the pad, and z is altitude.
+    // True: position is meters from Earth's center. The ship uses that.
+    bool planet_centered = false;
 
     // 6-DOF plant. When use_6dof is true the stream integrates a quaternion
     // attitude with gimbal TVC; the force PID still sets the ask. Samples
