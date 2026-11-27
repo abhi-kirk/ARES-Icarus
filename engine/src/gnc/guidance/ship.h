@@ -15,5 +15,7 @@ constexpr double SHIP_START_SPEED_M_S = 2000.0;
 constexpr double SHIP_START_GAMMA_DEG = 23.5;
 constexpr double SHIP_KICK_DEG = 6.0;
 constexpr double SHIP_KICK_S = 10.0;
+// Pascals. The ascent throttle drops while dynamic pressure is above this.
+constexpr double SHIP_MAX_Q_PA = 35000.0;
 
 }  // namespace icarus

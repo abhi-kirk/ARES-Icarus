@@ -22,7 +22,8 @@ State rocket_dynamics_6dof(
     double drag_scale,
     double gravity = GRAVITY,
     double exhaust_speed = EXHAUST_SPEED,
-    bool planet_centered = false
+    bool planet_centered = false,
+    bool use_aero = false
 );
 
 // Defaults for inertia and lever when the caller has no case overrides.

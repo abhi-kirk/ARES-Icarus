@@ -51,6 +51,7 @@ function shipCase() {
     pointing_cone_deg: 90,
     glide_cone_deg: 90,
     drag_scale: 1,
+    aero: true,
     gravity: 9.81,
   });
   return next;

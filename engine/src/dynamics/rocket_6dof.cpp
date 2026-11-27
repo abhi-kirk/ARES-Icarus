@@ -37,7 +37,8 @@ State rocket_dynamics_6dof(
     double drag_scale,
     double gravity,
     double exhaust_speed,
-    bool planet_centered
+    bool planet_centered,
+    bool use_aero
 ) {
     (void)t;
 
@@ -89,11 +90,16 @@ State rocket_dynamics_6dof(
     const double height = altitude_m(
         state[POS_X], state[POS_Y], state[POS_Z], planet_centered
     );
+    double nose_x = 0.0;
+    double nose_y = 0.0;
+    double nose_z = 1.0;
+    rotate_body_to_inertial(q, 0.0, 0.0, 1.0, nose_x, nose_y, nose_z);
     aero_force(
         state[VEL_X], state[VEL_Y], state[VEL_Z],
         wind_x, wind_y, wind_z,
         height, drag_scale, gravity,
-        drag_x, drag_y, drag_z
+        drag_x, drag_y, drag_z,
+        use_aero, nose_x, nose_y, nose_z
     );
 
     double grav_x = 0.0;
@@ -143,7 +149,7 @@ State rocket_dynamics_6dof(
     return rocket_dynamics_6dof(
         t, state, control, disturbance,
         IXX_DEFAULT, IYY_DEFAULT, IZZ_DEFAULT, GIMBAL_LEVER_DEFAULT,
-        1.0, GRAVITY, EXHAUST_SPEED, false
+        1.0, GRAVITY, EXHAUST_SPEED, false, false
     );
 }
 

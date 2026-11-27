@@ -1,6 +1,7 @@
 // Quaternion attitude. The oracle for the rotation is the old ZYX matrix,
 // written here so the plant and the check do not share one implementation.
 
+#include "dynamics/aero.h"
 #include "dynamics/air.h"
 #include "dynamics/attitude.h"
 #include "dynamics/constants.h"
@@ -395,6 +396,24 @@ int main() {
         );
         expect_near(vacuum[VEL_X], 0.0, 1e-12, "lunar gravity zeros drag even with drag_scale 1");
         expect_near(vacuum[VEL_Z], -GRAVITY_MOON, 1e-12, "the moon still accelerates at 1.62");
+
+        double fx = 0.0;
+        double fy = 0.0;
+        double fz = 0.0;
+        aero_force(10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, GRAVITY_EARTH, fx, fy, fz, false, 0.0, 0.0, 1.0);
+        expect_near(fx, -50.0, 1e-9, "aero off keeps the old 50 N of drag");
+        expect_near(fz, 0.0, 1e-9, "aero off produces no lift");
+
+        aero_force(10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, GRAVITY_EARTH, fx, fy, fz, true, 1.0, 0.0, 0.0);
+        expect_near(fx, -50.0, 1e-6, "a nose along the velocity keeps the old drag");
+        expect_near(fz, 0.0, 1e-6, "a nose along the velocity produces no lift");
+
+        aero_force(10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, GRAVITY_EARTH, fx, fy, fz, true, 0.0, 0.0, 1.0);
+        expect(fz > 10.0, "a nose across the velocity produces lift");
+        expect(fx < -50.0, "a tilted nose adds drag");
+
+        expect_near(cap_thrust_for_q(100000.0, 1000.0, 35000.0), 100000.0, 1e-6, "below max-q the throttle stays put");
+        expect_near(cap_thrust_for_q(100000.0, 70000.0, 35000.0), 50000.0, 1e-6, "above max-q the throttle scales down");
     }
 
     {

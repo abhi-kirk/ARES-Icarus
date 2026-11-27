@@ -1,5 +1,6 @@
 #include "gnc/guidance/pitch_program.h"
 
+#include "dynamics/aero.h"
 #include "dynamics/state_indices.h"
 #include "environment/gravity.h"
 #include "gnc/guidance/ship.h"
@@ -118,9 +119,16 @@ PitchAsk pitch_program(double t, const State& state, bool& inserted) {
     const double dx = along * local.east_x + above * local.up_x;
     const double dy = along * local.east_y + above * local.up_y;
     const double dz = along * local.east_z + above * local.up_z;
-    ask.fx = SHIP_THRUST_N * dx;
-    ask.fy = SHIP_THRUST_N * dy;
-    ask.fz = SHIP_THRUST_N * dz;
+    const double speed = std::sqrt(
+        state[VEL_X] * state[VEL_X]
+        + state[VEL_Y] * state[VEL_Y]
+        + state[VEL_Z] * state[VEL_Z]
+    );
+    const double q = dynamic_pressure(local.altitude_m, speed, GRAVITY_EARTH);
+    const double thrust = cap_thrust_for_q(SHIP_THRUST_N, q, SHIP_MAX_Q_PA);
+    ask.fx = thrust * dx;
+    ask.fy = thrust * dy;
+    ask.fz = thrust * dz;
     return ask;
 }
 

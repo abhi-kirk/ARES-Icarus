@@ -533,7 +533,7 @@ void Simulator::run(
                 return rocket_dynamics_6dof(
                     time, s, control, wind_speeds,
                     cfg.Ixx, cfg.Iyy, cfg.Izz, cfg.gimbal_lever,
-                    cfg.drag_scale, gravity, cfg.exhaust_speed, cfg.planet_centered
+                    cfg.drag_scale, gravity, cfg.exhaust_speed, cfg.planet_centered, cfg.aero
                 );
             };
             state = Integrator::rk4_step(bound, t, state, dt_inner_v);

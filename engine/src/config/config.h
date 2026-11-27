@@ -77,6 +77,10 @@ struct SimConfig {
     // 0 is vacuum. Wind is a separate field.
     double drag_scale = 1.0;
 
+    // Angle-of-attack drag and lift. Off keeps the historical drag, which
+    // does not care which way the nose points. The ship turns this on.
+    bool aero = false;
+
     // Surface gravity, m/s^2. 9.81 is Earth. 1.62 is the Moon. The thrust
     // band has to be scaled with it or the floor sits above lunar weight.
     // On Earth the plant weakens this with height. The Moon stays constant.
