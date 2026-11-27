@@ -4,6 +4,7 @@ add_library(icarus_guidance
   soft_land_reference.cpp
   ltv_mpc.cpp
   scvx_guidance.cpp
+  pitch_program.cpp
 )
 target_include_directories(icarus_guidance PUBLIC ${CMAKE_SOURCE_DIR}/src)
 # osqpstatic is the tracking planner. qocostatic is the fuel plan's cone solver.

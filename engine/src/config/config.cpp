@@ -81,6 +81,7 @@ bool apply_config(const json& j, Config& config) {
         config.simulation.attitude_kd        = j["simulation"].value("attitude_kd", 0.8);
 
         config.simulation.controller         = j["simulation"].value("controller", std::string("pid"));
+        config.simulation.ascent             = j["simulation"].value("ascent", false);
         config.simulation.entry              = j["simulation"].value("entry", false);
         config.simulation.mpc_horizon        = j["simulation"].value("mpc_horizon", 50);
         config.simulation.mpc_dt             = j["simulation"].value("mpc_dt", 0.1);

@@ -11,6 +11,7 @@
 #include "gnc/control/thrust_lag.h"
 #include "gnc/control/thrust_limits.h"
 #include "gnc/guidance/ltv_mpc.h"
+#include "gnc/guidance/pitch_program.h"
 #include "sim/flight_phase.h"
 #include "gnc/guidance/scvx_guidance.h"
 #include "gnc/guidance/soft_land_reference.h"
@@ -213,7 +214,7 @@ void Simulator::run(
 
         // An entry coast is not a landing problem. The first solve waits
         // until the brake has put the rocket on a hop these laws already fly.
-        if (!cfg.entry) {
+        if (!cfg.entry && !cfg.ascent) {
             Eigen::Vector3d wind0 = wind_model.wind_velocity(t);
             last_plan = mpc.solve(
                 t,
@@ -247,7 +248,7 @@ void Simulator::run(
             cfg.drag_scale,
             gravity
         );
-        if (!cfg.entry) {
+        if (!cfg.entry && !cfg.ascent) {
             Eigen::Vector2d pad0 = landing_pad.pad_position(t);
             Eigen::Vector3d wind0 = wind_model.wind_velocity(t);
             last_plan = scvx.solve(
@@ -275,6 +276,7 @@ void Simulator::run(
 
     EntryPhase entry_phase = EntryPhase::Land;
     double entry_check_age = 0.0;
+    bool ascent_inserted = false;
     if (cfg.entry) {
         entry_phase = EntryPhase::Coast;
         const double speed0 = std::hypot(state[VEL_X], std::hypot(state[VEL_Y], state[VEL_Z]));
@@ -296,6 +298,26 @@ void Simulator::run(
         Fz_act = 0.0;
     }
 
+    if (cfg.ascent) {
+        const PitchAsk ask = pitch_program(t, state, ascent_inserted);
+        Fx_cmd = ask.fx;
+        Fy_cmd = ask.fy;
+        Fz_cmd = ask.fz;
+        Fx_act = Fx_cmd;
+        Fy_act = Fy_cmd;
+        Fz_act = Fz_cmd;
+        const double force_len = std::sqrt(Fx_cmd * Fx_cmd + Fy_cmd * Fy_cmd + Fz_cmd * Fz_cmd);
+        if (force_len > 1.0) {
+            attitude_cmd = quat_align_body_z(
+                Fx_cmd / force_len,
+                Fy_cmd / force_len,
+                Fz_cmd / force_len,
+                quat_identity()
+            );
+            quat_write(state, attitude_cmd);
+        }
+    }
+
     if (emit != nullptr) {
         Eigen::Vector2d pad0 = landing_pad.pad_position(t);
         (*emit)(sample_from(
@@ -315,7 +337,13 @@ void Simulator::run(
         double ref_vel_z = 0.0;
         bool guide = true;
         bool force_solve = false;
-        if (cfg.entry && entry_phase != EntryPhase::Land) {
+        if (cfg.ascent) {
+            guide = false;
+            const PitchAsk ask = pitch_program(t, state, ascent_inserted);
+            Fx_cmd = ask.fx;
+            Fy_cmd = ask.fy;
+            Fz_cmd = ask.fz;
+        } else if (cfg.entry && entry_phase != EntryPhase::Land) {
             const EntryAsk ask = update_entry(
                 entry_phase, entry_check_age, dt_inner_v, t, state, cfg, attitude_cmd
             );
@@ -421,12 +449,16 @@ void Simulator::run(
             );
         }
 
-        apply_thrust_limits(
-            Fx_cmd, Fy_cmd, Fz_cmd,
-            cfg.thrust_min,
-            cfg.thrust_max,
-            cfg.pointing_cone_deg
-        );
+        // The pointing cone measures tilt from pad-up. An ascent force is
+        // already the pitch program's vector, in the planet frame.
+        if (!cfg.ascent) {
+            apply_thrust_limits(
+                Fx_cmd, Fy_cmd, Fz_cmd,
+                cfg.thrust_min,
+                cfg.thrust_max,
+                cfg.pointing_cone_deg
+            );
+        }
         apply_thrust_lag(
             Fx_act, Fy_act, Fz_act,
             Fx_cmd, Fy_cmd, Fz_cmd,

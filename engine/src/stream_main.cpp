@@ -148,7 +148,7 @@ int main() {
         nullptr,
         &g_stop,
         &emit,
-        config.simulation.entry ? 400.0 : TIME_LIMIT
+        (config.simulation.entry || config.simulation.ascent) ? 400.0 : TIME_LIMIT
     );
 
     return 0;

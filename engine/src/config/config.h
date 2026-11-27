@@ -102,6 +102,10 @@ struct SimConfig {
     // (Phase 5) that tracks a soft-landing reference with OSQP.
     std::string controller = "pid";
 
+    // Ship climb from just after separation. The pitch program flies this,
+    // not the landing PID. Position is from Earth's center.
+    bool ascent = false;
+
     // Earth entry. The rocket starts near 100 km, nose along its velocity,
     // engine off. Thrust stays off until a brake can still reach a hop the
     // landing laws already fly, then that law takes over. False keeps today's
