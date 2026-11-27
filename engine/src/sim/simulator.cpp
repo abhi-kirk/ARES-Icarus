@@ -10,12 +10,14 @@
 #include "gnc/control/gimbal_alloc.h"
 #include "gnc/control/thrust_lag.h"
 #include "gnc/control/thrust_limits.h"
+#include "gnc/guidance/entry_coast.h"
 #include "gnc/guidance/ltv_mpc.h"
 #include "gnc/guidance/scvx_guidance.h"
 #include "gnc/guidance/soft_land_reference.h"
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 #include <string>
 
 namespace icarus {
@@ -111,6 +113,115 @@ void delivered_inertial_force(
     const double Fy_b = T * (-std::sin(dx));
     const double Fz_b = T * std::cos(dx) * std::cos(dy);
     rotate_body_to_inertial(quat_from_state(at), Fx_b, Fy_b, Fz_b, Fx, Fy, Fz);
+}
+
+// Coast holds the engine off and the nose on the velocity. Flip keeps the
+// engine off while the jets swing the nose onto the brake. Brake is the
+// ceiling thrust toward a 20 m/s fall. Land is the existing law.
+enum class EntryPhase {
+    Coast,
+    Flip,
+    Brake,
+    Land
+};
+
+struct EntryAsk {
+    bool guide;
+    bool force_solve;
+    double fx;
+    double fy;
+    double fz;
+    Quat attitude;
+};
+
+EntryAsk update_entry(
+    EntryPhase& phase,
+    double& check_age,
+    double dt,
+    double t,
+    const State& state,
+    const SimConfig& cfg,
+    Quat attitude_now
+) {
+    EntryAsk ask;
+    ask.guide = false;
+    ask.force_solve = false;
+    ask.fx = 0.0;
+    ask.fy = 0.0;
+    ask.fz = 0.0;
+    ask.attitude = attitude_now;
+
+    EntryPlant plant;
+    plant.gravity = cfg.gravity;
+    plant.drag_scale = cfg.drag_scale;
+    plant.thrust_max = cfg.thrust_max;
+
+    EntryPoint here;
+    here.x = state[POS_X];
+    here.y = state[POS_Y];
+    here.z = state[POS_Z];
+    here.vx = state[VEL_X];
+    here.vy = state[VEL_Y];
+    here.vz = state[VEL_Z];
+    here.mass = MASS_DRY + std::max(0.0, state[FUEL]);
+
+    if (phase == EntryPhase::Coast) {
+        check_age += dt;
+        if (check_age >= 0.25) {
+            check_age = 0.0;
+            if (entry_should_flip(here, plant)) {
+                phase = EntryPhase::Flip;
+                std::cerr << "entry flip t=" << t
+                          << " z=" << here.z
+                          << " vz=" << here.vz
+                          << " vh=" << std::hypot(here.vx, here.vy)
+                          << "\n";
+            }
+        }
+    }
+
+    const double speed = std::hypot(here.vx, std::hypot(here.vy, here.vz));
+    double ux = 0.0;
+    double uy = 0.0;
+    double uz = 1.0;
+    if (phase == EntryPhase::Coast && speed > 1.0) {
+        ux = here.vx / speed;
+        uy = here.vy / speed;
+        uz = here.vz / speed;
+    } else if (phase != EntryPhase::Coast) {
+        entry_brake_direction(here.vx, here.vy, here.vz, ux, uy, uz);
+    }
+    ask.attitude = quat_align_body_z(ux, uy, uz, quat_from_state(state));
+
+    if (phase == EntryPhase::Flip) {
+        double zx = 0.0;
+        double zy = 0.0;
+        double zz = 0.0;
+        rotate_body_to_inertial(quat_from_state(state), 0.0, 0.0, 1.0, zx, zy, zz);
+        const double aligned = zx * ux + zy * uy + zz * uz;
+        const double cos_20 = std::cos(20.0 * 3.14159265358979323846 / 180.0);
+        if (aligned >= cos_20) phase = EntryPhase::Brake;
+    }
+
+    if (phase == EntryPhase::Brake) {
+        ask.fx = cfg.thrust_max * ux;
+        ask.fy = cfg.thrust_max * uy;
+        ask.fz = cfg.thrust_max * uz;
+        if (entry_in_hop(here)) {
+            phase = EntryPhase::Land;
+            ask.guide = true;
+            ask.force_solve = true;
+            std::cerr << "entry handoff t=" << t
+                      << " z=" << here.z
+                      << " vz=" << here.vz
+                      << " vh=" << std::hypot(here.vx, here.vy)
+                      << " x=" << here.x
+                      << " y=" << here.y
+                      << " fuel=" << (here.mass - MASS_DRY)
+                      << "\n";
+        }
+    }
+    return ask;
 }
 
 }  // namespace
@@ -209,23 +320,27 @@ void Simulator::run(
         mpc.set_reference(&soft_ref);
         mpc_divider = std::max(1, static_cast<int>(std::lround(cfg.mpc_dt / dt_inner_v)));
 
-        Eigen::Vector3d wind0 = wind_model.wind_velocity(t);
-        last_plan = mpc.solve(
-            t,
-            Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
-            Eigen::Vector3d(state[VEL_X], state[VEL_Y], state[VEL_Z]),
-            mass0,
-            pad0[0],
-            pad0[1],
-            wind0.x(),
-            wind0.y()
-        );
-        Fx_cmd = last_plan.force.x();
-        Fy_cmd = last_plan.force.y();
-        Fz_cmd = last_plan.force.z();
-        Fx_act = Fx_cmd;
-        Fy_act = Fy_cmd;
-        Fz_act = Fz_cmd;
+        // An entry coast is not a landing problem. The first solve waits
+        // until the brake has put the rocket on a hop these laws already fly.
+        if (!cfg.entry) {
+            Eigen::Vector3d wind0 = wind_model.wind_velocity(t);
+            last_plan = mpc.solve(
+                t,
+                Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
+                Eigen::Vector3d(state[VEL_X], state[VEL_Y], state[VEL_Z]),
+                mass0,
+                pad0[0],
+                pad0[1],
+                wind0.x(),
+                wind0.y()
+            );
+            Fx_cmd = last_plan.force.x();
+            Fy_cmd = last_plan.force.y();
+            Fz_cmd = last_plan.force.z();
+            Fx_act = Fx_cmd;
+            Fy_act = Fy_cmd;
+            Fz_act = Fz_cmd;
+        }
     }
 
     ScvxGuidance scvx;
@@ -241,28 +356,53 @@ void Simulator::run(
             cfg.drag_scale,
             gravity
         );
-        Eigen::Vector2d pad0 = landing_pad.pad_position(t);
-        Eigen::Vector3d wind0 = wind_model.wind_velocity(t);
-        last_plan = scvx.solve(
-            t,
-            Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
-            Eigen::Vector3d(state[VEL_X], state[VEL_Y], state[VEL_Z]),
-            MASS_DRY + state[FUEL],
-            pad0[0],
-            pad0[1],
-            wind0.x(),
-            wind0.y()
-        );
-        const Eigen::Vector3d f0 = scvx.force_at(t);
-        Fx_cmd = f0.x();
-        Fy_cmd = f0.y();
-        Fz_cmd = f0.z();
-        Fx_act = Fx_cmd;
-        Fy_act = Fy_cmd;
-        Fz_act = Fz_cmd;
+        if (!cfg.entry) {
+            Eigen::Vector2d pad0 = landing_pad.pad_position(t);
+            Eigen::Vector3d wind0 = wind_model.wind_velocity(t);
+            last_plan = scvx.solve(
+                t,
+                Eigen::Vector3d(state[POS_X], state[POS_Y], state[POS_Z]),
+                Eigen::Vector3d(state[VEL_X], state[VEL_Y], state[VEL_Z]),
+                MASS_DRY + state[FUEL],
+                pad0[0],
+                pad0[1],
+                wind0.x(),
+                wind0.y()
+            );
+            const Eigen::Vector3d f0 = scvx.force_at(t);
+            Fx_cmd = f0.x();
+            Fy_cmd = f0.y();
+            Fz_cmd = f0.z();
+            Fx_act = Fx_cmd;
+            Fy_act = Fy_cmd;
+            Fz_act = Fz_cmd;
+        }
         // The first plan is the divert. One more look happens once the
         // rocket is low. Looking every few seconds was starting the divert
         // over, so the tank ran dry before the rocket was down.
+    }
+
+    EntryPhase entry_phase = EntryPhase::Land;
+    double entry_check_age = 0.0;
+    if (cfg.entry) {
+        entry_phase = EntryPhase::Coast;
+        const double speed0 = std::hypot(state[VEL_X], std::hypot(state[VEL_Y], state[VEL_Z]));
+        if (speed0 > 1.0) {
+            const Quat nose = quat_align_body_z(
+                state[VEL_X] / speed0,
+                state[VEL_Y] / speed0,
+                state[VEL_Z] / speed0,
+                quat_identity()
+            );
+            quat_write(state, nose);
+            attitude_cmd = nose;
+        }
+        Fx_cmd = 0.0;
+        Fy_cmd = 0.0;
+        Fz_cmd = 0.0;
+        Fx_act = 0.0;
+        Fy_act = 0.0;
+        Fz_act = 0.0;
     }
 
     if (emit != nullptr) {
@@ -282,8 +422,23 @@ void Simulator::run(
         Eigen::Vector2d pad_vel = landing_pad.pad_velocity();
 
         double ref_vel_z = 0.0;
-        if (use_mpc) {
-            if (sim_counter % mpc_divider == 0) {
+        bool guide = true;
+        bool force_solve = false;
+        if (cfg.entry && entry_phase != EntryPhase::Land) {
+            const EntryAsk ask = update_entry(
+                entry_phase, entry_check_age, dt_inner_v, t, state, cfg, attitude_cmd
+            );
+            guide = ask.guide;
+            force_solve = ask.force_solve;
+            if (!guide) {
+                Fx_cmd = ask.fx;
+                Fy_cmd = ask.fy;
+                Fz_cmd = ask.fz;
+                attitude_cmd = ask.attitude;
+            }
+        }
+        if (guide && use_mpc) {
+            if (force_solve || sim_counter % mpc_divider == 0) {
                 const double mass = MASS_DRY + state[FUEL];
                 soft_ref.build(
                     t,
@@ -313,7 +468,7 @@ void Simulator::run(
                 Fy_cmd = last_plan.force.y();
                 Fz_cmd = last_plan.force.z();
             }
-        } else if (use_scvx) {
+        } else if (guide && use_scvx) {
             // The point-mass plan arrives slower than the rocket, and on a
             // long lunar burn it is still sliding sideways when the plan
             // goes vertical. One new plan once the divert is mostly done,
@@ -321,7 +476,7 @@ void Simulator::run(
             // A plan that does not land leaves the burn we already have.
             const bool mid_update = !scvx_refined && state[POS_Z] < 40.0 && state[POS_Z] > 8.0;
             const bool late_update = scvx_refined && !scvx_late && state[POS_Z] < 12.0 && state[POS_Z] > 3.0;
-            if (mid_update || late_update) {
+            if (force_solve || mid_update || late_update) {
                 if (mid_update) scvx_refined = true;
                 if (late_update) scvx_late = true;
                 const double mass = MASS_DRY + state[FUEL];
@@ -358,7 +513,7 @@ void Simulator::run(
                     }
                 }
             }
-        } else {
+        } else if (guide) {
             ref_vel_z = guidance.compute(state);
             const double feedforward = (MASS_DRY + state[FUEL]) * gravity;
             Fz_cmd = vel_ctrl.compute(state[VEL_Z], ref_vel_z, feedforward);
@@ -368,6 +523,11 @@ void Simulator::run(
                 Fx_cmd = vel_ctrl_h_x.compute(state[VEL_X], ref_vel_xy[0]);
                 Fy_cmd = vel_ctrl_h_y.compute(state[VEL_Y], ref_vel_xy[1]);
             }
+            prefer_vertical_thrust(
+                Fx_cmd, Fy_cmd, Fz_cmd,
+                cfg.thrust_max,
+                cfg.pointing_cone_deg
+            );
         }
 
         apply_thrust_limits(
@@ -387,6 +547,17 @@ void Simulator::run(
         // Dynamics also drop thrust at empty, but the gimbal torque cancel
         // is computed here, so the command has to die here too.
         if (state[FUEL] <= 0.0) {
+            Fx_act = 0.0;
+            Fy_act = 0.0;
+            Fz_act = 0.0;
+        }
+
+        // Coast and the flip keep the engine off. A thrust floor would
+        // otherwise light it the moment the command is empty.
+        if (cfg.entry && (entry_phase == EntryPhase::Coast || entry_phase == EntryPhase::Flip)) {
+            Fx_cmd = 0.0;
+            Fy_cmd = 0.0;
+            Fz_cmd = 0.0;
             Fx_act = 0.0;
             Fy_act = 0.0;
             Fz_act = 0.0;

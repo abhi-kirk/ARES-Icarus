@@ -208,9 +208,11 @@ Rollout rollout_forces(
             out.fuel_kg = std::min(out.fuel_kg, fuel0);
             out.miss = std::hypot(pos.x() - pad_x, pos.y() - pad_y);
             out.vz = vel.z();
-            // A little slower and closer than the flight gate, so the real
-            // rocket still counts as a soft landing after it follows the plan.
-            out.soft = (out.miss <= 15.0 && std::abs(out.vz) <= 1.6 && pos.z() > -1.0);
+            // Same speed the flight counts as a landing. The extra upward
+            // push applied after this check is what cancels the point-mass
+            // being a couple of metres per second slow, so a tighter bar
+            // here throws away a plan and the rocket hovers into the ground.
+            out.soft = (out.miss <= 15.0 && std::abs(out.vz) <= 2.0 && pos.z() > -1.0);
             break;
         }
     }
@@ -218,7 +220,7 @@ Rollout rollout_forces(
         out.fuel_kg = std::min(out.fuel_kg, fuel0);
         out.miss = std::hypot(pos.x() - pad_x, pos.y() - pad_y);
         out.vz = vel.z();
-        out.soft = (pos.z() <= 1.0 && out.miss <= 15.0 && std::abs(out.vz) <= 1.6);
+        out.soft = (pos.z() <= 1.0 && out.miss <= 15.0 && std::abs(out.vz) <= 2.0);
     }
     return out;
 }
@@ -870,6 +872,20 @@ MpcSolveResult ScvxGuidance::solve(
         dt_ = kDt;
         force_ = best.force;
         plan_.force = force_.front();
+    } else if (best.ok && force_.empty() && !best.force.empty()) {
+        // Not a soft landing, and there is no burn to keep. Hovering here
+        // holds the sideways speed, so the rocket leaves the pad and the
+        // later plans are asked to divert from hundreds of metres out.
+        // Fly the closest burn; a later soft plan is allowed to replace it.
+        plan_ = MpcSolveResult();
+        plan_.ok = true;
+        plan_.plan_pos = best.flew.pos;
+        t0_ = t;
+        dt_ = kDt;
+        force_ = best.force;
+        plan_.force = force_.front();
+        const double end_mass = std::max(MASS_DRY, mass - best.flew.fuel_kg);
+        sink_fz_ = std::max(thrust_min_, end_mass * gravity_ * 0.93);
     } else if (force_.empty()) {
         plan_ = MpcSolveResult();
         plan_.ok = false;

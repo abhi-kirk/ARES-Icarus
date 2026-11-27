@@ -91,6 +91,12 @@ struct SimConfig {
     // (Phase 5) that tracks a soft-landing reference with OSQP.
     std::string controller = "pid";
 
+    // Earth entry. The rocket starts near 100 km, nose along its velocity,
+    // engine off. Thrust stays off until a brake can still reach a hop the
+    // landing laws already fly, then that law takes over. False keeps today's
+    // hop. The page does not send this.
+    bool entry = false;
+
     // MPC horizon length (steps) and step size (s). Weights are diagonal
     // costs on position, velocity, and force effort.
     int mpc_horizon = 50;

@@ -65,6 +65,7 @@ const NOMINAL = {
     attitude_kp: 1.5,
     attitude_kd: 0.8,
     controller: "mpc",
+    entry: false,
     mpc_horizon: 50,
     mpc_dt: 0.1,
     mpc_w_pos: 40.0,
@@ -117,6 +118,7 @@ export function caseFromRequest(body) {
       const mode = sim.controller.toLowerCase();
       if (mode === "pid" || mode === "mpc" || mode === "scvx") next.simulation.controller = mode;
     }
+    next.simulation.entry = sim.entry === true;
     if (height !== null) next.simulation.initial_z_pos = height;
     if (offset !== null) next.simulation.initial_x_pos = offset;
     if (descent !== null) next.simulation.initial_z_velocity = descent;

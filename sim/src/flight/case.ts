@@ -49,6 +49,8 @@ export type FlightCase = {
     Iyy: number;
     // Force ask: "pid" cascade, "mpc" tracking plan, or "scvx" fuel-optimal plan.
     controller: "pid" | "mpc" | "scvx";
+    // 100 km coast. The page leaves this false. A direct stream case can set it.
+    entry: boolean;
     mpc_horizon: number;
     mpc_dt: number;
     mpc_w_pos: number;
@@ -151,6 +153,7 @@ export const NOMINAL_CASE: FlightCase = {
     Ixx: 2000.0,
     Iyy: 2000.0,
     controller: "mpc",
+    entry: false,
     mpc_horizon: 40,
     mpc_dt: 0.1,
     mpc_w_pos: 25.0,
@@ -259,6 +262,7 @@ export function caseFromRequest(body: unknown): FlightCase {
       const mode = sim.controller.toLowerCase();
       if (mode === "pid" || mode === "mpc" || mode === "scvx") next.simulation.controller = mode;
     }
+    next.simulation.entry = sim.entry === true;
     if (height !== null) writeKnob(next, "height", height);
     if (offset !== null) writeKnob(next, "offset", offset);
     if (descent !== null) writeKnob(next, "descent", descent);

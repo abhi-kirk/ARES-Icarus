@@ -61,4 +61,62 @@ inline void apply_thrust_limits(
     }
 }
 
+// How far the PID may tilt the thrust off vertical when the pointing cone
+// is wider than this. A 90° cone lets a saturated side loop pitch the body
+// onto its side once the up-force falls below the ceiling.
+constexpr double PID_DIVERT_TILT_DEG = 35.0;
+
+// Slice of the ceiling kept for the divert while the up-force is sitting
+// on the limit. Small enough that a stop which needs the ceiling still
+// has almost all of it.
+constexpr double PID_DIVERT_RESERVE = 0.15;
+
+// One engine. The PID writes the up-force and the side-force separately.
+// Keep the up-force, fund a small divert even when that up-force fills the
+// ceiling, and refuse a side command that would tilt past the divert angle
+// (or the pointing cone, when the cone is tighter). MPC and SCvx already
+// plan one vector, so they do not come through here.
+inline void prefer_vertical_thrust(
+    double& Fx,
+    double& Fy,
+    double& Fz,
+    double thrust_max,
+    double pointing_cone_deg
+) {
+    if (Fz < 0.0) Fz = 0.0;
+    const double max_n = std::max(0.0, thrust_max);
+    if (Fz > max_n) Fz = max_n;
+
+    const double sideways = std::hypot(Fx, Fy);
+    if (sideways <= 1e-12 || max_n <= 1e-12) {
+        Fx = 0.0;
+        Fy = 0.0;
+        return;
+    }
+
+    double tilt_deg = PID_DIVERT_TILT_DEG;
+    const double cone_deg = std::clamp(pointing_cone_deg, 0.0, 90.0);
+    if (cone_deg < 89.999 && cone_deg < tilt_deg) tilt_deg = cone_deg;
+    const double tilt_rad = tilt_deg * (3.14159265358979323846 / 180.0);
+    const double tan_tilt = std::tan(tilt_rad);
+
+    // A tight pointing cone already decides the divert, and spending the
+    // ceiling on it ends the burn before that divert is finished. Fund the
+    // slice only when the cone is open.
+    const double reserve = (cone_deg < 89.999) ? 0.0 : PID_DIVERT_RESERVE * max_n;
+    const double funded = std::min(sideways, reserve);
+    const double fz_room = std::sqrt(std::max(0.0, max_n * max_n - funded * funded));
+    if (Fz > fz_room) Fz = fz_room;
+
+    const double tilt_cap = Fz * tan_tilt;
+    const double circle = std::sqrt(std::max(0.0, max_n * max_n - Fz * Fz));
+    double allowed = sideways;
+    if (tilt_cap < allowed) allowed = tilt_cap;
+    if (circle < allowed) allowed = circle;
+
+    const double scale = allowed / sideways;
+    Fx *= scale;
+    Fy *= scale;
+}
+
 }  // namespace icarus

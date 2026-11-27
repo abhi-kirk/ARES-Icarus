@@ -6,6 +6,8 @@
 #include "dynamics/constants.h"
 #include "dynamics/rocket_6dof.h"
 #include "gnc/control/gimbal_alloc.h"
+#include "gnc/control/thrust_limits.h"
+#include "gnc/guidance/entry_coast.h"
 
 #include <cmath>
 #include <iostream>
@@ -389,6 +391,109 @@ int main() {
         );
         expect_near(vacuum[VEL_X], 0.0, 1e-12, "lunar gravity zeros drag even with drag_scale 1");
         expect_near(vacuum[VEL_Z], -GRAVITY_MOON, 1e-12, "the moon still accelerates at 1.62");
+    }
+
+    {
+        double ux = 0.0;
+        double uy = 0.0;
+        double uz = 0.0;
+        entry_brake_direction(100.0, 0.0, -50.0, ux, uy, uz);
+        const double length = std::sqrt(100.0 * 100.0 + 30.0 * 30.0);
+        expect_near(ux, -100.0 / length, 1e-9, "the brake cancels sideways speed");
+        expect_near(uy, 0.0, 1e-9, "the brake has no sideways command without that speed");
+        expect_near(uz, 30.0 / length, 1e-9, "the brake aims at a 20 m/s fall");
+
+        EntryPoint hop;
+        hop.x = 0.0;
+        hop.y = 0.0;
+        hop.z = 450.0;
+        hop.vx = 0.0;
+        hop.vy = 0.0;
+        hop.vz = -28.0;
+        hop.mass = MASS_DRY + 486.0;
+        expect(entry_in_hop(hop), "450 m at -28 m/s with fuel is a hop the laws land");
+
+        EntryPoint high = hop;
+        high.z = 100000.0;
+        high.vx = 1000.0;
+        high.vz = 0.0;
+        high.mass = MASS_DRY + 600.0;
+        expect(!entry_in_hop(high), "100 km and 1 km/s is not that hop");
+
+        EntryPlant plant;
+        plant.gravity = GRAVITY_EARTH;
+        plant.drag_scale = 1.0;
+        plant.thrust_max = MAX_THRUST;
+        expect(!entry_should_flip(high, plant), "the coast does not light at 100 km");
+
+        EntryPoint coast = high;
+        coast.x = 0.0;
+        coast.y = 0.0;
+        double t = 0.0;
+        while (t < 150.0 && coast.z > 1000.0) {
+            entry_step(coast, plant, 0.05, false);
+            t += 0.05;
+        }
+        expect(!entry_should_flip(coast, plant), "at 150 s the coast can still wait");
+
+        double lit = -1.0;
+        while (t < 165.0 && coast.z > 1000.0 && lit < 0.0) {
+            if (entry_should_flip(coast, plant)) lit = t;
+            for (int step = 0; step < 10; ++step) {
+                entry_step(coast, plant, 0.05, false);
+            }
+            t += 0.5;
+        }
+        expect(lit > 156.0 && lit < 161.0, "the brake starts while a hop is still reachable");
+    }
+
+    {
+        const double tilt_rad = PID_DIVERT_TILT_DEG * 3.14159265358979323846 / 180.0;
+
+        double fx = 20000.0;
+        double fy = 0.0;
+        double fz = 20000.0;
+        prefer_vertical_thrust(fx, fy, fz, 25000.0, 90.0);
+        expect_near(fz, 20000.0, 1e-6, "the vertical command is kept when the ceiling has room");
+        expect_near(fx, 20000.0 * std::tan(tilt_rad), 1.0, "side force stays inside the divert tilt");
+        expect_near(fy, 0.0, 1e-6, "an unused side axis stays zero");
+
+        fx = 1000.0;
+        fy = 0.0;
+        fz = 10000.0;
+        prefer_vertical_thrust(fx, fy, fz, 25000.0, 90.0);
+        expect_near(fx, 1000.0, 1e-6, "a small divert is left alone");
+        expect_near(fz, 10000.0, 1e-6, "a small divert does not move the up-force");
+
+        fx = 10000.0;
+        fy = 0.0;
+        fz = 10000.0;
+        prefer_vertical_thrust(fx, fy, fz, 25000.0, 25.0);
+        const double cone_cap = 10000.0 * std::tan(25.0 * 3.14159265358979323846 / 180.0);
+        expect_near(fx, cone_cap, 1.0, "the pointing cone still caps the divert");
+        expect_near(fz, 10000.0, 1e-6, "the cone cut does not shrink the up-force");
+
+        fx = 20000.0;
+        fy = 0.0;
+        fz = 25000.0;
+        prefer_vertical_thrust(fx, fy, fz, 25000.0, 90.0);
+        const double reserve = PID_DIVERT_RESERVE * 25000.0;
+        expect_near(fx, reserve, 1.0, "an open cone still funds the divert during the stop");
+        expect(fz < 25000.0 && fz > 24000.0, "the stop keeps almost all of the ceiling");
+
+        fx = 20000.0;
+        fy = 0.0;
+        fz = 25000.0;
+        prefer_vertical_thrust(fx, fy, fz, 25000.0, 25.0);
+        expect_near(fz, 25000.0, 1e-6, "a tight cone does not give up the stop");
+        expect_near(fx, 0.0, 1e-6, "a tight cone waits until the stop has spare thrust");
+
+        fx = 25000.0;
+        fy = 0.0;
+        fz = 7400.0;
+        prefer_vertical_thrust(fx, fy, fz, 25000.0, 90.0);
+        expect_near(fx, 7400.0 * std::tan(tilt_rad), 1.0, "a low up-force cannot take a full side command");
+        expect_near(fz, 7400.0, 1e-6, "the up-force is not raised to fund the divert");
     }
 
     if (g_failed > 0) {
