@@ -7,6 +7,8 @@ export type Sample = {
   vy: number;
   vz: number;
   fuel: number;
+  /** Air density at this altitude, kg/m³. Absent on recordings from before the field. */
+  rho?: number;
   fx: number;
   fy: number;
   fz: number;
@@ -28,6 +30,17 @@ export type Sample = {
 function num(value: unknown): number | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   return value;
+}
+
+// Matches engine/src/dynamics/air.h. Older recordings omit rho, so the
+// page fills Earth density from altitude. A Moon sample from the plant
+// carries rho 0 and this fallback is not used.
+const SEA_LEVEL_DENSITY = 1.225;
+const AIR_SCALE_HEIGHT_M = 8500;
+
+export function earthAirDensity(altitude: number): number {
+  const height = altitude > 0 ? altitude : 0;
+  return SEA_LEVEL_DENSITY * Math.exp(-height / AIR_SCALE_HEIGHT_M);
 }
 
 function optionalNum(value: unknown): number {
@@ -100,6 +113,7 @@ export function parseSample(line: string): Sample | null {
     vy,
     vz,
     fuel,
+    rho: num(raw.rho) ?? undefined,
     fx,
     fy,
     fz,
@@ -157,6 +171,9 @@ export function sampleAt(samples: Sample[], time: number): Sample | null {
     vy: mix(left.vy, right.vy, u),
     vz: mix(left.vz, right.vz, u),
     fuel: mix(left.fuel, right.fuel, u),
+    rho: left.rho === undefined || right.rho === undefined
+      ? left.rho ?? right.rho
+      : mix(left.rho, right.rho, u),
     fx: mix(left.fx, right.fx, u),
     fy: mix(left.fy, right.fy, u),
     fz: mix(left.fz, right.fz, u),

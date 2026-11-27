@@ -29,6 +29,8 @@ struct FlightSample {
     double vy = 0.0;
     double vz = 0.0;
     double fuel = 0.0;
+    // Air density at this altitude, kg/m³. Zero on the Moon.
+    double rho = 0.0;
     double fx = 0.0;
     double fy = 0.0;
     double fz = 0.0;

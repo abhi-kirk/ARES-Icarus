@@ -2,6 +2,7 @@
 #ifndef ICARUS_NO_RERUN
 #include "sim/logger.h"
 #endif
+#include "dynamics/air.h"
 #include "dynamics/attitude.h"
 #include "dynamics/constants.h"
 #include "dynamics/rocket_6dof.h"
@@ -31,7 +32,8 @@ FlightSample sample_from(
     double pad_y,
     double gimbal_x,
     double gimbal_y,
-    const MpcSolveResult* plan
+    const MpcSolveResult* plan,
+    double gravity
 ) {
     FlightSample sample;
     sample.t = t;
@@ -42,6 +44,7 @@ FlightSample sample_from(
     sample.vy = state[VEL_Y];
     sample.vz = state[VEL_Z];
     sample.fuel = state[FUEL];
+    sample.rho = air_density(state[POS_Z], gravity);
     sample.fx = fx;
     sample.fy = fy;
     sample.fz = fz;
@@ -266,7 +269,7 @@ void Simulator::run(
         Eigen::Vector2d pad0 = landing_pad.pad_position(t);
         (*emit)(sample_from(
             t, state, Fx_act, Fy_act, Fz_act, pad0[0], pad0[1], gimbal_x, gimbal_y,
-            (use_mpc || use_scvx) ? &last_plan : nullptr
+            (use_mpc || use_scvx) ? &last_plan : nullptr, cfg.gravity
         ));
     }
 
@@ -496,7 +499,7 @@ void Simulator::run(
             Eigen::Vector2d pad_now = landing_pad.pad_position(t);
             (*emit)(sample_from(
                 t, state, Fx_log, Fy_log, Fz_log, pad_now[0], pad_now[1], gimbal_x, gimbal_y,
-                (use_mpc || use_scvx) ? &last_plan : nullptr
+                (use_mpc || use_scvx) ? &last_plan : nullptr, cfg.gravity
             ));
         }
     }

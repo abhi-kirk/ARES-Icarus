@@ -22,7 +22,7 @@ import {
 } from "../flight/case";
 import { FLIGHT_SIGNALS, flightTrace, signalSpec, type FlightSignal } from "../flight/chart";
 import type { EChartsOption } from "echarts";
-import { endTime, parseLines, parseSample, sampleAt, type Sample } from "../flight/samples";
+import { earthAirDensity, endTime, parseLines, parseSample, sampleAt, type Sample } from "../flight/samples";
 
 const TAPES: { key: KnobKey; span: number; tick: number }[] = [
   { key: "height", span: 200, tick: 40 },
@@ -111,6 +111,16 @@ function formatMeters(value: number): string {
 
 function formatRate(value: number): string {
   return `${value.toFixed(1)} m/s`;
+}
+
+function formatDensity(value: number): string {
+  return `${value.toFixed(3)} kg/m³`;
+}
+
+function readoutDensity(sample: Sample | null, world: WorldName): number {
+  if (sample?.rho !== undefined) return sample.rho;
+  if (world === "moon") return 0;
+  return earthAirDensity(sample?.z ?? 0);
 }
 
 function touchdownOf(samples: Sample[]): { miss: string; speed: string; burned: string } | null {
@@ -727,6 +737,7 @@ export function SimulatorPage() {
           />
           <div className="sim-readout">
             <span>ALT {formatMeters(shown?.z ?? 0)}</span>
+            <span>AIR {formatDensity(readoutDensity(shown, world))}</span>
             <span>VZ {formatRate(shown?.vz ?? 0)}</span>
             <span>FUEL {(shown?.fuel ?? 0).toFixed(0)} kg</span>
             {score ? (

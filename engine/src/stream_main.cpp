@@ -43,6 +43,7 @@ void write_sample(const FlightSample& sample) {
               << ",\"vy\":" << sample.vy
               << ",\"vz\":" << sample.vz
               << ",\"fuel\":" << sample.fuel
+              << ",\"rho\":" << sample.rho
               << ",\"fx\":" << sample.fx
               << ",\"fy\":" << sample.fy
               << ",\"fz\":" << sample.fz

@@ -346,6 +346,15 @@ int main() {
         const double moon_high = air_density_ratio(100000.0, GRAVITY_MOON);
         expect_near(moon_pad, 0.0, 0.0, "the moon has no air on the pad");
         expect_near(moon_high, 0.0, 0.0, "the moon has no air at 100 km");
+
+        expect_near(air_density(0.0, GRAVITY_EARTH), SEA_LEVEL_DENSITY, 1e-12, "the pad density is 1.225 kg/m3");
+        expect_near(
+            air_density(300.0, GRAVITY_EARTH),
+            SEA_LEVEL_DENSITY * std::exp(-300.0 / AIR_SCALE_HEIGHT_M),
+            1e-12,
+            "a 300 m hop is a little under 1.225 kg/m3"
+        );
+        expect_near(air_density(0.0, GRAVITY_MOON), 0.0, 0.0, "lunar density is zero on the pad");
     }
 
     {
