@@ -3,6 +3,7 @@
 #include "dynamics/attitude.h"
 #include "dynamics/constants.h"
 #include "dynamics/state_indices.h"
+#include "environment/frames.h"
 #include "gnc/guidance/entry_coast.h"
 
 #include <algorithm>
@@ -33,13 +34,32 @@ EntryAsk update_entry(
     plant.drag_scale = cfg.drag_scale;
     plant.thrust_max = cfg.thrust_max;
 
+    // A ship state is meters from Earth's center. The hop box and the
+    // brake are written in the pad frame, so convert before the check.
+    // The tangent frame at the pad shares this file's x, y, z axes.
+    double px = state[POS_X];
+    double py = state[POS_Y];
+    double pz = state[POS_Z];
+    double pvx = state[VEL_X];
+    double pvy = state[VEL_Y];
+    double pvz = state[VEL_Z];
+    if (cfg.planet_centered) {
+        const PadState pad = local_state(px, py, pz, pvx, pvy, pvz);
+        px = pad.x;
+        py = pad.y;
+        pz = pad.z;
+        pvx = pad.vx;
+        pvy = pad.vy;
+        pvz = pad.vz;
+    }
+
     EntryPoint here;
-    here.x = state[POS_X];
-    here.y = state[POS_Y];
-    here.z = state[POS_Z];
-    here.vx = state[VEL_X];
-    here.vy = state[VEL_Y];
-    here.vz = state[VEL_Z];
+    here.x = px;
+    here.y = py;
+    here.z = pz;
+    here.vx = pvx;
+    here.vy = pvy;
+    here.vz = pvz;
     here.mass = MASS_DRY + std::max(0.0, state[FUEL]);
 
     if (phase == EntryPhase::Coast) {

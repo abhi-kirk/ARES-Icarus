@@ -11,6 +11,8 @@
 #include "gnc/control/thrust_lag.h"
 #include "gnc/control/thrust_limits.h"
 #include "gnc/guidance/ltv_mpc.h"
+#include "environment/frames.h"
+#include "environment/heat.h"
 #include "gnc/guidance/pitch_program.h"
 #include "sim/flight_phase.h"
 #include "gnc/guidance/scvx_guidance.h"
@@ -277,6 +279,10 @@ void Simulator::run(
     EntryPhase entry_phase = EntryPhase::Land;
     double entry_check_age = 0.0;
     bool ascent_inserted = false;
+    bool planet_frame = cfg.planet_centered;
+    double shield_load = 0.0;
+    bool heat_failed = false;
+    bool below_surface = false;
     if (cfg.entry) {
         entry_phase = EntryPhase::Coast;
         const double speed0 = std::hypot(state[VEL_X], std::hypot(state[VEL_Y], state[VEL_Z]));
@@ -326,7 +332,7 @@ void Simulator::run(
         ));
     }
 
-    while (state[POS_Z] > 0.0 && !should_stop(t, time_limit, stop)) {
+    while (state[POS_Z] > 0.0 && !heat_failed && !below_surface && !should_stop(t, time_limit, stop)) {
         const State  prev_state = state;
         const double prev_t     = t;
         ++sim_counter;
@@ -349,6 +355,19 @@ void Simulator::run(
             );
             guide = ask.guide;
             force_solve = ask.force_solve;
+            if (planet_frame && entry_phase == EntryPhase::Land) {
+                const PadState pad = local_state(
+                    state[POS_X], state[POS_Y], state[POS_Z],
+                    state[VEL_X], state[VEL_Y], state[VEL_Z]
+                );
+                state[POS_X] = pad.x;
+                state[POS_Y] = pad.y;
+                state[POS_Z] = pad.z;
+                state[VEL_X] = pad.vx;
+                state[VEL_Y] = pad.vy;
+                state[VEL_Z] = pad.vz;
+                planet_frame = false;
+            }
             if (!guide) {
                 Fx_cmd = ask.fx;
                 Fy_cmd = ask.fy;
@@ -533,7 +552,7 @@ void Simulator::run(
                 return rocket_dynamics_6dof(
                     time, s, control, wind_speeds,
                     cfg.Ixx, cfg.Iyy, cfg.Izz, cfg.gimbal_lever,
-                    cfg.drag_scale, gravity, cfg.exhaust_speed, cfg.planet_centered, cfg.aero
+                    cfg.drag_scale, gravity, cfg.exhaust_speed, planet_frame, cfg.aero
                 );
             };
             state = Integrator::rk4_step(bound, t, state, dt_inner_v);
@@ -580,6 +599,27 @@ void Simulator::run(
         }
 
         state[FUEL] = std::max(0.0, state[FUEL]);
+
+        const double alt = altitude_m(
+            state[POS_X], state[POS_Y], state[POS_Z], planet_frame
+        );
+        if (planet_frame && alt <= 0.0) {
+            below_surface = true;
+        }
+        if (cfg.shield_capacity > 0.0) {
+            const double speed = std::hypot(
+                state[VEL_X], std::hypot(state[VEL_Y], state[VEL_Z])
+            );
+            shield_load += heat_rate(alt, speed, cfg.gravity) * dt_inner_v;
+            if (shield_load > cfg.shield_capacity) {
+                heat_failed = true;
+                std::cerr << "heat shield t=" << t
+                          << " load=" << shield_load
+                          << " alt=" << alt
+                          << " v=" << speed
+                          << "\n";
+            }
+        }
 
 #ifndef ICARUS_NO_RERUN
         if (logger != nullptr) {

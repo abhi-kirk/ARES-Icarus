@@ -17,5 +17,8 @@ constexpr double SHIP_KICK_DEG = 6.0;
 constexpr double SHIP_KICK_S = 10.0;
 // Pascals. The ascent throttle drops while dynamic pressure is above this.
 constexpr double SHIP_MAX_Q_PA = 35000.0;
+// Integral of sqrt(rho) * v^3. The 1 km/s coast stays under this.
+// 7.8 km/s in thick air does not.
+constexpr double SHIP_SHIELD = 1.0e11;
 
 }  // namespace icarus

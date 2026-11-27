@@ -69,6 +69,7 @@ bool apply_config(const json& j, Config& config) {
         config.simulation.exhaust_speed      = j["simulation"].value("exhaust_speed", EXHAUST_SPEED);
         config.simulation.drag_scale         = j["simulation"].value("drag_scale", 1.0);
         config.simulation.aero               = j["simulation"].value("aero", false);
+        config.simulation.shield_capacity    = j["simulation"].value("shield_capacity", 0.0);
         config.simulation.gravity            = j["simulation"].value("gravity", 9.81);
         config.simulation.planet_centered    = j["simulation"].value("planet_centered", false);
 

@@ -81,6 +81,9 @@ struct SimConfig {
     // does not care which way the nose points. The ship turns this on.
     bool aero = false;
 
+    // Integral of sqrt(rho) * v^3 the shield can take. 0 skips the check.
+    double shield_capacity = 0.0;
+
     // Surface gravity, m/s^2. 9.81 is Earth. 1.62 is the Moon. The thrust
     // band has to be scaled with it or the floor sits above lunar weight.
     // On Earth the plant weakens this with height. The Moon stays constant.
