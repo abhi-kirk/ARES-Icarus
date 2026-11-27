@@ -694,6 +694,17 @@ body {
   display: block;
 }
 
+.sim-readout .sim-wait {
+  margin-bottom: 0.35rem;
+  color: #9bb0ba;
+}
+
+.sim-strip.is-pending,
+.sim-plots-panel.is-pending {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
 .sim-view.is-moon {
   background: #14181e;
 }

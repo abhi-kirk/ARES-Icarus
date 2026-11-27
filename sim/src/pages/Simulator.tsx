@@ -123,6 +123,32 @@ function readoutDensity(sample: Sample | null, world: WorldName): number {
   return earthAirDensity(sample?.z ?? 0);
 }
 
+// The start the knobs already hold. The picture can show it before the
+// stream's first sample arrives.
+function startSample(flight: FlightCase): Sample {
+  const sim = flight.simulation;
+  return {
+    t: 0,
+    x: sim.initial_x_pos,
+    y: sim.initial_y_pos,
+    z: sim.initial_z_pos,
+    vx: sim.initial_x_velocity,
+    vy: sim.initial_y_velocity,
+    vz: sim.initial_z_velocity,
+    fuel: sim.initial_fuel,
+    fx: 0,
+    fy: 0,
+    fz: 0,
+    padX: sim.initial_pad_x_pos,
+    padY: sim.initial_pad_y_pos,
+    roll: 0,
+    pitch: 0,
+    yaw: 0,
+    gimbalX: 0,
+    gimbalY: 0,
+  };
+}
+
 function touchdownOf(samples: Sample[]): { miss: string; speed: string; burned: string } | null {
   if (samples.length === 0) return null;
   const first = samples[0];
@@ -410,6 +436,7 @@ export function SimulatorPage() {
   const [playing, setPlaying] = useState(true);
   const [done, setDone] = useState(false);
   const [note, setNote] = useState("");
+  const [pending, setPending] = useState(false);
   const [sideWidth, setSideWidth] = useState(SIDE_DEFAULT);
   const [plotsWidth, setPlotsWidth] = useState(PLOTS_DEFAULT);
   const [world, setWorld] = useState<WorldName>("earth");
@@ -425,6 +452,7 @@ export function SimulatorPage() {
   const abortRef = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const requested = useRef(false);
+  const pendingRef = useRef(false);
   const timeRef = useRef(0);
   const scrubbing = useRef(false);
 
@@ -497,12 +525,13 @@ export function SimulatorPage() {
     const ticket = generation.current + 1;
     generation.current = ticket;
     flownRef.current = next;
-    keep([]);
-    timeRef.current = 0;
-    setTime(0);
+    // The picture moves to the new start. The charts stay on the flight
+    // already on screen until the new stream sends its first sample.
+    pendingRef.current = true;
+    setPending(true);
     setDone(false);
-    setPlaying(true);
-    playingRef.current = true;
+    playingRef.current = false;
+    setPlaying(false);
     doneRef.current = false;
     setNote("");
 
@@ -518,31 +547,51 @@ export function SimulatorPage() {
       });
     } catch {
       if (ticket !== generation.current) return;
+      pendingRef.current = false;
+      setPending(false);
       setNote("This computer cannot start a new flight.");
       setDone(true);
+      doneRef.current = true;
       return;
     }
 
     if (ticket !== generation.current) return;
     if (!response.ok || !response.body) {
+      pendingRef.current = false;
+      setPending(false);
       setNote("This computer cannot start a new flight.");
       setDone(true);
+      doneRef.current = true;
       return;
     }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let pending = "";
+    let buffer = "";
     const gathered: Sample[] = [];
+    let started = false;
+
+    function adopt(next: Sample[]) {
+      if (!started) {
+        started = true;
+        pendingRef.current = false;
+        setPending(false);
+        timeRef.current = 0;
+        setTime(0);
+        playingRef.current = true;
+        setPlaying(true);
+      }
+      keep(next);
+    }
 
     try {
       while (true) {
         const chunk = await reader.read();
         if (ticket !== generation.current) return;
         if (chunk.done) break;
-        pending += decoder.decode(chunk.value, { stream: true });
-        const lines = pending.split("\n");
-        pending = lines.pop() ?? "";
+        buffer += decoder.decode(chunk.value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
         let added = false;
         for (const line of lines) {
           const sample = parseSample(line);
@@ -550,18 +599,29 @@ export function SimulatorPage() {
           gathered.push(sample);
           added = true;
         }
-        if (added) keep(gathered.slice());
+        if (added) adopt(gathered.slice());
       }
     } catch {
       if (ticket !== generation.current) return;
-      if (gathered.length === 0) setNote("This computer cannot start a new flight.");
+      if (gathered.length === 0) {
+        pendingRef.current = false;
+        setPending(false);
+        setNote("This computer cannot start a new flight.");
+        setDone(true);
+        doneRef.current = true;
+      }
     }
 
     if (ticket !== generation.current) return;
-    const tail = parseSample(pending);
+    const tail = parseSample(buffer);
     if (tail) {
       gathered.push(tail);
-      keep(gathered.slice());
+      adopt(gathered.slice());
+    }
+    if (!started) {
+      pendingRef.current = false;
+      setPending(false);
+      setNote("This computer cannot start a new flight.");
     }
     setDone(true);
     doneRef.current = true;
@@ -625,6 +685,8 @@ export function SimulatorPage() {
   }
 
   const shown = sampleAt(samples, time);
+  const preview = startSample(flight);
+  const live = pending ? preview : shown;
   const duration = Math.max(endTime(samples), 0.01);
   const bands = {
     floorKn: flight.simulation.thrust_min / 1000,
@@ -637,7 +699,7 @@ export function SimulatorPage() {
   );
   const controller = flight.simulation.controller;
   const controllerLine = CONTROLLERS.find((item) => item.id === controller)?.line ?? CONTROLLERS[1].line;
-  const landed = done && samples.length > 0 && time >= endTime(samples) - 0.05;
+  const landed = !pending && done && samples.length > 0 && time >= endTime(samples) - 0.05;
   const score = landed ? touchdownOf(samples) : null;
   const startKeys = startMode === "off" ? OPEN_START : START;
   const down = flight.simulation.initial_x_pos;
@@ -665,6 +727,7 @@ export function SimulatorPage() {
   // The slider also emits a change when its range grows, as the saved landing
   // arrives. That is not a drag. Only a pointer or a key should move the clock.
   function scrub(next: number) {
+    if (pendingRef.current) return;
     if (!scrubbing.current) return;
     const end = endTime(samplesRef.current);
     const placed = Math.min(Math.max(0, next), end);
@@ -725,9 +788,9 @@ export function SimulatorPage() {
       <div className="sim-shell" style={shellStyle}>
         <div className={world === "moon" ? "sim-view is-moon" : "sim-view"}>
           <FlightView
-            sample={shown}
-            samples={samples}
-            time={time}
+            sample={live}
+            samples={pending ? [] : samples}
+            time={pending ? 0 : time}
             world={world}
             windX={flight.simulation.wind_x_velocity}
             windY={flight.simulation.wind_y_velocity}
@@ -736,10 +799,15 @@ export function SimulatorPage() {
             thrustFull={flight.simulation.thrust_max}
           />
           <div className="sim-readout">
-            <span>ALT {formatMeters(shown?.z ?? 0)}</span>
-            <span>AIR {formatDensity(readoutDensity(shown, world))}</span>
-            <span>VZ {formatRate(shown?.vz ?? 0)}</span>
-            <span>FUEL {(shown?.fuel ?? 0).toFixed(0)} kg</span>
+            {pending ? (
+              <span className="sim-wait" role="status">
+                Computing the burn.
+              </span>
+            ) : null}
+            <span>ALT {formatMeters(live?.z ?? 0)}</span>
+            <span>AIR {formatDensity(readoutDensity(live, world))}</span>
+            <span>VZ {formatRate(live?.vz ?? 0)}</span>
+            <span>FUEL {(live?.fuel ?? 0).toFixed(0)} kg</span>
             {score ? (
               <>
                 <span>MISS {score.miss} m</span>
@@ -906,14 +974,16 @@ export function SimulatorPage() {
             {note ? <p className="sim-note">{note}</p> : null}
           </div>
         </aside>
-        <div className="sim-strip">
+        <div className={pending ? "sim-strip is-pending" : "sim-strip"}>
           <div className="sim-clock">
             <button
               type="button"
               className="play sim-play"
               aria-label={playing ? "Pause" : "Play"}
               aria-pressed={playing}
+              disabled={pending}
               onClick={() => {
+                if (pendingRef.current) return;
                 if (!playing && time >= endTime(samples) - 1e-3 && done) {
                   timeRef.current = 0;
                   setTime(0);
@@ -938,6 +1008,7 @@ export function SimulatorPage() {
               max={duration}
               step={0.01}
               value={Math.min(time, duration)}
+              disabled={pending}
               onPointerDown={beginScrub}
               onPointerUp={endScrub}
               onPointerCancel={endScrub}
@@ -951,7 +1022,11 @@ export function SimulatorPage() {
             />
           </div>
         </div>
-        <aside className="sim-plots-panel" style={{ width: plotsWidth }} aria-label="Plots">
+        <aside
+          className={pending ? "sim-plots-panel is-pending" : "sim-plots-panel"}
+          style={{ width: plotsWidth }}
+          aria-label="Plots"
+        >
           <div
             className="sim-plots-resize"
             role="separator"
