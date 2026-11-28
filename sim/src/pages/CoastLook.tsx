@@ -1,9 +1,8 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF, useTexture } from "@react-three/drei";
-import { Atmosphere, Sky, SkyLight, SunLight } from "@takram/three-atmosphere/r3f";
-import type { AtmosphereApi } from "@takram/three-atmosphere";
+import { Atmosphere, Sky, SkyLight, SunLight, type AtmosphereApi } from "@takram/three-atmosphere/r3f";
 import { Ellipsoid } from "@takram/three-geospatial";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type ComponentRef } from "react";
 import {
   BufferAttribute,
   BufferGeometry,
@@ -531,7 +530,7 @@ function CoastScene({
   thrustFull?: number;
 }) {
   const sky = useRef<AtmosphereApi>(null);
-  const skyMesh = useRef<Mesh>(null);
+  const skyMesh = useRef<ComponentRef<typeof Sky>>(null);
   const ship = useRef<Group>(null);
   const booster = useRef<Group>(null);
   const flame = useRef<Group>(null);
