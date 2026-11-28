@@ -17,6 +17,11 @@ export type Sample = {
   roll: number;
   pitch: number;
   yaw: number;
+  /** Body-to-inertial quaternion, scalar first. Present on the coast recording. */
+  qw?: number;
+  qx?: number;
+  qy?: number;
+  qz?: number;
   gimbalX: number;
   gimbalY: number;
   /** MPC predicted position at this sample, when the QP flew. */
@@ -122,6 +127,10 @@ export function parseSample(line: string): Sample | null {
     roll: optionalNum(raw.roll),
     pitch: optionalNum(raw.pitch),
     yaw: optionalNum(raw.yaw),
+    qw: num(raw.qw) ?? undefined,
+    qx: num(raw.qx) ?? undefined,
+    qy: num(raw.qy) ?? undefined,
+    qz: num(raw.qz) ?? undefined,
     gimbalX: optionalNum(raw.gimbalX),
     gimbalY: optionalNum(raw.gimbalY),
     planX: planX ?? undefined,
@@ -144,6 +153,44 @@ function mix(a: number, b: number, u: number): number {
   return a + (b - a) * u;
 }
 
+// Shortest-path blend. The entry flip swings the nose through a large angle,
+// and a raw component blend the other way would twist the ship.
+function mixAttitude(
+  left: Sample,
+  right: Sample,
+  u: number,
+): { qw: number; qx: number; qy: number; qz: number } | undefined {
+  if (
+    left.qw === undefined ||
+    left.qx === undefined ||
+    left.qy === undefined ||
+    left.qz === undefined ||
+    right.qw === undefined ||
+    right.qx === undefined ||
+    right.qy === undefined ||
+    right.qz === undefined
+  ) {
+    return undefined;
+  }
+  let rw = right.qw;
+  let rx = right.qx;
+  let ry = right.qy;
+  let rz = right.qz;
+  const dot = left.qw * rw + left.qx * rx + left.qy * ry + left.qz * rz;
+  if (dot < 0) {
+    rw = -rw;
+    rx = -rx;
+    ry = -ry;
+    rz = -rz;
+  }
+  return {
+    qw: mix(left.qw, rw, u),
+    qx: mix(left.qx, rx, u),
+    qy: mix(left.qy, ry, u),
+    qz: mix(left.qz, rz, u),
+  };
+}
+
 export function sampleAt(samples: Sample[], time: number): Sample | null {
   if (samples.length === 0) return null;
   if (time <= samples[0].t) return samples[0];
@@ -162,6 +209,7 @@ export function sampleAt(samples: Sample[], time: number): Sample | null {
   const right = samples[hi];
   const span = right.t - left.t;
   const u = span > 0 ? (time - left.t) / span : 0;
+  const attitude = mixAttitude(left, right, u);
   return {
     t: time,
     x: mix(left.x, right.x, u),
@@ -182,6 +230,10 @@ export function sampleAt(samples: Sample[], time: number): Sample | null {
     roll: mix(left.roll, right.roll, u),
     pitch: mix(left.pitch, right.pitch, u),
     yaw: mix(left.yaw, right.yaw, u),
+    qw: attitude?.qw,
+    qx: attitude?.qx,
+    qy: attitude?.qy,
+    qz: attitude?.qz,
     gimbalX: mix(left.gimbalX, right.gimbalX, u),
     gimbalY: mix(left.gimbalY, right.gimbalY, u),
   };

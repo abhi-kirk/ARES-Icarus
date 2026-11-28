@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as 
 import { ChartView } from "../ChartView";
 import { MathText } from "../Formula";
 import { FlightView } from "../FlightView";
+import { OrbitalStage, phaseOf, playbackRate } from "./CoastLook";
 import {
   KNOBS,
   NOMINAL_CASE,
@@ -32,6 +33,13 @@ const TAPES: { key: KnobKey; span: number; tick: number }[] = [
 const START: KnobKey[] = ["offset", "fuel"];
 const OPEN_START: KnobKey[] = ["offset", "cross", "along", "across", "fuel"];
 type StartMode = "drop" | "divert" | "off";
+type Join = "insertion" | "return" | "landing";
+
+const JOIN_FILE: Record<Join, string> = {
+  insertion: "/flights/ascent-look.ndjson",
+  return: "/flights/entry-look.ndjson",
+  landing: "/flights/nominal.ndjson",
+};
 const SEA: KnobKey[] = ["wind", "pad", "gust"];
 const LIMITS: KnobKey[] = ["floor", "ceiling", "cone", "glide", "lag", "gimbal", "inertia"];
 
@@ -64,7 +72,7 @@ const CONTROLLERS: { id: ControllerName; label: string; line: string; tip: strin
 const GROUP_TIPS = {
   environment: "Earth has air, wind, and a barge that can drift. The Moon has no air, gravity of 1.62 m/s², and a pad that stays put.",
   controller: "How the ship steers the landing burn. All three use the same engines and the same limits.",
-  start: "Where the burn starts. Drop is over the pad. Divert starts off to the side. Select the lit one again and both stay off.",
+  start: "Where the flight starts. Insertion climbs from booster separation onto orbit. Return and Landing join that same mission later.",
   sea: "A steady wind, a short gust, and a barge that drifts. The Moon has none of these.",
   limits: "What the engine and the guidance are allowed to do during the burn.",
 };
@@ -103,6 +111,15 @@ const PICTURE_MIN = 180;
 
 function formatTime(time: number): string {
   return `${time.toFixed(1)} s`;
+}
+
+// The booster slides off over the first 12 s and stays in frame until 18 s.
+// That stretch stays near real time, then the climb eases up to 8×.
+function insertionRate(time: number): number {
+  if (time < 14) return 1;
+  const u = Math.min(1, Math.max(0, (time - 14) / 12));
+  const opening = u * u * (3 - 2 * u);
+  return 1 + 7 * opening;
 }
 
 function formatMeters(value: number): string {
@@ -442,7 +459,8 @@ export function SimulatorPage() {
   const [world, setWorld] = useState<WorldName>("earth");
   const [limitsOpen, setLimitsOpen] = useState(true);
   const [startMode, setStartMode] = useState<StartMode>("off");
-  const [signals, setSignals] = useState<FlightSignal[]>(["thrust", "rate"]);
+  const [join, setJoin] = useState<Join>("insertion");
+  const [signals, setSignals] = useState<FlightSignal[]>(["speed", "thrust"]);
 
   const samplesRef = useRef<Sample[]>([]);
   const playingRef = useRef(true);
@@ -455,6 +473,7 @@ export function SimulatorPage() {
   const pendingRef = useRef(false);
   const timeRef = useRef(0);
   const scrubbing = useRef(false);
+  const joinRef = useRef<Join>("insertion");
 
   playingRef.current = playing;
   doneRef.current = done;
@@ -465,27 +484,44 @@ export function SimulatorPage() {
     setSamples(next);
   }
 
-  useEffect(() => {
-    let cancel = false;
-    fetch("/flights/nominal.ndjson")
+  function loadJoin(next: Join) {
+    joinRef.current = next;
+    setJoin(next);
+    abortRef.current?.abort();
+    const ticket = generation.current + 1;
+    generation.current = ticket;
+    requested.current = true;
+    pendingRef.current = false;
+    setPending(false);
+    setNote(next === "landing" ? "" : "This join plays the recorded PID flight.");
+    setDone(false);
+    doneRef.current = false;
+    if (next === "insertion") setSignals(["speed", "thrust"]);
+    if (next === "return") setSignals(["speed", "heat"]);
+    if (next === "landing") setSignals(["thrust", "rate"]);
+    fetch(JOIN_FILE[next])
       .then((response) => response.text())
       .then((text) => {
-        if (cancel) return;
-        if (requested.current) return;
+        if (ticket !== generation.current) return;
         const stored = parseLines(text);
         if (stored.length === 0) return;
         keep(stored);
         setDone(true);
+        doneRef.current = true;
         timeRef.current = 0;
         setTime(0);
+        playingRef.current = true;
         setPlaying(true);
       })
       .catch(() => {
-        if (!cancel) setNote("The saved landing did not load.");
+        if (ticket === generation.current) setNote("The saved flight did not load.");
       });
-    return () => {
-      cancel = true;
-    };
+  }
+
+  useEffect(() => {
+    loadJoin("insertion");
+    // The first picture is the insertion. Later joins call loadJoin themselves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -498,7 +534,9 @@ export function SimulatorPage() {
         const list = samplesRef.current;
         const end = endTime(list);
         if (list.length > 0) {
-          const next = Math.min(timeRef.current + elapsed, end);
+          const here = sampleAt(list, timeRef.current);
+          const rate = joinRef.current === "landing" ? 1 : joinRef.current === "insertion" ? insertionRate(timeRef.current) : playbackRate(here, timeRef.current);
+          const next = Math.min(timeRef.current + elapsed * rate, end);
           timeRef.current = next;
           if (next >= end && doneRef.current) {
             playingRef.current = false;
@@ -629,6 +667,7 @@ export function SimulatorPage() {
 
   function settle(next: FlightCase) {
     setFlight(next);
+    if (joinRef.current !== "landing") return;
     if (sameCase(next, flownRef.current)) return;
     void fly(next);
   }
@@ -644,7 +683,33 @@ export function SimulatorPage() {
     settle(draftRef.current);
   }
 
+  function chooseJoin(next: Join) {
+    if (next === joinRef.current) {
+      if (next === "landing") {
+        void fly(draftRef.current);
+        return;
+      }
+      timeRef.current = 0;
+      setTime(0);
+      playingRef.current = true;
+      setPlaying(true);
+      return;
+    }
+    loadJoin(next);
+  }
+
   function chooseWorld(nextWorld: WorldName) {
+    if (nextWorld === "earth") {
+      setWorld("earth");
+      const back = withWorld(draftRef.current, "earth");
+      draftRef.current = back;
+      setFlight(back);
+      loadJoin("insertion");
+      return;
+    }
+    joinRef.current = "landing";
+    setJoin("landing");
+    setSignals(["thrust", "rate"]);
     let next = withWorld(draftRef.current, nextWorld);
     // An unset start is the Earth offset, with sideways speed. The Moon's
     // thrust cannot bring that home, so the pad and the path separate.
@@ -679,6 +744,10 @@ export function SimulatorPage() {
   }
 
   function chooseController(nextController: ControllerName) {
+    if (joinRef.current !== "landing") {
+      setNote("This join plays the recorded PID flight. The controller flies the landing.");
+      return;
+    }
     const next = withController(draftRef.current, nextController);
     draftRef.current = next;
     settle(next);
@@ -693,14 +762,31 @@ export function SimulatorPage() {
     ceilingKn: flight.simulation.thrust_max / 1000,
     gimbalDeg: flight.simulation.gimbal_max_deg,
   };
-  const pathOption = flightTrace(samples, time, ["height", "range"], bands, false);
+  const orbital = world === "earth" && join !== "landing";
+  const pathOption = orbital
+    ? flightTrace(samples, time, "altKm", bands, false, true)
+    : flightTrace(samples, time, ["height", "range"], bands, false);
   const plotOptions = signals.map((signal, index) =>
     flightTrace(samples, time, signal, bands, index === signals.length - 1),
   );
-  const controller = flight.simulation.controller;
-  const controllerLine = CONTROLLERS.find((item) => item.id === controller)?.line ?? CONTROLLERS[1].line;
+  const controller = join === "landing" ? flight.simulation.controller : "pid";
+  const controllerLine =
+    join === "insertion"
+      ? "The pitch program flies this climb. PID, MPC, and SCvx take the ship once it is near the pad."
+      : join === "return"
+        ? "The entry law flies this return. The recording lands with PID."
+        : (CONTROLLERS.find((item) => item.id === controller)?.line ?? CONTROLLERS[1].line);
   const landed = !pending && done && samples.length > 0 && time >= endTime(samples) - 0.05;
-  const score = landed ? touchdownOf(samples) : null;
+  const onThePad = (samples[samples.length - 1]?.z ?? 1) < 5;
+  const score = landed && onThePad ? touchdownOf(samples) : null;
+  const playRate = join === "landing" ? 1 : join === "insertion" ? insertionRate(time) : playbackRate(shown, time);
+  const shownRate = Math.round(playRate * 2) / 2;
+  const rateLabel = playRate < 1.15 ? "real time" : Number.isInteger(shownRate) ? `${shownRate}×` : `${shownRate.toFixed(1)}×`;
+  const liveSpeed = Math.hypot(live?.vx ?? 0, Math.hypot(live?.vy ?? 0, live?.vz ?? 0));
+  const high = orbital && (live?.z ?? 0) > 6000;
+  const thrustNow = Math.hypot(live?.fx ?? 0, Math.hypot(live?.fy ?? 0, live?.fz ?? 0));
+  const phase = join === "insertion" ? (time < 18 ? "Separation" : thrustNow > 1000 ? "Ascent" : "Orbit") : phaseOf(live, time);
+  const heatNow = Math.sqrt(Math.max(live?.rho ?? 0, 0)) * liveSpeed * liveSpeed * liveSpeed;
   const startKeys = startMode === "off" ? OPEN_START : START;
   const down = flight.simulation.initial_x_pos;
   const side = flight.simulation.initial_y_pos;
@@ -787,26 +873,39 @@ export function SimulatorPage() {
     <div className="frame is-sim">
       <div className="sim-shell" style={shellStyle}>
         <div className={world === "moon" ? "sim-view is-moon" : "sim-view"}>
-          <FlightView
-            sample={live}
-            samples={pending ? [] : samples}
-            time={pending ? 0 : time}
-            world={world}
-            windX={flight.simulation.wind_x_velocity}
-            windY={flight.simulation.wind_y_velocity}
-            gust={flight.simulation.gust_magnitude}
-            gustHz={flight.simulation.gust_frequency}
-            thrustFull={flight.simulation.thrust_max}
-          />
+          {orbital ? (
+            <OrbitalStage key={join} samples={pending ? [] : samples} time={pending ? 0 : time} showBooster={join === "insertion"} />
+          ) : (
+            <FlightView
+              sample={live}
+              samples={pending ? [] : samples}
+              time={pending ? 0 : time}
+              world={world}
+              windX={flight.simulation.wind_x_velocity}
+              windY={flight.simulation.wind_y_velocity}
+              gust={flight.simulation.gust_magnitude}
+              gustHz={flight.simulation.gust_frequency}
+              thrustFull={flight.simulation.thrust_max}
+            />
+          )}
           <div className="sim-readout">
             {pending ? (
               <span className="sim-wait" role="status">
                 Computing the burn.
               </span>
             ) : null}
-            <span>ALT {formatMeters(live?.z ?? 0)}</span>
-            <span>AIR {formatDensity(readoutDensity(live, world))}</span>
-            <span>VZ {formatRate(live?.vz ?? 0)}</span>
+            {orbital ? <span>{phase}</span> : null}
+            <span>ALT {high ? `${((live?.z ?? 0) / 1000).toFixed(1)} km` : formatMeters(live?.z ?? 0)}</span>
+            {high ? (
+              <span>SPD {liveSpeed.toFixed(0)} m/s</span>
+            ) : (
+              <span>VZ {formatRate(live?.vz ?? 0)}</span>
+            )}
+            {join === "return" && high ? (
+              <span>HEAT {heatNow.toExponential(2)}</span>
+            ) : (
+              <span>AIR {formatDensity(readoutDensity(live, world))}</span>
+            )}
             <span>FUEL {(live?.fuel ?? 0).toFixed(0)} kg</span>
             {score ? (
               <>
@@ -874,50 +973,89 @@ export function SimulatorPage() {
               <p className="sim-lead">{controllerLine}</p>
             </section>
             <section>
-              <GroupTitle title="Initial conditions" text={GROUP_TIPS.start} />
-              <div className="sim-choice" role="group" aria-label="Start">
-                <Choice
-                  toggle
-                  checked={startMode === "drop"}
-                  label="Drop"
-                  tip="Starts above the pad, with no sideways speed. Select it again to turn it off."
-                  onChoose={() => (startMode === "drop" ? clearStart() : chooseDivert(false))}
-                />
-                <Choice
-                  toggle
-                  checked={startMode === "divert"}
-                  label="Divert"
-                  tip="Starts 70 m downrange and 40 m to the side, with no sideways speed. Select it again to turn it off."
-                  onChoose={() => (startMode === "divert" ? clearStart() : chooseDivert(true))}
-                />
-              </div>
-              <p className="sim-lead">{startLine}</p>
-              <div className="sim-tapes">
-                {TAPES.map((tape) => (
-                  <Tape
-                    key={tape.key}
-                    spec={specFor(tape.key)}
-                    value={readKnob(flight, tape.key)}
-                    span={tape.span}
-                    tick={tape.tick}
-                    onScrub={(next) => onKnob(tape.key, next)}
-                    onCommit={release}
+              <GroupTitle
+                title="Initial conditions"
+                text={
+                  world === "earth"
+                    ? GROUP_TIPS.start
+                    : "Where the burn starts. Drop is over the pad. Divert starts off to the side."
+                }
+              />
+              {world === "earth" ? (
+                <div className="sim-choice" role="radiogroup" aria-label="Where the flight starts">
+                  <Choice
+                    checked={join === "insertion"}
+                    label="Insertion"
+                    tip="The climb from booster separation. 100 km, 2.0 km/s, flight path 23.5°."
+                    onChoose={() => chooseJoin("insertion")}
                   />
-                ))}
-              </div>
-              <div className="sim-figures">
-                {startKeys.map((key) => (
-                  <Figure
-                    key={key}
-                    spec={specFor(key)}
-                    value={readKnob(flight, key)}
-                    onScrub={(next) => onKnob(key, next)}
-                    onCommit={release}
+                  <Choice
+                    checked={join === "return"}
+                    label="Return"
+                    tip="The same ship, already falling. 120 km, 7.6 km/s, 1° down."
+                    onChoose={() => chooseJoin("return")}
                   />
-                ))}
-              </div>
+                  <Choice
+                    checked={join === "landing"}
+                    label="Landing"
+                    tip="The powered landing near the pad. Drop and Divert set where that burn starts."
+                    onChoose={() => chooseJoin("landing")}
+                  />
+                </div>
+              ) : null}
+              {join === "landing" ? (
+                <>
+                  <div className="sim-choice" role="group" aria-label="Start">
+                    <Choice
+                      toggle
+                      checked={startMode === "drop"}
+                      label="Drop"
+                      tip="Starts above the pad, with no sideways speed. Select it again to turn it off."
+                      onChoose={() => (startMode === "drop" ? clearStart() : chooseDivert(false))}
+                    />
+                    <Choice
+                      toggle
+                      checked={startMode === "divert"}
+                      label="Divert"
+                      tip="Starts 70 m downrange and 40 m to the side, with no sideways speed. Select it again to turn it off."
+                      onChoose={() => (startMode === "divert" ? clearStart() : chooseDivert(true))}
+                    />
+                  </div>
+                  <p className="sim-lead">{startLine}</p>
+                  <div className="sim-tapes">
+                    {TAPES.map((tape) => (
+                      <Tape
+                        key={tape.key}
+                        spec={specFor(tape.key)}
+                        value={readKnob(flight, tape.key)}
+                        span={tape.span}
+                        tick={tape.tick}
+                        onScrub={(next) => onKnob(tape.key, next)}
+                        onCommit={release}
+                      />
+                    ))}
+                  </div>
+                  <div className="sim-figures">
+                    {startKeys.map((key) => (
+                      <Figure
+                        key={key}
+                        spec={specFor(key)}
+                        value={readKnob(flight, key)}
+                        onScrub={(next) => onKnob(key, next)}
+                        onCommit={release}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="sim-lead">
+                  {join === "insertion"
+                    ? "100 km and 2.0 km/s, flight path 23.5°, with 5,000 kg. The engine cuts off near 200 km and 7,700 m/s."
+                    : "120 km and 7.6 km/s, 1° down, with 600 kg. The black side stays in the wind until 2 km/s, then the engines land it."}
+                </p>
+              )}
             </section>
-            {world === "earth" ? (
+            {join === "landing" && world === "earth" ? (
               <section>
                 <GroupTitle title="Sea" text={GROUP_TIPS.sea} />
                 <div className="sim-figures">
@@ -932,9 +1070,10 @@ export function SimulatorPage() {
                   ))}
                 </div>
               </section>
-            ) : (
+            ) : join === "landing" ? (
               <p className="sim-lead sim-still">No air. The pad stays put.</p>
-            )}
+            ) : null}
+            {join === "landing" ? (
             <details className="sim-limits" open={limitsOpen} onToggle={(event) => setLimitsOpen(event.currentTarget.open)}>
               <summary>
                 <span>Limits</span>
@@ -971,6 +1110,7 @@ export function SimulatorPage() {
                 })}
               </div>
             </details>
+            ) : null}
             {note ? <p className="sim-note">{note}</p> : null}
           </div>
         </aside>
@@ -998,7 +1138,7 @@ export function SimulatorPage() {
               {playing ? <Pause size={18} strokeWidth={2.25} /> : <Play size={18} strokeWidth={2.25} />}
             </button>
             <label className="sim-clock-label" htmlFor="flight-time">
-              T+ {formatTime(time)}
+              T+ {formatTime(time)} · {rateLabel}
             </label>
             <input
               id="flight-time"
@@ -1036,9 +1176,9 @@ export function SimulatorPage() {
           />
           <div className="sim-plots">
             <SignalPlot
-              label="Altitude and range"
-              names={[signalSpec("height"), signalSpec("range")]}
-              unit="m"
+              label={orbital ? "Altitude" : "Altitude and range"}
+              names={orbital ? [signalSpec("altKm")] : [signalSpec("height"), signalSpec("range")]}
+              unit={orbital ? "km" : "m"}
               option={pathOption}
               onScrub={scrub}
             />

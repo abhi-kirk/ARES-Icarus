@@ -5,16 +5,19 @@ import type { Sample } from "./samples";
 const GRID = "#1c2a32";
 const MUTED = "#7f97a3";
 
-export type FlightSignal = "height" | "rate" | "range" | "fuel" | "thrust" | "side" | "gimbal";
+export type FlightSignal = "height" | "altKm" | "rate" | "speed" | "range" | "fuel" | "thrust" | "side" | "gimbal" | "heat";
 
 export const FLIGHT_SIGNALS: { id: FlightSignal; label: string; unit: string }[] = [
   { id: "height", label: "Altitude", unit: "m" },
+  { id: "altKm", label: "Altitude", unit: "km" },
   { id: "rate", label: "Velocity", unit: "m/s" },
+  { id: "speed", label: "Speed", unit: "m/s" },
   { id: "range", label: "Range", unit: "m" },
   { id: "fuel", label: "Fuel", unit: "kg" },
   { id: "thrust", label: "Thrust", unit: "kN" },
   { id: "side", label: "Side", unit: "kN" },
   { id: "gimbal", label: "Gimbal", unit: "°" },
+  { id: "heat", label: "Heat rate", unit: "" },
 ];
 
 export type TraceBands = {
@@ -34,17 +37,26 @@ export function signalSpec(id: FlightSignal): { label: string; unit: string; col
 
 function sampleValue(sample: Sample, id: FlightSignal): number {
   if (id === "height") return sample.z;
+  if (id === "altKm") return sample.z / 1000;
   if (id === "rate") return sample.vz;
+  if (id === "speed") return Math.hypot(sample.vx, Math.hypot(sample.vy, sample.vz));
   if (id === "range") return Math.hypot(sample.x - sample.padX, sample.y - sample.padY);
   if (id === "fuel") return sample.fuel;
   if (id === "thrust") return Math.hypot(sample.fx, sample.fy, sample.fz) / 1000;
   if (id === "gimbal") return Math.hypot(sample.gimbalX, sample.gimbalY) * (180 / Math.PI);
+  if (id === "heat") {
+    const speed = Math.hypot(sample.vx, Math.hypot(sample.vy, sample.vz));
+    const rho = sample.rho ?? 0;
+    return Math.sqrt(Math.max(rho, 0)) * speed * speed * speed;
+  }
   return Math.hypot(sample.fx, sample.fy) / 1000;
 }
 
 function formatReading(id: FlightSignal, value: number): string {
+  if (id === "heat") return value.toExponential(2);
   if (id === "thrust" || id === "side" || id === "gimbal") return value.toFixed(2);
-  if (id === "fuel") return value.toFixed(0);
+  if (id === "fuel" || id === "speed") return value.toFixed(0);
+  if (id === "altKm") return value.toFixed(1);
   return value.toFixed(1);
 }
 
@@ -63,6 +75,7 @@ export function flightTrace(
   id: FlightSignal | FlightSignal[],
   bands?: TraceBands,
   timeLabels = true,
+  log = false,
 ): EChartsOption {
   const ids = Array.isArray(id) ? id : [id];
   const shown = samples.filter((sample) => sample.t <= time + 1e-6);
@@ -90,7 +103,10 @@ export function flightTrace(
 
   const series: EChartsOption["series"] = ids.map((item, index) => {
     const spec = signalSpec(item);
-    const data = shown.map((sample) => [sample.t, sampleValue(sample, item)]);
+    const data = shown.map((sample) => {
+      const value = sampleValue(sample, item);
+      return [sample.t, log ? Math.max(value, 0.05) : value];
+    });
     const guideLines =
       index === 0
         ? guides.map((guide) => ({
@@ -149,7 +165,8 @@ export function flightTrace(
 
   const several = series.length > 1;
   const end = samples.length > 0 ? samples[samples.length - 1].t : 1;
-  const xMax = Math.max(10, Math.ceil(end / 10) * 10);
+  const xStep = end > 200 ? 60 : 10;
+  const xMax = Math.max(xStep, Math.ceil(end / xStep) * xStep);
 
   return {
     backgroundColor: "transparent",
@@ -184,7 +201,7 @@ export function flightTrace(
       type: "value",
       min: 0,
       max: xMax,
-      interval: 10,
+      interval: xStep,
       axisLine: { lineStyle: { color: GRID } },
       axisTick: { show: false },
       axisLabel: {
@@ -196,14 +213,19 @@ export function flightTrace(
       splitLine: { lineStyle: { color: GRID } },
     },
     yAxis: {
-      type: "value",
+      type: log ? "log" : "value",
+      logBase: log ? 10 : undefined,
+      min: log ? 0.05 : undefined,
       splitNumber: 4,
       axisLine: { show: false },
       axisTick: { show: false },
       axisLabel: {
         ...label,
         color: several ? MUTED : primary.color,
-        formatter: (value: number) => (Math.abs(value) >= 10 || Number.isInteger(value) ? String(Math.round(value)) : value.toFixed(1)),
+        formatter: (value: number) => {
+          if (Math.abs(value) >= 1e5) return value.toExponential(0);
+          return Math.abs(value) >= 10 || Number.isInteger(value) ? String(Math.round(value)) : value.toFixed(1);
+        },
       },
       splitLine: { lineStyle: { color: GRID } },
       ...(yMin !== undefined && yMax !== undefined ? { min: yMin, max: yMax } : {}),
