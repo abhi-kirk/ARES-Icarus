@@ -1,6 +1,8 @@
 # The landing
 
-Three phases of a powered descent, in C++. The rocket is a point mass with a tank. Thrust is a force. There is no attitude in this tree, and no gimbal. The loop is finished before the vehicle is allowed to turn.
+A powered descent in C++, and the ship that climbs toward orbit and comes back through the air. The default plant is six degrees of freedom: position, velocity, a quaternion, body rates, and fuel. Thrust is a force through a gimbal. The three-degree-of-freedom point mass is still available when that path is off.
+
+The first three phases are the vertical landing, the same loop in wind onto a moving pad, and the stability writeup of that loop.
 
 | Phase | What it shows |
 |---|---|
@@ -16,4 +18,4 @@ Phase 2, from 300 m. The outer loops command a reference velocity. The inner loo
 
 The writeups are in [docs/](docs/): stability, mechanics, and the build.
 
-Rocket Dynamics scenes on [icarus-arc.com](https://icarus-arc.com) keep their own clock in the browser, so the picture and the chart are the same buffer. The Simulator streams this landing. The page sends a case, and `IcarusStream` writes each sample as the flight runs. `engine/listen/` is the HTTP listener in front of that binary. The public machine is the Fly app `icarus-arc-flight` in Dallas. It stops a few minutes after the last connection and starts on the next request. `make run` is still the Rerun landing on this computer. The flight image builds with Rerun off.
+Rocket Dynamics scenes on [icarus-arc.com](https://icarus-arc.com) keep their own clock in the browser, so the picture and the chart are the same buffer. On the Simulator, Earth opens on a recorded climb from booster separation, and Return plays a recorded entry from 120 km at 7.6 km/s. Landing and the Moon stream this plant. The page sends a case, and `IcarusStream` writes each sample as the flight runs. The listener still clamps a request into a hop, so the climb and the return stay recordings. `engine/listen/` is the HTTP listener in front of that binary. The public machine is the Fly app `icarus-arc-flight` in Dallas. It stops a few minutes after the last connection and starts on the next request. `make run` is still the Rerun landing on this computer. The flight image builds with Rerun off.
