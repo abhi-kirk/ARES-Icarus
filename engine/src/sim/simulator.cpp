@@ -12,7 +12,9 @@
 #include "gnc/control/thrust_limits.h"
 #include "gnc/guidance/ltv_mpc.h"
 #include "environment/frames.h"
+#include "environment/gravity.h"
 #include "environment/heat.h"
+#include "gnc/guidance/entry_coast.h"
 #include "gnc/guidance/pitch_program.h"
 #include "sim/flight_phase.h"
 #include "gnc/guidance/scvx_guidance.h"
@@ -38,7 +40,8 @@ FlightSample sample_from(
     double gimbal_x,
     double gimbal_y,
     const MpcSolveResult* plan,
-    double gravity
+    double gravity,
+    bool planet_centered
 ) {
     FlightSample sample;
     sample.t = t;
@@ -49,7 +52,11 @@ FlightSample sample_from(
     sample.vy = state[VEL_Y];
     sample.vz = state[VEL_Z];
     sample.fuel = state[FUEL];
-    sample.rho = air_density(state[POS_Z], gravity);
+    // In the planet frame z is meters from Earth's center, not the height.
+    const double height = altitude_m(
+        state[POS_X], state[POS_Y], state[POS_Z], planet_centered
+    );
+    sample.rho = air_density(height, gravity);
     sample.fx = fx;
     sample.fy = fy;
     sample.fz = fz;
@@ -58,10 +65,15 @@ FlightSample sample_from(
     double roll = 0.0;
     double pitch = 0.0;
     double yaw = 0.0;
-    euler_from_quat(quat_from_state(state), roll, pitch, yaw);
+    const Quat attitude = quat_from_state(state);
+    euler_from_quat(attitude, roll, pitch, yaw);
     sample.roll = roll;
     sample.pitch = pitch;
     sample.yaw = yaw;
+    sample.qw = attitude.w;
+    sample.qx = attitude.x;
+    sample.qy = attitude.y;
+    sample.qz = attitude.z;
     sample.gimbal_x = gimbal_x;
     sample.gimbal_y = gimbal_y;
     if (plan != nullptr && !plan->plan_pos.empty()) {
@@ -284,15 +296,32 @@ void Simulator::run(
     bool heat_failed = false;
     bool below_surface = false;
     if (cfg.entry) {
-        entry_phase = EntryPhase::Coast;
         const double speed0 = std::hypot(state[VEL_X], std::hypot(state[VEL_Y], state[VEL_Z]));
-        if (speed0 > 1.0) {
-            const Quat nose = quat_align_body_z(
-                state[VEL_X] / speed0,
-                state[VEL_Y] / speed0,
-                state[VEL_Z] / speed0,
-                quat_identity()
+        double aim_x = 0.0;
+        double aim_y = 0.0;
+        double aim_z = 1.0;
+        if (speed0 > ENTRY_BELLY_SPEED) {
+            entry_phase = EntryPhase::Belly;
+            entry_belly_direction(
+                state[POS_X], state[POS_Y], state[POS_Z],
+                state[VEL_X], state[VEL_Y], state[VEL_Z],
+                cfg.planet_centered,
+                aim_x, aim_y, aim_z
             );
+            std::cerr << "entry belly t=0"
+                      << " z=" << altitude_m(state[POS_X], state[POS_Y], state[POS_Z], cfg.planet_centered)
+                      << " v=" << speed0
+                      << "\n";
+        } else {
+            entry_phase = EntryPhase::Coast;
+            if (speed0 > 1.0) {
+                aim_x = state[VEL_X] / speed0;
+                aim_y = state[VEL_Y] / speed0;
+                aim_z = state[VEL_Z] / speed0;
+            }
+        }
+        if (speed0 > 1.0) {
+            const Quat nose = quat_align_body_z(aim_x, aim_y, aim_z, quat_identity());
             quat_write(state, nose);
             attitude_cmd = nose;
         }
@@ -328,7 +357,7 @@ void Simulator::run(
         Eigen::Vector2d pad0 = landing_pad.pad_position(t);
         (*emit)(sample_from(
             t, state, Fx_act, Fy_act, Fz_act, pad0[0], pad0[1], gimbal_x, gimbal_y,
-            (use_mpc || use_scvx) ? &last_plan : nullptr, cfg.gravity
+            (use_mpc || use_scvx) ? &last_plan : nullptr, cfg.gravity, planet_frame
         ));
     }
 
@@ -367,6 +396,11 @@ void Simulator::run(
                 state[VEL_Y] = pad.vy;
                 state[VEL_Z] = pad.vz;
                 planet_frame = false;
+                // The references were seeded at the planet-frame start and
+                // then left alone. Seed them from this pad-frame state so
+                // the hop does not inherit a sideways command.
+                guidance.initialize(state);
+                guidance_h.initialize(state, pad_pos, pad_vel);
             }
             if (!guide) {
                 Fx_cmd = ask.fx;
@@ -496,7 +530,11 @@ void Simulator::run(
 
         // Coast and the flip keep the engine off. A thrust floor would
         // otherwise light it the moment the command is empty.
-        if (cfg.entry && (entry_phase == EntryPhase::Coast || entry_phase == EntryPhase::Flip)) {
+        if (cfg.entry && (
+                entry_phase == EntryPhase::Belly ||
+                entry_phase == EntryPhase::Coast ||
+                entry_phase == EntryPhase::Flip
+            )) {
             Fx_cmd = 0.0;
             Fy_cmd = 0.0;
             Fz_cmd = 0.0;
@@ -539,6 +577,18 @@ void Simulator::run(
             double ey = 0.0;
             double ez = 0.0;
             attitude_error_body(quat_from_state(state), attitude_cmd, ex, ey, ez);
+            // (kp/kd) times the error is the rate this loop settles to. A half
+            // turn at the old gains asked for hundreds of degrees per second.
+            // Hold that settled rate near 35 deg/s so the flip takes several
+            // seconds and the damping can arrive on the aim.
+            const double rate_cap = 35.0 * 3.14159265358979323846 / 180.0;
+            double max_error = rate_cap;
+            if (cfg.attitude_kp > 1e-6) {
+                max_error = rate_cap * cfg.attitude_kd / cfg.attitude_kp;
+            }
+            ex = std::clamp(ex, -max_error, max_error);
+            ey = std::clamp(ey, -max_error, max_error);
+            ez = std::clamp(ez, -max_error, max_error);
             double tau_x = tau_kp * ex - tau_kd * state[WX];
             double tau_y = tau_kp * ey - tau_kd * state[WY];
             double tau_z = tau_kp_z * ez - tau_kd_z * state[WZ];
@@ -548,11 +598,16 @@ void Simulator::run(
             ControlInput control(6);
             control << T, gimbal_x, gimbal_y, tau_x, tau_y, tau_z;
 
+            // Side-on drag only while the belly is the commanded attitude.
+            // Nose-on matches the old dart drag, so the coast and the brake
+            // stay on the law the hop already flies. A tilted nose during
+            // the brake adds a force that brake cannot spare.
+            const bool side_drag = cfg.aero || entry_phase == EntryPhase::Belly;
             SystemDynamics bound = [&](double time, const State& s) {
                 return rocket_dynamics_6dof(
                     time, s, control, wind_speeds,
                     cfg.Ixx, cfg.Iyy, cfg.Izz, cfg.gimbal_lever,
-                    cfg.drag_scale, gravity, cfg.exhaust_speed, planet_frame, cfg.aero
+                    cfg.drag_scale, gravity, cfg.exhaust_speed, planet_frame, side_drag
                 );
             };
             state = Integrator::rk4_step(bound, t, state, dt_inner_v);
@@ -633,7 +688,7 @@ void Simulator::run(
             Eigen::Vector2d pad_now = landing_pad.pad_position(t);
             (*emit)(sample_from(
                 t, state, Fx_log, Fy_log, Fz_log, pad_now[0], pad_now[1], gimbal_x, gimbal_y,
-                (use_mpc || use_scvx) ? &last_plan : nullptr, cfg.gravity
+                (use_mpc || use_scvx) ? &last_plan : nullptr, cfg.gravity, planet_frame
             ));
         }
     }

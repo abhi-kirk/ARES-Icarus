@@ -40,6 +40,12 @@ struct FlightSample {
     double roll = 0.0;
     double pitch = 0.0;
     double yaw = 0.0;
+    // Body-to-inertial quaternion, scalar first. The coast picture follows
+    // this through the flip, because pitch folds over during that turn.
+    double qw = 1.0;
+    double qx = 0.0;
+    double qy = 0.0;
+    double qz = 0.0;
     double gimbal_x = 0.0;
     double gimbal_y = 0.0;
     // MPC predicted position at this sample (inertial). Valid when plan_valid.

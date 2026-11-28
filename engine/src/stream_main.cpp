@@ -52,6 +52,10 @@ void write_sample(const FlightSample& sample) {
               << ",\"roll\":" << sample.roll
               << ",\"pitch\":" << sample.pitch
               << ",\"yaw\":" << sample.yaw
+              << ",\"qw\":" << sample.qw
+              << ",\"qx\":" << sample.qx
+              << ",\"qy\":" << sample.qy
+              << ",\"qz\":" << sample.qz
               << ",\"gimbalX\":" << sample.gimbal_x
               << ",\"gimbalY\":" << sample.gimbal_y;
     if (sample.plan_valid) {
@@ -148,7 +152,7 @@ int main() {
         nullptr,
         &g_stop,
         &emit,
-        (config.simulation.entry || config.simulation.ascent) ? 400.0 : TIME_LIMIT
+        config.simulation.entry ? 900.0 : (config.simulation.ascent ? 400.0 : TIME_LIMIT)
     );
 
     return 0;

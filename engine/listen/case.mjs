@@ -63,7 +63,7 @@ const NOMINAL = {
     gimbal_lever: 8.0,
     gimbal_max_deg: 15.0,
     attitude_kp: 1.5,
-    attitude_kd: 0.8,
+    attitude_kd: 2.45,
     controller: "mpc",
     entry: false,
     mpc_horizon: 50,

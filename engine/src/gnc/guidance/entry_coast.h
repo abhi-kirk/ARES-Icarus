@@ -18,11 +18,17 @@ namespace icarus {
 
 constexpr double ENTRY_HOP_VZ = -20.0;
 
-// The jets need about 1.6 s to swing the nose from along the velocity onto
-// the brake. Thrust stays off for that swing. Two more seconds of coast
-// after that is the last moment the brake still reaches the hop.
-constexpr double ENTRY_FLIP_S = 1.6;
+// The jets take about 6 s to swing the nose from along the velocity onto
+// the brake. The rate cap holds that turn near 35 deg/s. Thrust stays off
+// for the swing. Two more seconds of coast after that is the last moment
+// the brake still reaches the hop.
+constexpr double ENTRY_FLIP_S = 6.0;
 constexpr double ENTRY_LOOKAHEAD_S = 2.0;
+// Above this speed the nose points across the wind, so the side takes the
+// air. The drag is about six times the nose-on dart. The 1 km/s coast is
+// below this, so that return does not change. A 7.6 km/s entry stays here
+// until the dart drag can finish the slowing.
+constexpr double ENTRY_BELLY_SPEED = 2000.0;
 
 struct EntryPoint {
     double x;
@@ -50,6 +56,76 @@ inline bool entry_in_hop(const EntryPoint& point) {
     const bool slow_sideways = sideways < 10.0;
     const bool fueled = fuel >= 400.0;
     return altitude && falling && slow_sideways && fueled;
+}
+
+// Nose across the ground track, horizontal. Up is +z in the pad frame
+// and the position vector when the state is meters from Earth's center.
+// The angle off the wind is 90°, which is the side-on drag in aero_force.
+// The lift from that angle goes sideways. A nose toward the sky lifts
+// the ship back out of the air, and it stays fast while the shield fills.
+inline void entry_belly_direction(
+    double x,
+    double y,
+    double z,
+    double vx,
+    double vy,
+    double vz,
+    bool planet_centered,
+    double& ux,
+    double& uy,
+    double& uz
+) {
+    double up_x = 0.0;
+    double up_y = 0.0;
+    double up_z = 1.0;
+    if (planet_centered) {
+        const double radius = std::sqrt(x * x + y * y + z * z);
+        if (radius > 1.0) {
+            up_x = x / radius;
+            up_y = y / radius;
+            up_z = z / radius;
+        }
+    }
+    const double speed = std::sqrt(vx * vx + vy * vy + vz * vz);
+    if (speed < 1.0) {
+        ux = 1.0;
+        uy = 0.0;
+        uz = 0.0;
+        return;
+    }
+    // up × velocity is horizontal and perpendicular to the velocity.
+    const double side_x = up_y * vz - up_z * vy;
+    const double side_y = up_z * vx - up_x * vz;
+    const double side_z = up_x * vy - up_y * vx;
+    const double side = std::sqrt(side_x * side_x + side_y * side_y + side_z * side_z);
+    if (side < 1e-3) {
+        ux = 1.0;
+        uy = 0.0;
+        uz = 0.0;
+        return;
+    }
+    ux = side_x / side;
+    uy = side_y / side;
+    uz = side_z / side;
+}
+
+// True once the fall is already near 20 m/s and the sideways speed is under
+// 1 m/s. The leftover velocity error is then centimeters per second, and
+// its direction flips from one step to the next. The nose stays up.
+inline bool entry_brake_holding(double vx, double vy, double vz) {
+    const double sideways = std::hypot(vx, vy);
+    return sideways < 1.0 && vz > ENTRY_HOP_VZ - 5.0;
+}
+
+// Thrust that holds the 20 m/s fall with the nose up. One meter per second
+// of extra fall adds one meter per second squared of thrust acceleration.
+inline double entry_hold_thrust(double mass, double gravity, double vz, double thrust_max) {
+    const double speed_error = ENTRY_HOP_VZ - vz;
+    const double accel = gravity + speed_error;
+    double thrust = mass * accel;
+    if (thrust < 0.0) thrust = 0.0;
+    if (thrust > thrust_max) thrust = thrust_max;
+    return thrust;
 }
 
 // Unit vector of the thrust that pulls the velocity toward (0, 0, -20 m/s).

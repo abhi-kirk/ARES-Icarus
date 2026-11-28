@@ -32,6 +32,11 @@ CascadeGuidance::CascadeGuidance(const Config& config)
 }
 
 void CascadeGuidance::initialize(const State& state) {
+    // The entry calls this again at the handoff. The first call integrated
+    // a position error of thousands of kilometers, and that accumulator
+    // would still be commanding the hop.
+    pos_ctrl_.reset();
+    iteration_ = 0;
     ref_vel_target_ = pos_ctrl_.compute(state[POS_Z], 0.0);
     ref_vel_cmd_    = ref_vel_target_;
 }

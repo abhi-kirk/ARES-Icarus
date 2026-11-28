@@ -80,7 +80,7 @@ bool apply_config(const json& j, Config& config) {
         config.simulation.gimbal_lever       = j["simulation"].value("gimbal_lever", 8.0);
         config.simulation.gimbal_max_deg     = j["simulation"].value("gimbal_max_deg", 15.0);
         config.simulation.attitude_kp        = j["simulation"].value("attitude_kp", 1.5);
-        config.simulation.attitude_kd        = j["simulation"].value("attitude_kd", 0.8);
+        config.simulation.attitude_kd        = j["simulation"].value("attitude_kd", 2.45);
 
         config.simulation.controller         = j["simulation"].value("controller", std::string("pid"));
         config.simulation.ascent             = j["simulation"].value("ascent", false);

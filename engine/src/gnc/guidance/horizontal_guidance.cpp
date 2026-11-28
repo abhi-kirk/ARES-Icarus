@@ -69,6 +69,12 @@ HorizontalGuidance::HorizontalGuidance(const Config& config)
 
 void HorizontalGuidance::initialize(const State& state, const Vector2d& pad_position,
                                      const Vector2d& pad_velocity) {
+    // The entry calls this again at the handoff. The first call saw the
+    // ship still in the planet frame and stored a 10 m/s sideways command.
+    // Guidance stays off until the hop, so that command would still be there.
+    pos_ctrl_x_.reset();
+    pos_ctrl_y_.reset();
+    iteration_ = 0;
     ref_vel_target_ = {
         pos_ctrl_x_.compute(state[POS_X], pad_position[0]) + pad_velocity[0],
         pos_ctrl_y_.compute(state[POS_Y], pad_position[1]) + pad_velocity[1]

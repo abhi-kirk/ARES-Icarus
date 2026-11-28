@@ -103,7 +103,9 @@ struct SimConfig {
     double gimbal_lever = 8.0;
     double gimbal_max_deg = 15.0;
     double attitude_kp = 1.5;
-    double attitude_kd = 0.8;
+    // 2*sqrt(kp) is critical damping. 0.8 left the flip at a damping ratio
+    // of 0.33, so the nose whipped through and rang past the aim.
+    double attitude_kd = 2.45;
 
     // Guidance law for the force ask. "pid" is the cascade. "mpc" is LTV-MPC
     // (Phase 5) that tracks a soft-landing reference with OSQP.

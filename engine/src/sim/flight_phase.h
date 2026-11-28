@@ -6,10 +6,13 @@
 
 namespace icarus {
 
-// Coast holds the engine off and the nose on the velocity. Flip keeps the
-// engine off while the jets swing the nose onto the brake. Brake is the
-// ceiling thrust toward a 20 m/s fall. Land is the existing law.
+// Belly holds the engine off and the nose across the wind, so the side
+// slows a fast entry. Coast holds the engine off and the nose on the
+// velocity. Flip keeps the engine off while the jets swing the nose onto
+// the brake. Brake is the ceiling thrust toward a 20 m/s fall. Land is
+// the existing law.
 enum class EntryPhase {
+    Belly,
     Coast,
     Flip,
     Brake,

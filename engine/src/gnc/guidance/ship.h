@@ -17,8 +17,10 @@ constexpr double SHIP_KICK_DEG = 6.0;
 constexpr double SHIP_KICK_S = 10.0;
 // Pascals. The ascent throttle drops while dynamic pressure is above this.
 constexpr double SHIP_MAX_Q_PA = 35000.0;
-// Integral of sqrt(rho) * v^3. The 1 km/s coast stays under this.
-// 7.8 km/s in thick air does not.
-constexpr double SHIP_SHIELD = 1.0e11;
+// Integral of sqrt(rho) * v^3. A sideways entry from 120 km at 7.6 km/s
+// totals about 9e11 and arrives near 80 m/s. Nose-on at that speed totals
+// about 2e12 and is still fast low down. 7.8 km/s already at 40 km fills
+// 1e11 in about 2 s.
+constexpr double SHIP_SHIELD = 1.0e12;
 
 }  // namespace icarus

@@ -113,15 +113,15 @@ const ship = await runCase(withSim({
   aero: false,
   // On the way down, over the pad, where the planet frame and the pad
   // frame still agree. This is the state the 1 km/s coast flips from:
-  // 4 km up, 141 m/s sideways, 309 m/s down. The brake hands the landing
+  // 5.6 km up, 189 m/s sideways, 363 m/s down. The brake hands the landing
   // laws that hop in the pad frame. Drag stays the coast law. A tilted
   // nose at this dynamic pressure adds more force than the brake can spare.
   initial_x_pos: 0,
   initial_y_pos: 0,
-  initial_z_pos: EARTH_RADIUS_M + 4127,
-  initial_x_velocity: 141,
+  initial_z_pos: EARTH_RADIUS_M + 5605.54,
+  initial_x_velocity: 188.895,
   initial_y_velocity: 0,
-  initial_z_velocity: -309,
+  initial_z_velocity: -363,
   initial_fuel: 600,
 }));
 const shipHand = handoff(ship.stderr);

@@ -426,6 +426,12 @@ int main() {
         expect_near(uy, 0.0, 1e-9, "the brake has no sideways command without that speed");
         expect_near(uz, 30.0 / length, 1e-9, "the brake aims at a 20 m/s fall");
 
+        expect(entry_brake_holding(0.2, 0.0, -20.0), "a 20 m/s fall with little sideways speed holds upright");
+        expect(!entry_brake_holding(0.2, 0.0, -40.0), "a fast fall still uses the brake aim");
+        expect(!entry_brake_holding(4.0, 0.0, -20.0), "a few meters per second sideways still steers");
+        expect_near(entry_hold_thrust(1400.0, 9.81, -20.0, 25000.0), 1400.0 * 9.81, 1e-6, "the hold at 20 m/s is the weight");
+        expect_near(entry_hold_thrust(1400.0, 9.81, -22.0, 25000.0), 1400.0 * 11.81, 1e-6, "falling faster than 20 m/s adds thrust");
+
         EntryPoint hop;
         hop.x = 0.0;
         hop.y = 0.0;
@@ -467,7 +473,7 @@ int main() {
             }
             t += 0.5;
         }
-        expect(lit > 156.0 && lit < 161.0, "the brake starts while a hop is still reachable");
+        expect(lit > 152.0 && lit < 158.0, "the brake starts while a hop is still reachable");
     }
 
     {

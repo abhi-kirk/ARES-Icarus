@@ -4,6 +4,7 @@
 #include "dynamics/constants.h"
 #include "dynamics/state_indices.h"
 #include "environment/frames.h"
+#include "environment/gravity.h"
 #include "gnc/guidance/entry_coast.h"
 
 #include <algorithm>
@@ -62,7 +63,26 @@ EntryAsk update_entry(
     here.vz = pvz;
     here.mass = MASS_DRY + std::max(0.0, state[FUEL]);
 
-    if (phase == EntryPhase::Coast) {
+    const double speed = std::hypot(state[VEL_X], std::hypot(state[VEL_Y], state[VEL_Z]));
+    if (phase == EntryPhase::Belly && speed < ENTRY_BELLY_SPEED) {
+        phase = EntryPhase::Coast;
+        const double height = altitude_m(
+            state[POS_X], state[POS_Y], state[POS_Z], cfg.planet_centered
+        );
+        std::cerr << "entry coast t=" << t
+                  << " z=" << height
+                  << " v=" << speed
+                  << " x=" << state[POS_X]
+                  << " y=" << state[POS_Y]
+                  << "\n";
+    }
+
+    // Far from the pad axis, z minus Earth's radius is not the altitude.
+    // The hop check waits until the ship is close enough for that frame.
+    const double off_axis = std::hypot(state[POS_X], state[POS_Y]);
+    const bool near_pad = !cfg.planet_centered || off_axis < 60000.0;
+
+    if (phase == EntryPhase::Coast && near_pad) {
         check_age += dt;
         if (check_age >= 0.25) {
             check_age = 0.0;
@@ -77,16 +97,29 @@ EntryAsk update_entry(
         }
     }
 
-    const double speed = std::hypot(here.vx, std::hypot(here.vy, here.vz));
     double ux = 0.0;
     double uy = 0.0;
     double uz = 1.0;
-    if (phase == EntryPhase::Coast && speed > 1.0) {
-        ux = here.vx / speed;
-        uy = here.vy / speed;
-        uz = here.vz / speed;
-    } else if (phase != EntryPhase::Coast) {
+    if (phase == EntryPhase::Belly && speed > 1.0) {
+        entry_belly_direction(
+            state[POS_X], state[POS_Y], state[POS_Z],
+            state[VEL_X], state[VEL_Y], state[VEL_Z],
+            cfg.planet_centered,
+            ux, uy, uz
+        );
+    } else if (phase == EntryPhase::Coast && speed > 1.0) {
+        ux = state[VEL_X] / speed;
+        uy = state[VEL_Y] / speed;
+        uz = state[VEL_Z] / speed;
+    } else if (phase != EntryPhase::Coast && phase != EntryPhase::Belly) {
         entry_brake_direction(here.vx, here.vy, here.vz, ux, uy, uz);
+        // A settled fall points straight up. Steering along the leftover
+        // error is what wagged the nose from about 900 m down to 280 m.
+        if (entry_brake_holding(here.vx, here.vy, here.vz)) {
+            ux = 0.0;
+            uy = 0.0;
+            uz = 1.0;
+        }
     }
     ask.attitude = quat_align_body_z(ux, uy, uz, quat_from_state(state));
 
@@ -97,13 +130,22 @@ EntryAsk update_entry(
         rotate_body_to_inertial(quat_from_state(state), 0.0, 0.0, 1.0, zx, zy, zz);
         const double aligned = zx * ux + zy * uy + zz * uz;
         const double cos_20 = std::cos(20.0 * 3.14159265358979323846 / 180.0);
-        if (aligned >= cos_20) phase = EntryPhase::Brake;
+        if (aligned >= cos_20) {
+            phase = EntryPhase::Brake;
+            std::cerr << "entry brake t=" << t
+                      << " z=" << here.z
+                      << "\n";
+        }
     }
 
     if (phase == EntryPhase::Brake) {
-        ask.fx = cfg.thrust_max * ux;
-        ask.fy = cfg.thrust_max * uy;
-        ask.fz = cfg.thrust_max * uz;
+        double thrust = cfg.thrust_max;
+        if (entry_brake_holding(here.vx, here.vy, here.vz)) {
+            thrust = entry_hold_thrust(here.mass, cfg.gravity, here.vz, cfg.thrust_max);
+        }
+        ask.fx = thrust * ux;
+        ask.fy = thrust * uy;
+        ask.fz = thrust * uz;
         if (entry_in_hop(here)) {
             phase = EntryPhase::Land;
             ask.guide = true;
